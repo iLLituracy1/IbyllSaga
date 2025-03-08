@@ -1,6 +1,7 @@
-// Career-specific data and prologue texts
+// careers.js - Updated with UI integration
+// Maintains compatibility with existing code while adding event system integration
 
-// Prologue texts for each career
+// Original game data preserved
 window.prologues = {
   "Paanic Regular": `<p>The dust of a thousand battles clings to your boots, the weight of generations of soldiers' blood and sweat upon your shoulders. Born in the heartlands of the Empire, you were raised under the warhorn's call, with the clang of steel in narrow streets. Now, with spear or sword in hand, you stand as part of the iron core of the Empire's vast machine. Every command tests your resolve as you march on, even when the battlefield is soaked in blood.</p>`,
   "Geister Initiate": `<p>In the deeper corners of the Empire, where the world's weight presses hardest, you have tread paths few dare to follow. As an initiate of the Geister Charters, you have stood on the precipice of the supernatural, where the boundary between life and death is as thin as a whispered prayer. In the cold halls of your charter, you practiced ancient rites—wielding cleaver and sword, sealing doors against revenants. Now, the Empire's call forces you onto the front lines. Will the screams of battle forge a new destiny for you?</p>`,
@@ -26,3 +27,157 @@ window.empireUpdateText = `
   <p>Your journey begins in the distant corners of the Empire, where you travel by caravan to Paan'eun, the heart of the Empire, where the Grand Citadel stands—a towering symbol of hope for those who pledge their lives to the cause. In the capital, you join new recruits undergoing rigorous training, where the clash of steel and the roar of marching feet forge a unity born of discipline and sacrifice.</p>
   <p>After months of arduous preparation at Fort Paalanus, you are assigned to a Kasvaari—a regiment at the heart of the Empire's military. Here, you train with your comrades, master deadly tactics, and forge bonds that will define your destiny. The Empire is fractured, its borders beset from within and without, yet you stand as a testament to its might, however fragile. Your story is only beginning. The path ahead is paved with blood, honor, and war. What will you make of it?</p>
 `;
+
+// NEW: Career system integration with UI framework
+window.CareerSystem = {
+  // Initialize the career system
+  init: function() {
+    // Set up event listeners if UI system is available
+    if (window.UI && window.UI.system) {
+      // Subscribe to prologue request events
+      window.UI.system.eventBus.subscribe('prologue:request', this.handlePrologueRequest.bind(this));
+      
+      // Subscribe to prologue complete events
+      window.UI.system.eventBus.subscribe('prologue:complete', this.handlePrologueComplete.bind(this));
+      
+      console.log('Career system initialized with UI integration');
+    } else {
+      console.log('Career system initialized (standalone)');
+    }
+    
+    return this;
+  },
+  
+  // Get prologue text for a specific career
+  getPrologue: function(careerTitle) {
+    return window.prologues[careerTitle] || `<p>You embark on your journey as a ${careerTitle}.</p>`;
+  },
+  
+  // Get empire update text
+  getEmpireUpdate: function() {
+    return window.empireUpdateText;
+  },
+  
+  // Generate career-specific skills
+  generateCareerSkills: function(careerTitle) {
+    const skills = {
+      melee: 0,
+      marksmanship: 0,
+      survival: 0,
+      command: 0,
+      discipline: 0,
+      tactics: 0,
+      organization: 0,
+      arcana: 0
+    };
+    
+    // Assign skills based on career
+    if (careerTitle.includes("Regular") || careerTitle.includes("Infantry")) {
+      skills.melee = 2;
+      skills.discipline = 1.5;
+      skills.survival = 1;
+    } else if (careerTitle.includes("Scout") || careerTitle.includes("Harrier")) {
+      skills.marksmanship = 2;
+      skills.survival = 1.5;
+      skills.tactics = 1;
+    } else if (careerTitle.includes("Geister")) {
+      skills.melee = 1;
+      skills.arcana = 2;
+      skills.discipline = 1.5;
+      skills.tactics = 1;
+    } else if (careerTitle.includes("Berserker") || careerTitle.includes("Primal")) {
+      skills.melee = 2.5;
+      skills.survival = 1.5;
+    } else if (careerTitle.includes("Sellsword") || careerTitle.includes("Marine")) {
+      skills.melee = 1.5;
+      skills.marksmanship = 1.5;
+      skills.survival = 1;
+    } else if (careerTitle.includes("Cavalry")) {
+      skills.melee = 2;
+      skills.command = 1.5;
+      skills.tactics = 1;
+      skills.survival = 1;
+    } else if (careerTitle.includes("Marauder")) {
+      skills.melee = 1.5;
+      skills.command = 0.5;
+      skills.tactics = 1;
+    } else if (careerTitle.includes("Corsair")) {
+      skills.melee = 1;
+      skills.survival = 1;
+      skills.tactics = 1;
+      skills.organization = 1;
+    } else if (careerTitle.includes("Squire")) {
+      skills.melee = 0.5;
+      skills.discipline = 0.5;
+      skills.organization = 1;
+      skills.survival = 0.5;
+    }
+    
+    // Add a bit of randomness to initial skill values
+    for (const skill in skills) {
+      if (skills[skill] > 0) {
+        const randomBonus = parseFloat((Math.random() * 0.5).toFixed(1));
+        skills[skill] = Number(skills[skill]) + Number(randomBonus);
+      }
+    }
+    
+    return skills;
+  },
+  
+  // Handle prologue request event
+  handlePrologueRequest: function(data) {
+    const { origin, career } = data;
+    console.log(`Prologue requested for ${career} (${origin})`);
+    
+    // Get prologue text
+    const prologueText = this.getPrologue(career);
+    
+    // Generate career skills
+    const skills = this.generateCareerSkills(career);
+    
+    // Publish prologue text event
+    if (window.UI && window.UI.system) {
+      window.UI.system.eventBus.publish('prologue:text', { 
+        origin: origin,
+        career: career,
+        text: prologueText,
+        skills: skills
+      });
+    }
+    
+    // Update DOM if running in standalone mode
+    if (document.getElementById('prologueText')) {
+      document.getElementById('prologueText').innerHTML = prologueText;
+    }
+  },
+  
+  // Handle prologue complete event
+  handlePrologueComplete: function(data) {
+    console.log('Prologue complete, showing empire update');
+    
+    // Get empire update text
+    const empireText = this.getEmpireUpdate();
+    
+    // Publish empire update text event
+    if (window.UI && window.UI.system) {
+      window.UI.system.eventBus.publish('empireUpdate:text', { 
+        text: empireText
+      });
+    }
+    
+    // Update DOM if running in standalone mode
+    if (document.getElementById('empireText')) {
+      document.getElementById('empireText').innerHTML = empireText;
+    }
+  }
+};
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', function() {
+  window.CareerSystem.init();
+  
+  // If UI system is already loaded, register with it
+  if (window.UI && window.UI.system) {
+    window.UI.system.registerComponent('careerSystem', window.CareerSystem);
+  }
+});

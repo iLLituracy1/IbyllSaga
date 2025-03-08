@@ -1,4 +1,7 @@
-// Dynamic narrative elements for main game
+// narrative.js - Updated with UI integration
+// Connects the narrative elements with the UI framework
+
+// Original game data preserved
 window.narrativeElements = {
   training: [
     "You push yourself through grueling training drills, sweat streaming down your face as you master the movements.",
@@ -137,3 +140,326 @@ window.achievements = [
     icon: "⭐"
   }
 ];
+
+// NEW: Narrative system integration with UI framework
+window.NarrativeSystem = {
+  // Current state of the narrative
+  state: {
+    currentContext: 'camp',
+    lastAction: null,
+    narrativeHistory: [],
+    maxHistoryLength: 50 // Maximum number of narrative entries to keep
+  },
+  
+  // Initialize the narrative system
+  init: function() {
+    // Set up event listeners if UI system is available
+    if (window.UI && window.UI.system) {
+      // Subscribe to relevant events
+      window.UI.system.eventBus.subscribe('action:execute', this.handleActionExecuted.bind(this));
+      window.UI.system.eventBus.subscribe('location:change', this.handleLocationChange.bind(this));
+      window.UI.system.eventBus.subscribe('relationship:change', this.handleRelationshipChange.bind(this));
+      window.UI.system.eventBus.subscribe('achievement:unlocked', this.handleAchievementUnlocked.bind(this));
+      
+      console.log('Narrative system initialized with UI integration');
+    } else {
+      console.log('Narrative system initialized (standalone)');
+    }
+    
+    return this;
+  },
+  
+  // Get a random narrative for an action type
+  getRandomNarrative: function(actionType, timeOfDay) {
+    // Check if we have narratives for this action type
+    if (!window.narrativeElements[actionType] || window.narrativeElements[actionType].length === 0) {
+      return `You ${actionType.toLowerCase()}.`;
+    }
+    
+    // Get narratives for this action
+    const narratives = window.narrativeElements[actionType];
+    
+    // If we have time-of-day-specific narratives, use those
+    if (timeOfDay && Array.isArray(narratives.timeOfDay)) {
+      // For future implementation
+    }
+    
+    // Get a random narrative
+    const randomIndex = Math.floor(Math.random() * narratives.length);
+    return narratives[randomIndex];
+  },
+  
+  // Set the main narrative text
+  setNarrative: function(text) {
+    // Clear narrative history
+    this.state.narrativeHistory = [];
+    
+    // Add this as the first entry
+    this.state.narrativeHistory.push({
+      text: text,
+      timestamp: new Date()
+    });
+    
+    // Publish narrative update event if UI system is available
+    if (window.UI && window.UI.system) {
+      window.UI.system.eventBus.publish('narrative:set', text);
+    } else if (typeof window.setNarrative === 'function') {
+      // Legacy fallback
+      window.setNarrative(text);
+    }
+  },
+  
+  // Add to the narrative
+  addToNarrative: function(text) {
+    // Add to narrative history
+    this.state.narrativeHistory.push({
+      text: text,
+      timestamp: new Date()
+    });
+    
+    // Trim history if it's too long
+    if (this.state.narrativeHistory.length > this.state.maxHistoryLength) {
+      this.state.narrativeHistory.shift();
+    }
+    
+    // Publish narrative update event if UI system is available
+    if (window.UI && window.UI.system) {
+      window.UI.system.eventBus.publish('narrative:add', text);
+    } else if (typeof window.addToNarrative === 'function') {
+      // Legacy fallback
+      window.addToNarrative(text);
+    }
+  },
+  
+  // Get the full narrative history
+  getNarrativeHistory: function() {
+    return this.state.narrativeHistory;
+  },
+  
+  // Generate narrative for an action
+  generateActionNarrative: function(action, gameState) {
+    // Get time of day
+    const timeOfDay = gameState && gameState.timeOfDay ? gameState.timeOfDay :
+                     (typeof window.getTimeOfDay === 'function' ? window.getTimeOfDay() : 'day');
+    
+    // Get random narrative for this action
+    const narrativeText = this.getRandomNarrative(action, timeOfDay);
+    
+    // Record the action
+    this.state.lastAction = action;
+    
+    return narrativeText;
+  },
+  
+  // Get camp character by ID
+  getCampCharacter: function(characterId) {
+    return window.campCharacters.find(char => char.id === characterId) || null;
+  },
+  
+  // Get all camp characters
+  getAllCampCharacters: function() {
+    return window.campCharacters;
+  },
+  
+  // Get player relationship with a character
+  getRelationship: function(characterId) {
+    if (!window.player || !window.player.relationships) return null;
+    
+    return window.player.relationships[characterId] || null;
+  },
+  
+  // Update player relationship with a character
+  updateRelationship: function(characterId, delta) {
+    if (!window.player || !window.player.relationships) return false;
+    
+    // Get relationship
+    const relationship = window.player.relationships[characterId];
+    if (!relationship) return false;
+    
+    // Update disposition
+    relationship.disposition += delta;
+    relationship.interactions++;
+    
+    // Publish relationship change event
+    if (window.UI && window.UI.system) {
+      window.UI.system.eventBus.publish('relationship:change', {
+        characterId: characterId,
+        delta: delta,
+        newDisposition: relationship.disposition,
+        interactions: relationship.interactions
+      });
+    }
+    
+    return true;
+  },
+  
+  // Get an achievement by ID
+  getAchievement: function(achievementId) {
+    return window.achievements.find(ach => ach.id === achievementId) || null;
+  },
+  
+  // Get all achievements
+  getAllAchievements: function() {
+    return window.achievements;
+  },
+  
+  // Unlock an achievement
+  unlockAchievement: function(achievementId) {
+    const achievement = this.getAchievement(achievementId);
+    if (!achievement) return false;
+    
+    // Skip if already unlocked
+    if (achievement.unlocked) return true;
+    
+    // Unlock the achievement
+    achievement.unlocked = true;
+    
+    // Publish achievement unlocked event
+    if (window.UI && window.UI.system) {
+      window.UI.system.eventBus.publish('achievement:unlocked', {
+        id: achievementId,
+        achievement: achievement
+      });
+    }
+    
+    return true;
+  },
+  
+  // Update achievement progress
+  updateAchievementProgress: function(achievementId, progress) {
+    const achievement = this.getAchievement(achievementId);
+    if (!achievement || !achievement.target) return false;
+    
+    // Skip if already unlocked
+    if (achievement.unlocked) return true;
+    
+    // Update progress
+    achievement.progress = progress;
+    
+    // Check if achievement should be unlocked
+    if (achievement.progress >= achievement.target) {
+      this.unlockAchievement(achievementId);
+    }
+    
+    // Publish achievement progress event
+    if (window.UI && window.UI.system) {
+      window.UI.system.eventBus.publish('achievement:progress', {
+        id: achievementId,
+        achievement: achievement,
+        progress: progress
+      });
+    }
+    
+    return true;
+  },
+  
+  // Event handlers
+  
+  // Handle action execution
+  handleActionExecuted: function(data) {
+    // Generate narrative for the action
+    const action = data.action;
+    const gameState = window.gameState || {};
+    
+    // Skip if this is a UI action (like opening a panel)
+    if (action === 'profile' || action === 'inventory' || action === 'questLog') {
+      return;
+    }
+    
+    // Generate narrative text
+    const narrativeText = this.generateActionNarrative(action, gameState);
+    
+    // Add to narrative
+    this.addToNarrative(narrativeText);
+    
+    // Handle action-specific logic
+    this.handleActionSpecificLogic(action, gameState);
+  },
+  
+  // Handle location change
+  handleLocationChange: function(data) {
+    const locationName = data.displayName || data.location;
+    
+    // Add location change to narrative
+    this.addToNarrative(`You arrive at ${locationName}.`);
+    
+    // Update current context
+    this.state.currentContext = data.location;
+  },
+  
+  // Handle relationship change
+  handleRelationshipChange: function(data) {
+    const characterId = data.characterId;
+    const character = this.getCampCharacter(characterId);
+    
+    if (!character) return;
+    
+    // Generate narrative text based on relationship change
+    let narrativeText = '';
+    
+    if (data.delta > 0) {
+      narrativeText = `${character.name} seems to appreciate your actions.`;
+    } else if (data.delta < 0) {
+      narrativeText = `${character.name} doesn't seem pleased with your actions.`;
+    }
+    
+    // Add to narrative if we have text
+    if (narrativeText) {
+      this.addToNarrative(narrativeText);
+    }
+  },
+  
+  // Handle achievement unlocked
+  handleAchievementUnlocked: function(data) {
+    const achievement = data.achievement;
+    
+    // Add achievement unlocked to narrative
+    this.addToNarrative(`<strong>Achievement Unlocked:</strong> ${achievement.title} - ${achievement.description}`);
+    
+    // Show notification
+    if (window.UI && window.UI.system) {
+      window.UI.system.showNotification(`Achievement Unlocked: ${achievement.title}`, 'success');
+    }
+  },
+  
+  // Handle action-specific logic
+  handleActionSpecificLogic: function(action, gameState) {
+    // Update relevant achievement progress
+    switch (action) {
+      case 'train':
+        this.updateAchievementProgress('disciplined', (gameState.trainingCount || 0) + 1);
+        break;
+        
+      case 'patrol':
+        // Example: Random chance to discover a new location
+        if (Math.random() < 0.3) {
+          this.addToNarrative("You discover a new location during your patrol.");
+          this.updateAchievementProgress('scout_master', (gameState.locationsDiscovered || 0) + 1);
+        }
+        break;
+    }
+  }
+};
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', function() {
+  window.NarrativeSystem.init();
+  
+  // Override legacy functions to use the narrative system
+  if (typeof window.setNarrative !== 'function' || window.setNarrative.toString().indexOf('NarrativeSystem') === -1) {
+    window.setNarrative = function(text) {
+      window.NarrativeSystem.setNarrative(text);
+    };
+  }
+  
+  if (typeof window.addToNarrative !== 'function' || window.addToNarrative.toString().indexOf('NarrativeSystem') === -1) {
+    window.addToNarrative = function(text) {
+      window.NarrativeSystem.addToNarrative(text);
+    };
+  }
+  
+  // If UI system is already loaded, register with it
+  if (window.UI && window.UI.system) {
+    window.UI.system.registerComponent('narrativeSystem', window.NarrativeSystem);
+  }
+});

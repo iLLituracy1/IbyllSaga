@@ -1,4 +1,4 @@
-// INVENTORY SYSTEM MODULE
+// inventory.js - Updated with UI integration
 // Manages player inventory, equipment, and currency
 
 // Initialize the inventory system
@@ -55,6 +55,11 @@ window.initializeInventorySystem = function() {
   // Update equipment stats
   window.recalculateEquipmentStats();
   
+  // Publish inventory initialized event if UI system is available
+  if (window.UI && window.UI.system) {
+    window.UI.system.eventBus.publish('inventory:initialized', { player: window.player });
+  }
+  
   console.log("Inventory system initialized");
 };
 
@@ -70,7 +75,11 @@ window.addItemToInventory = function(itemTemplate, quantity = 1) {
   
   // Check if inventory has space
   if (window.player.inventory.length >= window.player.inventoryCapacity) {
-    window.showNotification("Your inventory is full!", "warning");
+    if (window.UI && window.UI.system) {
+      window.UI.system.showNotification("Your inventory is full!", "warning");
+    } else {
+      window.showNotification("Your inventory is full!", "warning");
+    }
     return false;
   }
   
@@ -87,9 +96,22 @@ window.addItemToInventory = function(itemTemplate, quantity = 1) {
       
       existingItem.quantity += amountToAdd;
       
+      // Publish item added event
+      if (window.UI && window.UI.system) {
+        window.UI.system.eventBus.publish('inventory:itemAdded', { 
+          item: existingItem,
+          quantity: amountToAdd,
+          stacked: true
+        });
+      }
+      
       // If we added all, return success
       if (amountToAdd === quantity) {
-        window.showNotification(`Added ${quantity} ${itemTemplate.name} to inventory`, "success");
+        if (window.UI && window.UI.system) {
+          window.UI.system.showNotification(`Added ${quantity} ${itemTemplate.name} to inventory`, "success");
+        } else {
+          window.showNotification(`Added ${quantity} ${itemTemplate.name} to inventory`, "success");
+        }
         return true;
       }
       
@@ -100,7 +122,19 @@ window.addItemToInventory = function(itemTemplate, quantity = 1) {
   
   // Add the new item to inventory
   window.player.inventory.push(newItem);
-  window.showNotification(`Added ${newItem.getName()} to inventory`, "success");
+  
+  // Publish item added event
+  if (window.UI && window.UI.system) {
+    window.UI.system.eventBus.publish('inventory:itemAdded', { 
+      item: newItem,
+      quantity: newItem.quantity,
+      stacked: false
+    });
+    
+    window.UI.system.showNotification(`Added ${newItem.getName()} to inventory`, "success");
+  } else {
+    window.showNotification(`Added ${newItem.getName()} to inventory`, "success");
+  }
   
   return true;
 };
@@ -120,12 +154,31 @@ window.removeItemFromInventory = function(instanceId, quantity = 1) {
   if (item.getTemplate().stackable) {
     if (item.quantity > quantity) {
       item.quantity -= quantity;
+      
+      // Publish item quantity changed event
+      if (window.UI && window.UI.system) {
+        window.UI.system.eventBus.publish('inventory:itemQuantityChanged', { 
+          item: item,
+          quantity: -quantity,
+          remaining: item.quantity
+        });
+      }
+      
       return true;
     }
   }
   
   // Remove the item completely
-  window.player.inventory.splice(itemIndex, 1);
+  const removedItem = window.player.inventory.splice(itemIndex, 1)[0];
+  
+  // Publish item removed event
+  if (window.UI && window.UI.system) {
+    window.UI.system.eventBus.publish('inventory:itemRemoved', { 
+      instanceId: instanceId,
+      item: removedItem
+    });
+  }
+  
   return true;
 };
 
@@ -140,7 +193,11 @@ window.useItem = function(instanceId) {
   
   // Check if item is usable
   if (!item.getTemplate().usable) {
-    window.showNotification(`${item.getName()} is not usable`, "warning");
+    if (window.UI && window.UI.system) {
+      window.UI.system.showNotification(`${item.getName()} is not usable`, "warning");
+    } else {
+      window.showNotification(`${item.getName()} is not usable`, "warning");
+    }
     return false;
   }
   
@@ -148,6 +205,14 @@ window.useItem = function(instanceId) {
   const success = item.use(window.player);
   
   if (success) {
+    // Publish item used event
+    if (window.UI && window.UI.system) {
+      window.UI.system.eventBus.publish('inventory:itemUsed', { 
+        instanceId: instanceId,
+        item: item
+      });
+    }
+    
     // If stackable, decrease quantity
     if (item.getTemplate().stackable) {
       item.quantity--;
@@ -155,6 +220,15 @@ window.useItem = function(instanceId) {
       // Remove if quantity is 0
       if (item.quantity <= 0) {
         window.removeItemFromInventory(instanceId);
+      } else {
+        // Publish item quantity changed event
+        if (window.UI && window.UI.system) {
+          window.UI.system.eventBus.publish('inventory:itemQuantityChanged', { 
+            item: item,
+            quantity: -1,
+            remaining: item.quantity
+          });
+        }
       }
     } else {
       // Non-stackable items are removed after use
@@ -180,13 +254,21 @@ window.equipItem = function(instanceId) {
   
   // Check if item is equippable
   if (!template.equipSlot) {
-    window.showNotification(`${item.getName()} cannot be equipped`, "warning");
+    if (window.UI && window.UI.system) {
+      window.UI.system.showNotification(`${item.getName()} cannot be equipped`, "warning");
+    } else {
+      window.showNotification(`${item.getName()} cannot be equipped`, "warning");
+    }
     return false;
   }
   
   // Check requirements
   if (!item.canEquip(window.player)) {
-    window.showNotification(`You don't meet the requirements to equip ${item.getName()}`, "warning");
+    if (window.UI && window.UI.system) {
+      window.UI.system.showNotification(`You don't meet the requirements to equip ${item.getName()}`, "warning");
+    } else {
+      window.showNotification(`You don't meet the requirements to equip ${item.getName()}`, "warning");
+    }
     return false;
   }
   
@@ -238,6 +320,16 @@ window.equipItem = function(instanceId) {
   // Add the old items back to inventory
   oldItems.forEach(oldItem => {
     window.player.inventory.push(oldItem);
+    
+    // Publish item added event for each old item
+    if (window.UI && window.UI.system) {
+      window.UI.system.eventBus.publish('inventory:itemAdded', { 
+        item: oldItem,
+        quantity: 1,
+        stacked: false,
+        fromUnequip: true
+      });
+    }
   });
   
   // Equip the new item
@@ -252,7 +344,19 @@ window.equipItem = function(instanceId) {
   // Recalculate equipment stats
   window.recalculateEquipmentStats();
   
-  window.showNotification(`Equipped ${item.getName()}`, "success");
+  // Publish item equipped event
+  if (window.UI && window.UI.system) {
+    window.UI.system.eventBus.publish('inventory:itemEquipped', { 
+      item: item,
+      slot: template.equipSlot,
+      previousItems: oldItems
+    });
+    
+    window.UI.system.showNotification(`Equipped ${item.getName()}`, "success");
+  } else {
+    window.showNotification(`Equipped ${item.getName()}`, "success");
+  }
+  
   return true;
 };
 
@@ -265,7 +369,11 @@ window.unequipItem = function(slot) {
   
   // Check if inventory has space
   if (window.player.inventory.length >= window.player.inventoryCapacity) {
-    window.showNotification("Your inventory is full! Cannot unequip.", "warning");
+    if (window.UI && window.UI.system) {
+      window.UI.system.showNotification("Your inventory is full! Cannot unequip.", "warning");
+    } else {
+      window.showNotification("Your inventory is full! Cannot unequip.", "warning");
+    }
     return false;
   }
   
@@ -286,7 +394,25 @@ window.unequipItem = function(slot) {
   // Recalculate equipment stats
   window.recalculateEquipmentStats();
   
-  window.showNotification(`Unequipped ${item.getName()}`, "success");
+  // Publish item unequipped event
+  if (window.UI && window.UI.system) {
+    window.UI.system.eventBus.publish('inventory:itemUnequipped', { 
+      item: item,
+      slot: slot
+    });
+    
+    window.UI.system.eventBus.publish('inventory:itemAdded', { 
+      item: item,
+      quantity: 1,
+      stacked: false,
+      fromUnequip: true
+    });
+    
+    window.UI.system.showNotification(`Unequipped ${item.getName()}`, "success");
+  } else {
+    window.showNotification(`Unequipped ${item.getName()}`, "success");
+  }
+  
   return true;
 };
 
@@ -316,24 +442,55 @@ window.recalculateEquipmentStats = function() {
     }
   }
   
-  // Update derived stats if needed (e.g., total attack power, defense, etc.)
+  // Publish equipment stats updated event
+  if (window.UI && window.UI.system) {
+    window.UI.system.eventBus.publish('inventory:equipmentStatsUpdated', { 
+      stats: window.player.equipmentStats
+    });
+  }
+  
   console.log("Equipment stats recalculated:", window.player.equipmentStats);
 };
 
 // Add currency
 window.addCurrency = function(amount) {
   window.player.taelors += amount;
-  window.showNotification(`Gained ${amount} taelors`, "success");
+  
+  // Publish currency changed event
+  if (window.UI && window.UI.system) {
+    window.UI.system.eventBus.publish('inventory:currencyChanged', { 
+      amount: amount,
+      total: window.player.taelors
+    });
+    
+    window.UI.system.showNotification(`Gained ${amount} taelors`, "success");
+  } else {
+    window.showNotification(`Gained ${amount} taelors`, "success");
+  }
 };
 
 // Remove currency
 window.removeCurrency = function(amount) {
   if (window.player.taelors >= amount) {
     window.player.taelors -= amount;
+    
+    // Publish currency changed event
+    if (window.UI && window.UI.system) {
+      window.UI.system.eventBus.publish('inventory:currencyChanged', { 
+        amount: -amount,
+        total: window.player.taelors
+      });
+    }
+    
     return true;
   }
   
-  window.showNotification("Not enough taelors!", "warning");
+  if (window.UI && window.UI.system) {
+    window.UI.system.showNotification("Not enough taelors!", "warning");
+  } else {
+    window.showNotification("Not enough taelors!", "warning");
+  }
+  
   return false;
 };
 
@@ -397,6 +554,14 @@ window.sortInventory = function(criteria = 'category') {
     return 0;
   });
   
+  // Publish inventory sorted event
+  if (window.UI && window.UI.system) {
+    window.UI.system.eventBus.publish('inventory:sorted', { 
+      criteria: criteria,
+      inventory: window.player.inventory
+    });
+  }
+  
   return window.player.inventory;
 };
 
@@ -416,17 +581,15 @@ window.getItemTemplateById = function(templateId) {
   return window.itemTemplates[templateId] || null;
 };
 
-// FIXED: Moved career-specific equipment to a proper function
+// Career-specific equipment
 window.addStartingItems = function() {
-  console.log("Adding starting items function called");
+  console.log("Adding starting items for career:", window.player.career.title);
   
   // Only run if the player object and career exist
   if (!window.player || !window.player.career) {
     console.error("Cannot add starting items - player or career is not initialized!");
     return;
   }
-  
-  console.log("Adding starting equipment for career:", window.player.career.title);
   
   // Add career-specific starting equipment
   switch(window.player.career.title) {
@@ -486,6 +649,7 @@ window.addStartingItems = function() {
       break;
     
     case "Nesian Scout":
+    case "Scout":
       window.addItemToInventory(window.itemTemplates.matchlockRifle);
       window.addItemToInventory(window.itemTemplates.scoutArmor);
       
@@ -567,29 +731,221 @@ window.addStartingItems = function() {
   window.addItemToInventory(window.itemTemplates.healthPotion);
 
   console.log("Starting items added. Player inventory:", window.player.inventory);
+  
+  // Publish starting items added event
+  if (window.UI && window.UI.system) {
+    window.UI.system.eventBus.publish('inventory:startingItemsAdded', { 
+      career: window.player.career.title,
+      inventory: window.player.inventory,
+      equipment: window.player.equipment
+    });
+  }
 };
 
-// Create a global initialization function for the entire inventory system
-window.initializeFullInventorySystem = function() {
-  console.log("Initializing full inventory system...");
-  
-  // Make sure item templates are initialized first
-  if (!window.itemTemplates || Object.keys(window.itemTemplates).length === 0) {
-    window.initializeItemTemplates();
-  }
-  
+// NEW: Inventory system integration with UI framework
+window.InventorySystem = {
   // Initialize the inventory system
-  window.initializeInventorySystem();
+  init: function() {
+    // Make sure player inventory is initialized
+    if (window.player && !window.player.inventory) {
+      window.initializeInventorySystem();
+    }
+    
+    // Set up event listeners if UI system is available
+    if (window.UI && window.UI.system) {
+      // Subscribe to inventory-related events
+      window.UI.system.eventBus.subscribe('inventory:open', this.handleOpenInventory.bind(this));
+      window.UI.system.eventBus.subscribe('inventory:equipItem', this.handleEquipItem.bind(this));
+      window.UI.system.eventBus.subscribe('inventory:unequipItem', this.handleUnequipItem.bind(this));
+      window.UI.system.eventBus.subscribe('inventory:useItem', this.handleUseItem.bind(this));
+      window.UI.system.eventBus.subscribe('inventory:sortRequest', this.handleSortRequest.bind(this));
+      window.UI.system.eventBus.subscribe('inventory:filterRequest', this.handleFilterRequest.bind(this));
+      
+      console.log('Inventory system initialized with UI integration');
+    } else {
+      console.log('Inventory system initialized (standalone)');
+    }
+    
+    // Publish inventory ready event
+    if (window.UI && window.UI.system) {
+      window.UI.system.eventBus.publish('inventory:ready', {});
+    }
+    
+    return this;
+  },
   
-  // Initialize the UI
-  if (typeof window.initializeInventoryUI === 'function') {
-    window.initializeInventoryUI();
+  // Get the player's full inventory
+  getInventory: function() {
+    return window.player.inventory || [];
+  },
+  
+  // Get the player's equipment
+  getEquipment: function() {
+    return window.player.equipment || {};
+  },
+  
+  // Get player's currency
+  getCurrency: function() {
+    return window.player.taelors || 0;
+  },
+  
+  // Get inventory capacity
+  getCapacity: function() {
+    return window.player.inventoryCapacity || 20;
+  },
+  
+  // Get current inventory weight
+  getWeight: function() {
+    return window.getInventoryWeight();
+  },
+  
+  // Get equipment stats
+  getEquipmentStats: function() {
+    return window.player.equipmentStats || {};
+  },
+  
+  // Add item to inventory
+  addItem: function(itemId, quantity = 1) {
+    const template = window.getItemTemplateById(itemId);
+    if (!template) {
+      console.error(`Item template not found: ${itemId}`);
+      return false;
+    }
+    
+    return window.addItemToInventory(template, quantity);
+  },
+  
+  // Remove item from inventory
+  removeItem: function(instanceId, quantity = 1) {
+    return window.removeItemFromInventory(instanceId, quantity);
+  },
+  
+  // Use item from inventory
+  useItem: function(instanceId) {
+    return window.useItem(instanceId);
+  },
+  
+  // Equip item
+  equipItem: function(instanceId) {
+    return window.equipItem(instanceId);
+  },
+  
+  // Unequip item
+  unequipItem: function(slot) {
+    return window.unequipItem(slot);
+  },
+  
+  // Sort inventory
+  sortInventory: function(criteria = 'category') {
+    return window.sortInventory(criteria);
+  },
+  
+  // Filter inventory
+  filterInventory: function(category) {
+    return window.filterInventory(category);
+  },
+  
+  // Add currency
+  addCurrency: function(amount) {
+    window.addCurrency(amount);
+  },
+  
+  // Remove currency
+  removeCurrency: function(amount) {
+    return window.removeCurrency(amount);
+  },
+  
+  // Recalculate equipment stats
+  recalculateStats: function() {
+    window.recalculateEquipmentStats();
+  },
+  
+  // Handle inventory open event
+  handleOpenInventory: function(data) {
+    console.log('Opening inventory panel');
+    
+    // Gather inventory data
+    const inventoryData = {
+      items: this.getInventory(),
+      equipment: this.getEquipment(),
+      currency: this.getCurrency(),
+      capacity: this.getCapacity(),
+      weight: this.getWeight(),
+      equipmentStats: this.getEquipmentStats()
+    };
+    
+    // Publish inventory data event
+    if (window.UI && window.UI.system) {
+      window.UI.system.eventBus.publish('inventory:data', inventoryData);
+    }
+  },
+  
+  // Handle equip item event
+  handleEquipItem: function(data) {
+    const { instanceId } = data;
+    console.log(`Equipping item: ${instanceId}`);
+    
+    return this.equipItem(instanceId);
+  },
+  
+  // Handle unequip item event
+  handleUnequipItem: function(data) {
+    const { slot } = data;
+    console.log(`Unequipping item from slot: ${slot}`);
+    
+    return this.unequipItem(slot);
+  },
+  
+  // Handle use item event
+  handleUseItem: function(data) {
+    const { instanceId } = data;
+    console.log(`Using item: ${instanceId}`);
+    
+    return this.useItem(instanceId);
+  },
+  
+  // Handle sort request event
+  handleSortRequest: function(data) {
+    const { criteria } = data;
+    console.log(`Sorting inventory by: ${criteria}`);
+    
+    return this.sortInventory(criteria);
+  },
+  
+  // Handle filter request event
+  handleFilterRequest: function(data) {
+    const { category } = data;
+    console.log(`Filtering inventory by category: ${category}`);
+    
+    const filteredItems = this.filterInventory(category);
+    
+    // Publish filtered items event
+    if (window.UI && window.UI.system) {
+      window.UI.system.eventBus.publish('inventory:filtered', { 
+        category: category,
+        items: filteredItems
+      });
+    }
+    
+    return filteredItems;
   }
-  
-  console.log("Full inventory system initialized!");
 };
 
-// Attach initialization to window load
-window.addEventListener('DOMContentLoaded', function() {
-  console.log("DOM loaded, inventory system ready");
+// Initialize on load
+document.addEventListener('DOMContentLoaded', function() {
+  // Check if UI system is ready directly or wait for it
+  if (window.UI && window.UI.system) {
+    window.InventorySystem.init();
+    
+    // Register with UI system
+    window.UI.system.registerComponent('inventorySystem', window.InventorySystem);
+  } else {
+    // Wait for UI system to be ready
+    document.addEventListener('uiSystemReady', function() {
+      window.InventorySystem.init();
+      
+      // Register with UI system
+      window.UI.system.registerComponent('inventorySystem', window.InventorySystem);
+    });
+  }
 });

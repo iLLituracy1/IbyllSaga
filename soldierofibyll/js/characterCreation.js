@@ -1,10 +1,48 @@
+// characterCreation.js - Updated with UI integration
+// Connects the character creation process with the UI framework
+
+// Ensure player object exists
+if (!window.player) {
+  window.player = {
+    name: "",
+    origin: "",
+    career: { title: "", description: "" },
+    phy: 0,
+    men: 0,
+    skills: {
+      melee: 0,
+      marksmanship: 0,
+      survival: 0,
+      command: 0,
+      discipline: 0,
+      tactics: 0,
+      organization: 0,
+      arcana: 0
+    },
+    inventory: [],
+    equipment: {},
+    relationships: {}
+  };
+}
+
 // CHARACTER CREATION MODULE
 // Functions related to character creation
 
 // Function to select origin (heritage)
 window.selectOrigin = function(origin) {
+  // Validate origin
+  if (!window.origins[origin]) {
+    console.error(`Invalid origin: ${origin}`);
+    return;
+  }
+  
   // Set the selected origin - force as string
   window.player.origin = String(origin);
+  
+  // Publish origin selected event if UI system is available
+  if (window.UI && window.UI.system) {
+    window.UI.system.eventBus.publish('origin:selected', { origin: origin });
+  }
   
   // Update the UI to show origin description
   document.getElementById('originDescription').innerHTML = window.origins[origin].description;
@@ -29,23 +67,53 @@ window.selectOrigin = function(origin) {
     careerOptionsDiv.appendChild(careerDesc);
   });
   
-  // Transition from intro to origin section
-  document.getElementById('intro').classList.add('hidden');
-  document.getElementById('originSection').classList.remove('hidden');
+  // Use TransitionSystem if available
+  if (window.UI && window.UI.system && window.UI.system.components.transition) {
+    window.UI.system.eventBus.publish('requestTransition', { 
+      from: 'intro', 
+      to: 'originSection' 
+    });
+  } else {
+    // Fallback: Transition from intro to origin section using direct DOM manipulation
+    document.getElementById('intro').classList.add('hidden');
+    document.getElementById('originSection').classList.remove('hidden');
+  }
 };
 
 window.backToIntro = function() {
-  // Return to the heritage selection screen
-  document.getElementById('originSection').classList.add('hidden');
-  document.getElementById('intro').classList.remove('hidden');
+  // Use TransitionSystem if available
+  if (window.UI && window.UI.system && window.UI.system.components.transition) {
+    window.UI.system.eventBus.publish('requestTransition', { 
+      from: 'originSection', 
+      to: 'intro' 
+    });
+  } else {
+    // Return to the heritage selection screen using direct DOM manipulation
+    document.getElementById('originSection').classList.add('hidden');
+    document.getElementById('intro').classList.remove('hidden');
+  }
 };
 
 window.selectCareer = function(career) {
+  // Validate career exists
+  if (!career) {
+    console.error("Invalid career selected");
+    return;
+  }
+  
   // Set the selected career - force career title as string
   window.player.career = {
     title: String(career),
     description: window.prologues[career] || "A skilled professional ready for battle."
   };
+  
+  // Publish career selected event if UI system is available
+  if (window.UI && window.UI.system) {
+    window.UI.system.eventBus.publish('career:selected', { 
+      origin: window.player.origin, 
+      career: career 
+    });
+  }
   
   // Update attributes based on origin - use explicit Number conversion
   const statRange = window.statRanges[window.player.origin];
@@ -71,15 +139,31 @@ window.selectCareer = function(career) {
   // Set initial skills based on career
   window.setInitialSkills(career);
   
-  // Move to the name entry screen
-  document.getElementById('originSection').classList.add('hidden');
-  document.getElementById('nameSection').classList.remove('hidden');
+  // Use TransitionSystem if available
+  if (window.UI && window.UI.system && window.UI.system.components.transition) {
+    window.UI.system.eventBus.publish('requestTransition', { 
+      from: 'originSection', 
+      to: 'nameSection' 
+    });
+  } else {
+    // Move to the name entry screen using direct DOM manipulation
+    document.getElementById('originSection').classList.add('hidden');
+    document.getElementById('nameSection').classList.remove('hidden');
+  }
 };
 
 window.backToOrigin = function() {
-  // Return to the career selection screen
-  document.getElementById('nameSection').classList.add('hidden');
-  document.getElementById('originSection').classList.remove('hidden');
+  // Use TransitionSystem if available
+  if (window.UI && window.UI.system && window.UI.system.components.transition) {
+    window.UI.system.eventBus.publish('requestTransition', { 
+      from: 'nameSection', 
+      to: 'originSection' 
+    });
+  } else {
+    // Return to the career selection screen using direct DOM manipulation
+    document.getElementById('nameSection').classList.add('hidden');
+    document.getElementById('originSection').classList.remove('hidden');
+  }
 };
 
 window.setName = function() {
@@ -89,68 +173,149 @@ window.setName = function() {
   
   // Validate name (not empty)
   if (name === '') {
-    alert('Please enter a name for your character.');
+    if (window.UI && window.UI.system) {
+      window.UI.system.showNotification('Please enter a name for your character.', 'warning');
+    } else {
+      alert('Please enter a name for your character.');
+    }
     return;
   }
   
   // Set the character name
   window.player.name = name;
   
+  // Publish name set event if UI system is available
+  if (window.UI && window.UI.system) {
+    window.UI.system.eventBus.publish('name:set', { name: name });
+  }
+  
   // Generate character summary
   const summary = window.generateCharacterSummary();
   document.getElementById('characterSummary').innerHTML = summary;
   
-  // Move to the final character summary screen
-  document.getElementById('nameSection').classList.add('hidden');
-  document.getElementById('finalOutput').classList.remove('hidden');
+  // Use TransitionSystem if available
+  if (window.UI && window.UI.system && window.UI.system.components.transition) {
+    window.UI.system.eventBus.publish('requestTransition', { 
+      from: 'nameSection', 
+      to: 'finalOutput' 
+    });
+  } else {
+    // Move to the final character summary screen using direct DOM manipulation
+    document.getElementById('nameSection').classList.add('hidden');
+    document.getElementById('finalOutput').classList.remove('hidden');
+  }
 };
 
 window.backToName = function() {
-  // Return to the name entry screen
-  document.getElementById('finalOutput').classList.add('hidden');
-  document.getElementById('nameSection').classList.remove('hidden');
+  // Use TransitionSystem if available
+  if (window.UI && window.UI.system && window.UI.system.components.transition) {
+    window.UI.system.eventBus.publish('requestTransition', { 
+      from: 'finalOutput', 
+      to: 'nameSection' 
+    });
+  } else {
+    // Return to the name entry screen using direct DOM manipulation
+    document.getElementById('finalOutput').classList.add('hidden');
+    document.getElementById('nameSection').classList.remove('hidden');
+  }
 };
 
 window.confirmCharacter = function() {
-  // Create the character and prepare for prologue
-  document.getElementById('finalOutput').classList.add('hidden');
-  document.getElementById('prologueSection').classList.remove('hidden');
-  
-  // Set prologue text based on selected career
-  const prologueText = window.prologues[window.player.career.title] || "Your journey begins...";
-  document.getElementById('prologueText').innerHTML = prologueText;
-  
   // Initialize relationships with camp characters
   window.initializeRelationships();
+  
+  // Publish character confirmed event if UI system is available
+  if (window.UI && window.UI.system) {
+    window.UI.system.eventBus.publish('character:confirmed', { player: window.player });
+  }
+  
+  // Request prologue text if using the UI framework
+  if (window.UI && window.UI.system) {
+    window.UI.system.eventBus.publish('prologue:request', {
+      origin: window.player.origin,
+      career: window.player.career.title
+    });
+  }
+  
+  // Use TransitionSystem if available
+  if (window.UI && window.UI.system && window.UI.system.components.transition) {
+    window.UI.system.eventBus.publish('requestTransition', { 
+      from: 'finalOutput', 
+      to: 'prologueSection',
+      beforeFn: function() {
+        // Set prologue text based on selected career
+        const prologueText = window.prologues[window.player.career.title] || "Your journey begins...";
+        document.getElementById('prologueText').innerHTML = prologueText;
+      }
+    });
+  } else {
+    // Create the character and prepare for prologue using direct DOM manipulation
+    document.getElementById('finalOutput').classList.add('hidden');
+    document.getElementById('prologueSection').classList.remove('hidden');
+    
+    // Set prologue text based on selected career
+    const prologueText = window.prologues[window.player.career.title] || "Your journey begins...";
+    document.getElementById('prologueText').innerHTML = prologueText;
+  }
 };
 
 window.showEmpireUpdate = function() {
-  // Show the empire update screen (second part of prologue)
-  document.getElementById('prologueSection').classList.add('hidden');
-  document.getElementById('empireSection').classList.remove('hidden');
+  // Publish prologue complete event if UI system is available
+  if (window.UI && window.UI.system) {
+    window.UI.system.eventBus.publish('prologue:complete', {});
+  }
   
-  // Set empire update text
-  document.getElementById('empireText').innerHTML = window.empireUpdateText;
+  // Use TransitionSystem if available
+  if (window.UI && window.UI.system && window.UI.system.components.transition) {
+    window.UI.system.eventBus.publish('requestTransition', { 
+      from: 'prologueSection', 
+      to: 'empireSection',
+      beforeFn: function() {
+        // Set empire update text
+        document.getElementById('empireText').innerHTML = window.empireUpdateText;
+      }
+    });
+  } else {
+    // Show the empire update screen (second part of prologue) using direct DOM manipulation
+    document.getElementById('prologueSection').classList.add('hidden');
+    document.getElementById('empireSection').classList.remove('hidden');
+    
+    // Set empire update text
+    document.getElementById('empireText').innerHTML = window.empireUpdateText;
+  }
 };
 
 window.startAdventure = function() {
-  // Transition from character creation to the main game
-  document.getElementById('creator').classList.add('hidden');
-  document.getElementById('gameContainer').classList.remove('hidden');
+  // Publish adventure start event if UI system is available
+  if (window.UI && window.UI.system) {
+    window.UI.system.eventBus.publish('adventure:start', { player: window.player });
+  }
   
-  // Initialize game state
-  window.initializeGameState();
-  
-  // Update status bars and action buttons
-  window.updateStatusBars();
-  window.updateTimeAndDay(0); // Start at the initial time
-  window.updateActionButtons();
-  
-  // Set initial narrative
-  window.setNarrative(`${window.player.name}, a ${window.player.career.title} of ${window.player.origin} heritage, the road has been long. Nearly a season has passed since you departed the heartlands of Paan'eun, the distant spires of Cennen giving way to the endless hinterlands of the empire. Through the great riverlands and the mountain passes, across the dust-choked roads of the interior, and finally westward into the feudalscape of the Hierarchate, you have traveled. Each step has carried you further from home, deeper into the shadow of war.<br><br>
-  Now, you stand at the edge of your Kasvaari's Camp, the flickering lanterns and distant clang of the forges marking the heartbeat of an army in preparation. Here, amidst the hardened warriors and the banners of noble Charters, you are no longer a traveler—you are a soldier, bound to duty, drawn by the call of empire.<br><br>
-  The Western Hierarchate is a land of towering fortresses and ancient battlefields, a realm where the scars of past campaigns linger in the earth itself. The Arrasi Peninsula lies beyond the western horizon, its crystalline plains an enigma even to those who have fought there before. Soon, you will march upon those lands, crossing the vast Wall of Nesia, where the empire's dominion falters against the unknown.<br><br>
-  For now, your place is here, among your kin and comrades, within the Kasvaari's Camp, where the scent of oiled steel and the murmur of hushed war councils fill the air. What will you do first?`);
+  // Use TransitionSystem if available
+  if (window.UI && window.UI.system && window.UI.system.components.transition) {
+    window.UI.system.eventBus.publish('requestTransition', { 
+      from: 'characterCreation', 
+      to: 'mainGame'
+    });
+  } else {
+    // Transition from character creation to the main game using direct DOM manipulation
+    document.getElementById('creator').classList.add('hidden');
+    document.getElementById('gameContainer').classList.remove('hidden');
+    
+    // Initialize game state
+    window.initializeGameState();
+    
+    // Update status bars and action buttons
+    window.updateStatusBars();
+    window.updateTimeAndDay(0); // Start at the initial time
+    window.updateActionButtons();
+    
+    // Set initial narrative
+    window.setNarrative(`${window.player.name}, a ${window.player.career.title} of ${window.player.origin} heritage, the road has been long. Nearly a season has passed since you departed the heartlands of Paan'eun, the distant spires of Cennen giving way to the endless hinterlands of the empire. Through the great riverlands and the mountain passes, across the dust-choked roads of the interior, and finally westward into the feudalscape of the Hierarchate, you have traveled. Each step has carried you further from home, deeper into the shadow of war.<br><br>
+    Now, you stand at the edge of your Kasvaari's Camp, the flickering lanterns and distant clang of the forges marking the heartbeat of an army in preparation. Here, amidst the hardened warriors and the banners of noble Charters, you are no longer a traveler—you are a soldier, bound to duty, drawn by the call of empire.<br><br>
+    The Western Hierarchate is a land of towering fortresses and ancient battlefields, a realm where the scars of past campaigns linger in the earth itself. The Arrasi Peninsula lies beyond the western horizon, its crystalline plains an enigma even to those who have fought there before. Soon, you will march upon those lands, crossing the vast Wall of Nesia, where the empire's dominion falters against the unknown.<br><br>
+    For now, your place is here, among your kin and comrades, within the Kasvaari's Camp, where the scent of oiled steel and the murmur of hushed war councils fill the air. What will you do first?`);
+  }
 };
 
 window.generateCharacterSummary = function() {
@@ -186,7 +351,15 @@ window.setInitialSkills = function(career) {
     window.player.skills[skill] = 0;
   }
   
-  // Set skills based on career - ensuring we use numbers
+  // If using the new career system for skills
+  if (window.CareerSystem && typeof window.CareerSystem.generateCareerSkills === 'function') {
+    const skills = window.CareerSystem.generateCareerSkills(career);
+    Object.assign(window.player.skills, skills);
+    console.log("Skills set using CareerSystem:", window.player.skills);
+    return;
+  }
+  
+  // Fallback: Set skills based on career - ensuring we use numbers
   if (career.includes("Regular") || career.includes("Infantry")) {
     window.player.skills.melee = Number(2);
     window.player.skills.discipline = Number(1.5);
@@ -249,3 +422,73 @@ window.initializeRelationships = function() {
     };
   });
 };
+
+// NEW: Character Creation System object for UI integration
+window.CharacterCreationSystem = {
+  // Initialize the character creation system
+  init: function() {
+    // Set up event listeners if UI system is available
+    if (window.UI && window.UI.system) {
+      // Hook into existing buttons if not already done
+      this.setupButtonHandlers();
+      
+      console.log('Character Creation system initialized with UI integration');
+    } else {
+      console.log('Character Creation system initialized (standalone)');
+    }
+    
+    return this;
+  },
+  
+  // Set up button handlers for UI integration
+  setupButtonHandlers: function() {
+    // Only set up if needed
+    if (this.handlersInitialized) return;
+    
+    // Handle character confirmation
+    window.UI.system.eventBus.subscribe('character:confirmed', data => {
+      console.log('Character confirmed:', data.player);
+      
+      // Initialize game state if the function exists
+      if (typeof window.initializeGameState === 'function') {
+        window.initializeGameState();
+      }
+    });
+    
+    // Handle adventure start
+    window.UI.system.eventBus.subscribe('adventure:start', data => {
+      console.log('Adventure starting for:', data.player);
+      
+      // Initialize inventory if needed
+      if (typeof window.initializeInventorySystem === 'function') {
+        window.initializeInventorySystem();
+      }
+      
+      // Add starting equipment
+      if (typeof window.addStartingItems === 'function') {
+        window.addStartingItems();
+      }
+    });
+    
+    this.handlersInitialized = true;
+  }
+};
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', function() {
+  // Check if UI system is ready directly or wait for it
+  if (window.UI && window.UI.system) {
+    window.CharacterCreationSystem.init();
+    
+    // Register with UI system
+    window.UI.system.registerComponent('characterCreation', window.CharacterCreationSystem);
+  } else {
+    // Wait for UI system to be ready
+    document.addEventListener('uiSystemReady', function() {
+      window.CharacterCreationSystem.init();
+      
+      // Register with UI system
+      window.UI.system.registerComponent('characterCreation', window.CharacterCreationSystem);
+    });
+  }
+});

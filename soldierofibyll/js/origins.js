@@ -1,4 +1,7 @@
-// Game data: Origins and heritages
+// origins.js - Updated with UI integration
+// Maintains compatibility with existing code while adding event system integration
+
+// Original game data preserved
 window.origins = {
   "Paanic": {
     description: `
@@ -53,3 +56,113 @@ window.statRanges = {
   "Lunarine": { phy: [1, 3], men: [2, 3] },
   "Wyrdman": { phy: [3, 3], men: [1, 1] }
 };
+
+// NEW: Origin system integration with UI framework
+window.OriginSystem = {
+  // Initialize the origin system
+  init: function() {
+    // Set up event listeners if UI system is available
+    if (window.UI && window.UI.system) {
+      // Subscribe to origin selection events
+      window.UI.system.eventBus.subscribe('origin:selected', this.handleOriginSelected.bind(this));
+      
+      // Subscribe to career selection events
+      window.UI.system.eventBus.subscribe('career:selected', this.handleCareerSelected.bind(this));
+      
+      console.log('Origin system initialized with UI integration');
+    } else {
+      console.log('Origin system initialized (standalone)');
+    }
+    
+    return this;
+  },
+  
+  // Get all available origins
+  getOrigins: function() {
+    return Object.keys(window.origins);
+  },
+  
+  // Get origin details by name
+  getOrigin: function(originName) {
+    return window.origins[originName] || null;
+  },
+  
+  // Get careers for a specific origin
+  getCareers: function(originName) {
+    const origin = this.getOrigin(originName);
+    return origin ? origin.careers : [];
+  },
+  
+  // Get stat ranges for an origin
+  getStatRanges: function(originName) {
+    return window.statRanges[originName] || null;
+  },
+  
+  // Generate random stats based on origin
+  generateStats: function(originName) {
+    const ranges = this.getStatRanges(originName);
+    if (!ranges) return { phy: 1, men: 1 };
+    
+    // Generate random stats within range
+    const phy = Math.floor(Math.random() * (ranges.phy[1] - ranges.phy[0] + 1)) + ranges.phy[0];
+    const men = Math.floor(Math.random() * (ranges.men[1] - ranges.men[0] + 1)) + ranges.men[0];
+    
+    return { phy, men };
+  },
+  
+  // Handle origin selection event
+  handleOriginSelected: function(data) {
+    const originName = data.origin;
+    console.log(`Origin selected: ${originName}`);
+    
+    // Generate stats based on origin
+    const stats = this.generateStats(originName);
+    
+    // Publish stats generated event
+    if (window.UI && window.UI.system) {
+      window.UI.system.eventBus.publish('stats:generated', { 
+        origin: originName,
+        stats: stats
+      });
+    }
+    
+    // Update DOM if running in standalone mode
+    if (document.getElementById('originDescription')) {
+      const origin = this.getOrigin(originName);
+      if (origin) {
+        document.getElementById('originDescription').innerHTML = origin.description;
+      }
+    }
+  },
+  
+  // Handle career selection event
+  handleCareerSelected: function(data) {
+    const { origin, career } = data;
+    console.log(`Career selected: ${career} (${origin})`);
+    
+    // Calculate final stats based on career
+    const baseStats = this.generateStats(origin);
+    
+    // Apply career-specific stat modifications (if needed)
+    // This is where you could add career-specific bonuses
+    
+    // Publish final stats event
+    if (window.UI && window.UI.system) {
+      window.UI.system.eventBus.publish('character:statsFinalized', {
+        origin: origin,
+        career: career,
+        stats: baseStats
+      });
+    }
+  }
+};
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', function() {
+  window.OriginSystem.init();
+  
+  // If UI system is already loaded, register with it
+  if (window.UI && window.UI.system) {
+    window.UI.system.registerComponent('originSystem', window.OriginSystem);
+  }
+});

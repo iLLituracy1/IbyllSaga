@@ -1,78 +1,170 @@
 // Initialize.js
-// Entry point for the new UI framework
-// Provides compatibility with existing code while transitioning to the new architecture
+// Enhanced entry point for the UI framework
+// Provides robust dependency management and initialization sequence
 
 // Create global namespace for UI framework
 window.UI = window.UI || {};
+
+// Configuration for component dependencies and initialization order
+window.UI.componentConfig = {
+  // Core components that must initialize first
+  core: [
+    { name: 'system', class: 'UISystem', required: true },
+    { name: 'eventBus', class: 'EventBus', required: true }
+  ],
+  
+  // UI components in dependency order
+  components: [
+    { name: 'sidebar', class: 'SidebarLayout', required: false },
+    { name: 'status', class: 'StatusDisplayComponent', required: true },
+    { name: 'time', class: 'TimeSystemComponent', required: true },
+    { name: 'narrative', class: 'NarrativeComponent', required: true },
+    { name: 'actionSystem', class: 'ActionSystemComponent', required: true },
+    { name: 'panelSystem', class: 'PanelSystemComponent', required: true },
+    { name: 'transition', class: 'TransitionSystem', required: false }
+  ]
+};
 
 // Initialize function to be called after DOM is loaded
 window.UI.initialize = function() {
   console.log('Initializing new UI framework');
   
-  // Check if EventBus is loaded
-  if (typeof EventBus !== 'function') {
-    console.error('EventBus not loaded. Make sure EventBus.js is included before Initialize.js');
-    return false;
-  }
+  // Create initialization timestamp to track performance
+  window.UI.initStartTime = Date.now();
   
-  // Check if Component is loaded
-  if (typeof Component !== 'function') {
-    console.error('Component not loaded. Make sure Component.js is included before Initialize.js');
-    return false;
-  }
-  
-  // Check if UISystem is loaded
-  if (typeof UISystem !== 'function') {
-    console.error('UISystem not loaded. Make sure UISystem.js is included before Initialize.js');
-    return false;
-  }
+  // Reset any existing state to prevent conflicts
+  resetUIState();
   
   try {
-    // Create the UI system
-    window.UI.system = new UISystem();
+    // Initialize the UI system
+    initCore();
     
-    // Enable debug mode for development
+    // Enable debug mode for development (should be turned off in production)
     window.UI.system.debug = true;
     
-    // Initialize components (when they're available)
-    initializeComponents();
+    // Initialize components in correct dependency order
+    initComponents();
     
-    // Bridge with existing code
+    // Create compatibility layer with existing code
     createLegacyBridge();
     
-    console.log('UI framework initialized successfully');
+    // Dispatch event indicating UI system is ready
+    document.dispatchEvent(new CustomEvent('uiSystemReady', {
+      detail: { 
+        initTime: Date.now() - window.UI.initStartTime,
+        componentsLoaded: Object.keys(window.UI.system.components).length
+      }
+    }));
+    
+    console.log(`UI framework initialized successfully in ${Date.now() - window.UI.initStartTime}ms`);
     return true;
   } catch (error) {
     console.error('Error initializing UI framework:', error);
+    // Attempt recovery
+    attemptRecovery();
     return false;
   }
 };
 
-// Initialize UI components
-function initializeComponents() {
-  console.log('Initializing UI components');
-  
-  // Check if StatusDisplayComponent is loaded
-  if (typeof StatusDisplayComponent === 'function') {
-    // Create status display component
-    const statusDisplay = new StatusDisplayComponent();
-    window.UI.system.registerComponent('status', statusDisplay);
-  } else {
-    console.warn('StatusDisplayComponent not loaded. Status bars will use legacy code.');
+// Reset UI state to allow clean initialization
+function resetUIState() {
+  // Store current state if it exists (for recovery)
+  if (window.UI.system) {
+    window.UI._prevState = {
+      components: window.UI.system.components,
+      state: window.UI.system.state
+    };
   }
   
-  // Other components will be registered here as they are developed
-  
-  // TODO: Create and register these components
-  // - NarrativeComponent
-  // - ActionSystemComponent
-  // - TimeSystemComponent
-  // - ProfilePanelComponent
-  // - InventoryPanelComponent
-  // - QuestPanelComponent
+  // Create fresh system
+  window.UI.system = null;
 }
 
-// Create bridge to legacy code
+// Initialize core framework
+function initCore() {
+  console.log('Initializing UI core');
+  
+  // Check if core classes are loaded
+  if (typeof UISystem !== 'function') {
+    throw new Error('UISystem not loaded. Make sure UISystem.js is included before Initialize.js');
+  }
+  
+  if (typeof EventBus !== 'function') {
+    throw new Error('EventBus not loaded. Make sure EventBus.js is included before Initialize.js');
+  }
+  
+  if (typeof Component !== 'function') {
+    throw new Error('Component not loaded. Make sure Component.js is included before Initialize.js');
+  }
+  
+  // Create the system
+  window.UI.system = new UISystem();
+  
+  // Create separate instance for direct access
+  window.uiSystem = window.UI.system;
+}
+
+// Initialize all UI components in dependency order
+function initComponents() {
+  console.log('Initializing UI components');
+  
+  // Initialize each component
+  window.UI.componentConfig.components.forEach(componentConfig => {
+    initComponent(componentConfig);
+  });
+  
+  // Initialize system to wire everything together
+  if (window.UI.system.initialize) {
+    window.UI.system.initialize();
+  }
+}
+
+// Initialize a specific component
+function initComponent(config) {
+  const { name, class: className, required } = config;
+  
+  try {
+    // Skip if already registered
+    if (window.UI.system.components[name]) {
+      console.log(`Component ${name} already registered`);
+      return true;
+    }
+    
+    // Check if class exists in global scope
+    if (typeof window[className] !== 'function') {
+      // Try alternate locations
+      if (typeof window.UI[className] === 'function') {
+        console.log(`Found ${className} in UI namespace`);
+      } else {
+        const message = `Component class ${className} not found`;
+        if (required) {
+          throw new Error(message);
+        } else {
+          console.warn(message + " (optional)");
+          return false;
+        }
+      }
+    }
+    
+    // Create component instance
+    const Component = window[className] || window.UI[className];
+    const instance = new Component();
+    
+    // Register with UI system
+    window.UI.system.registerComponent(name, instance);
+    
+    console.log(`Registered component: ${name}`);
+    return true;
+  } catch (error) {
+    console.error(`Failed to initialize component ${name}:`, error);
+    if (required) {
+      throw error; // Re-throw for required components
+    }
+    return false;
+  }
+}
+
+// Create compatibility layer with existing code
 function createLegacyBridge() {
   console.log('Creating bridge to legacy code');
   
@@ -87,17 +179,19 @@ function createLegacyBridge() {
     handleProfile: window.handleProfile
   };
   
-  // Override existing functions to use new components when available
-  
-  // Override updateStatusBars
+  // Define wrapper for status bar updates
   window.updateStatusBars = function() {
-    console.log('Legacy updateStatusBars called, using new UI system when available');
-    
-    // Use new status component if available
+    // First try new system
     if (window.UI.system && window.UI.system.components.status) {
       try {
         // Update status component with current game state
         window.UI.system.components.status.update(window.gameState);
+        
+        // Also update sidebar if it exists
+        if (window.UI.system.components.sidebar) {
+          window.UI.system.components.sidebar.updateStatusBars();
+        }
+        
         return;
       } catch (error) {
         console.error('Error using new status component, falling back to legacy:', error);
@@ -110,7 +204,115 @@ function createLegacyBridge() {
     }
   };
   
-  // More function overrides will be added as components are implemented
+  // Define wrapper for narrative updates
+  window.setNarrative = function(text) {
+    if (window.UI.system && window.UI.system.components.narrative) {
+      try {
+        // Publish to event bus to update narrative
+        window.UI.system.eventBus.publish('narrative:set', text);
+        return;
+      } catch (error) {
+        console.error('Error using new narrative component, falling back to legacy:', error);
+      }
+    }
+    
+    // Fallback to original function
+    if (typeof originalFunctions.setNarrative === 'function') {
+      originalFunctions.setNarrative(text);
+    }
+  };
+  
+  // Define wrapper for adding to narrative
+  window.addToNarrative = function(text) {
+    if (window.UI.system && window.UI.system.components.narrative) {
+      try {
+        // Publish to event bus to add to narrative
+        window.UI.system.eventBus.publish('narrative:add', text);
+        return;
+      } catch (error) {
+        console.error('Error using new narrative component, falling back to legacy:', error);
+      }
+    }
+    
+    // Fallback to original function
+    if (typeof originalFunctions.addToNarrative === 'function') {
+      originalFunctions.addToNarrative(text);
+    }
+  };
+  
+  // Define wrapper for action handling
+  window.handleAction = function(action) {
+    if (window.UI.system && window.UI.system.components.actionSystem) {
+      try {
+        // Publish to event bus to handle action
+        window.UI.system.eventBus.publish('action:execute', { action });
+        return;
+      } catch (error) {
+        console.error('Error using new action system, falling back to legacy:', error);
+      }
+    }
+    
+    // Fallback to original function
+    if (typeof originalFunctions.handleAction === 'function') {
+      originalFunctions.handleAction(action);
+    }
+  };
+  
+  // Define wrapper for time updates
+  window.updateTimeAndDay = function(minutesToAdd) {
+    if (window.UI.system && window.UI.system.components.time) {
+      try {
+        // Publish to event bus to update time
+        window.UI.system.eventBus.publish('time:advance', { minutes: minutesToAdd });
+        return;
+      } catch (error) {
+        console.error('Error using new time system, falling back to legacy:', error);
+      }
+    }
+    
+    // Fallback to original function
+    if (typeof originalFunctions.updateTimeAndDay === 'function') {
+      originalFunctions.updateTimeAndDay(minutesToAdd);
+    }
+  };
+  
+  // Define wrapper for notifications
+  window.showNotification = function(message, type) {
+    if (window.UI.system) {
+      try {
+        // Use UI system to show notification
+        window.UI.system.showNotification(message, type);
+        return;
+      } catch (error) {
+        console.error('Error using new notification system, falling back to legacy:', error);
+      }
+    }
+    
+    // Fallback to original function
+    if (typeof originalFunctions.showNotification === 'function') {
+      originalFunctions.showNotification(message, type);
+    } else {
+      console.log(`[Notification - ${type}] ${message}`);
+    }
+  };
+  
+  // Define wrapper for profile handling
+  window.handleProfile = function() {
+    if (window.UI.system && window.UI.system.components.panelSystem) {
+      try {
+        // Use panel system to toggle profile
+        window.UI.system.eventBus.publish('panel:toggle', { id: 'profile' });
+        return;
+      } catch (error) {
+        console.error('Error using new panel system, falling back to legacy:', error);
+      }
+    }
+    
+    // Fallback to original function
+    if (typeof originalFunctions.handleProfile === 'function') {
+      originalFunctions.handleProfile();
+    }
+  };
   
   // Hook into the global event system for game state updates
   if (window.gameState) {
@@ -134,8 +336,57 @@ function createLegacyBridge() {
   }
 }
 
+// Recovery function for initialization failures
+function attemptRecovery() {
+  console.warn('Attempting UI system recovery');
+  
+  // Restore previous state if available
+  if (window.UI._prevState) {
+    window.UI.system = new UISystem();
+    window.UI.system.components = window.UI._prevState.components;
+    window.UI.system.state = window.UI._prevState.state;
+    
+    console.log('Restored previous UI state');
+  }
+  
+  // If no system exists at all, create a minimal one
+  if (!window.UI.system) {
+    window.UI.system = new UISystem();
+    console.log('Created minimal UI system');
+  }
+  
+  // Make sure core functions exist
+  ensureLegacyFunctions();
+}
+
+// Ensure legacy functions exist to prevent errors
+function ensureLegacyFunctions() {
+  // Define empty functions for critical UI operations if they don't exist
+  if (typeof window.updateStatusBars !== 'function') {
+    window.updateStatusBars = function() { 
+      console.warn('Using placeholder updateStatusBars function');
+    };
+  }
+  
+  if (typeof window.setNarrative !== 'function') {
+    window.setNarrative = function(text) {
+      console.warn('Using placeholder setNarrative function');
+      const narrative = document.getElementById('narrative');
+      if (narrative) narrative.innerHTML = text;
+    };
+  }
+  
+  if (typeof window.addToNarrative !== 'function') {
+    window.addToNarrative = function(text) {
+      console.warn('Using placeholder addToNarrative function');
+      const narrative = document.getElementById('narrative');
+      if (narrative) narrative.innerHTML += `<p>${text}</p>`;
+    };
+  }
+}
+
 // Call initialize function when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-  // Delay initialization to ensure all scripts are loaded
+  // Delay initialization slightly to ensure all scripts are loaded
   setTimeout(window.UI.initialize, 100);
 });

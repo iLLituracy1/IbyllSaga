@@ -1,3 +1,6 @@
+// items.js - Updated with UI integration
+// Maintains compatibility with existing code while adding event system integration
+
 // ITEM SYSTEM MODULE
 // Defines item templates, categories, and functionality
 
@@ -18,7 +21,7 @@ window.EQUIPMENT_SLOTS = {
   MAIN_HAND: 'mainHand',
   OFF_HAND: 'offHand',
   ACCESSORY: 'accessory',
-  MOUNT:  'mount'
+  MOUNT: 'mount'
 };
 
 // Item Rarities with color codes
@@ -32,7 +35,6 @@ window.ITEM_RARITIES = {
 };
 
 // Item Symbols (instead of custom icons)
-// FIXED: Moved all symbols including mount symbols into original definition
 window.ITEM_SYMBOLS = {
   // Weapons
   SWORD: '⚔️',
@@ -69,7 +71,7 @@ window.ITEM_SYMBOLS = {
   // Quest
   QUEST: '❗',
   
-  // Mounts - FIXED: Added inside the original definition
+  // Mounts
   MOUNT: '🐎',
   WARHORSE: '🐎',
   CHARGER: '🐎',
@@ -383,7 +385,7 @@ window.initializeItemTemplates = function() {
   // Store all item templates here
   window.itemTemplates = {};
   
-  // WEAPONS
+  // Add the standard weapon templates
   window.itemTemplates.basicSword = window.createWeapon({
     id: 'basic_sword',
     name: 'Paanic Military Sword',
@@ -473,7 +475,7 @@ window.initializeItemTemplates = function() {
     }
   });
   
-  // ARMOR
+  // Add the standard armor templates
   window.itemTemplates.legionHelmet = window.createArmor({
     id: 'legion_helmet',
     name: 'Legion Helmet',
@@ -528,7 +530,7 @@ window.initializeItemTemplates = function() {
     }
   });
   
-  // ACCESSORIES
+  // Add accessories
   window.itemTemplates.commandAmulet = window.createItemTemplate({
     id: 'command_amulet',
     name: 'Officer\'s Amulet',
@@ -545,7 +547,7 @@ window.initializeItemTemplates = function() {
     }
   });
   
-  // CONSUMABLES
+  // Add consumables
   window.itemTemplates.healthPotion = window.createConsumable({
     id: 'health_potion',
     name: 'Health Potion',
@@ -553,10 +555,24 @@ window.initializeItemTemplates = function() {
     symbol: window.ITEM_SYMBOLS.POTION,
     value: 20,
     useFunction: function(character, item) {
-      window.gameState.health = Math.min(window.gameState.maxHealth, window.gameState.health + 50);
-      window.updateStatusBars();
-      window.showNotification('You restored 50 health!', 'success');
-      return true;
+      if (window.gameState) {
+        window.gameState.health = Math.min(window.gameState.maxHealth, window.gameState.health + 50);
+        
+        // Update UI
+        if (typeof window.updateStatusBars === 'function') {
+          window.updateStatusBars();
+        }
+        
+        // Show notification
+        if (window.UI && window.UI.system) {
+          window.UI.system.showNotification('You restored 50 health!', 'success');
+        } else if (typeof window.showNotification === 'function') {
+          window.showNotification('You restored 50 health!', 'success');
+        }
+        
+        return true;
+      }
+      return false;
     }
   });
   
@@ -567,10 +583,24 @@ window.initializeItemTemplates = function() {
     symbol: window.ITEM_SYMBOLS.POTION,
     value: 15,
     useFunction: function(character, item) {
-      window.gameState.stamina = Math.min(window.gameState.maxStamina, window.gameState.stamina + 75);
-      window.updateStatusBars();
-      window.showNotification('You restored 75 stamina!', 'success');
-      return true;
+      if (window.gameState) {
+        window.gameState.stamina = Math.min(window.gameState.maxStamina, window.gameState.stamina + 75);
+        
+        // Update UI
+        if (typeof window.updateStatusBars === 'function') {
+          window.updateStatusBars();
+        }
+        
+        // Show notification
+        if (window.UI && window.UI.system) {
+          window.UI.system.showNotification('You restored 75 stamina!', 'success');
+        } else if (typeof window.showNotification === 'function') {
+          window.showNotification('You restored 75 stamina!', 'success');
+        }
+        
+        return true;
+      }
+      return false;
     }
   });
   
@@ -581,11 +611,25 @@ window.initializeItemTemplates = function() {
     symbol: window.ITEM_SYMBOLS.FOOD,
     value: 8,
     useFunction: function(character, item) {
-      window.gameState.health = Math.min(window.gameState.maxHealth, window.gameState.health + 20);
-      window.gameState.stamina = Math.min(window.gameState.maxStamina, window.gameState.stamina + 30);
-      window.updateStatusBars();
-      window.showNotification('You consumed your rations, restoring health and stamina.', 'success');
-      return true;
+      if (window.gameState) {
+        window.gameState.health = Math.min(window.gameState.maxHealth, window.gameState.health + 20);
+        window.gameState.stamina = Math.min(window.gameState.maxStamina, window.gameState.stamina + 30);
+        
+        // Update UI
+        if (typeof window.updateStatusBars === 'function') {
+          window.updateStatusBars();
+        }
+        
+        // Show notification
+        if (window.UI && window.UI.system) {
+          window.UI.system.showNotification('You consumed your rations, restoring health and stamina.', 'success');
+        } else if (typeof window.showNotification === 'function') {
+          window.showNotification('You consumed your rations, restoring health and stamina.', 'success');
+        }
+        
+        return true;
+      }
+      return false;
     }
   });
 
@@ -640,5 +684,208 @@ window.initializeItemTemplates = function() {
   return window.itemTemplates;
 };
 
+// NEW: Item system integration with UI framework
+window.ItemSystem = {
+  // Initialize the item system
+  init: function() {
+    // Make sure we have item templates
+    if (!window.itemTemplates || Object.keys(window.itemTemplates).length === 0) {
+      window.initializeItemTemplates();
+    }
+    
+    // Set up event listeners if UI system is available
+    if (window.UI && window.UI.system) {
+      // Subscribe to item-related events
+      window.UI.system.eventBus.subscribe('item:inspect', this.handleItemInspect.bind(this));
+      window.UI.system.eventBus.subscribe('item:compare', this.handleItemCompare.bind(this));
+      window.UI.system.eventBus.subscribe('item:use', this.handleItemUse.bind(this));
+      
+      console.log('Item system initialized with UI integration');
+    } else {
+      console.log('Item system initialized (standalone)');
+    }
+    
+    return this;
+  },
+  
+  // Get an item template by ID
+  getItemTemplate: function(id) {
+    return window.itemTemplates[id] || null;
+  },
+  
+  // Get all item templates
+  getAllItemTemplates: function() {
+    return window.itemTemplates;
+  },
+  
+  // Create an item instance from a template
+  createItem: function(templateId, quantity = 1) {
+    const template = this.getItemTemplate(templateId);
+    if (!template) {
+      console.error(`Item template not found: ${templateId}`);
+      return null;
+    }
+    
+    return window.createItemInstance(template, quantity);
+  },
+  
+  // Create a custom item
+  createCustomItem: function(config) {
+    // Determine item factory based on category
+    let factory;
+    switch (config.category) {
+      case window.ITEM_CATEGORIES.WEAPON:
+        factory = window.createWeapon;
+        break;
+      case window.ITEM_CATEGORIES.ARMOR:
+        factory = window.createArmor;
+        break;
+      case window.ITEM_CATEGORIES.CONSUMABLE:
+        factory = window.createConsumable;
+        break;
+      case window.ITEM_CATEGORIES.MOUNT:
+        factory = window.createMount;
+        break;
+      default:
+        factory = window.createItemTemplate;
+    }
+    
+    // Create the item template
+    const template = factory(config);
+    
+    // Add to item templates if ID provided
+    if (config.id) {
+      window.itemTemplates[config.id] = template;
+    }
+    
+    // Create an instance
+    return window.createItemInstance(template, config.quantity || 1);
+  },
+  
+  // Compare two items
+  compareItems: function(itemA, itemB) {
+    return window.compareItems(itemA, itemB);
+  },
+  
+  // Handle item inspect event
+  handleItemInspect: function(data) {
+    const { itemId, instanceId } = data;
+    console.log(`Inspecting item: ${itemId || instanceId}`);
+    
+    // Get the item instance
+    let item;
+    if (window.player && window.player.inventory) {
+      item = window.player.inventory.find(i => i.instanceId === instanceId);
+    }
+    
+    if (!item && itemId) {
+      // Create temporary item from template for inspection
+      const template = this.getItemTemplate(itemId);
+      if (template) {
+        item = window.createItemInstance(template);
+      }
+    }
+    
+    if (!item) {
+      console.error(`Item not found: ${itemId || instanceId}`);
+      return;
+    }
+    
+    // Publish item details event
+    if (window.UI && window.UI.system) {
+      window.UI.system.eventBus.publish('item:details', {
+        item: item,
+        template: item.getTemplate(),
+        instanceId: item.instanceId,
+        name: item.getName(),
+        description: item.getDescription(),
+        value: item.getValue(),
+        rarity: item.getRarity(),
+        symbol: item.getSymbol(),
+        equipped: item.equipped
+      });
+    }
+  },
+  
+  // Handle item compare event
+  handleItemCompare: function(data) {
+    const { itemAId, itemBId } = data;
+    console.log(`Comparing items: ${itemAId} vs ${itemBId}`);
+    
+    // Get the item instances
+    let itemA, itemB;
+    
+    if (window.player && window.player.inventory) {
+      itemA = window.player.inventory.find(i => i.instanceId === itemAId);
+      itemB = window.player.inventory.find(i => i.instanceId === itemBId);
+    }
+    
+    // If not found in inventory, try templates
+    if (!itemA && itemAId) {
+      const template = this.getItemTemplate(itemAId);
+      if (template) {
+        itemA = window.createItemInstance(template);
+      }
+    }
+    
+    if (!itemB && itemBId) {
+      const template = this.getItemTemplate(itemBId);
+      if (template) {
+        itemB = window.createItemInstance(template);
+      }
+    }
+    
+    if (!itemA || !itemB) {
+      console.error(`Items not found for comparison: ${itemAId} vs ${itemBId}`);
+      return;
+    }
+    
+    // Compare items
+    const comparison = this.compareItems(itemA, itemB);
+    
+    // Publish comparison results
+    if (window.UI && window.UI.system) {
+      window.UI.system.eventBus.publish('item:comparisonResults', {
+        itemA: itemA,
+        itemB: itemB,
+        comparison: comparison
+      });
+    }
+  },
+  
+  // Handle item use event
+  handleItemUse: function(data) {
+    const { instanceId } = data;
+    console.log(`Using item: ${instanceId}`);
+    
+    // Delegate to the inventory system for item use
+    if (window.useItem && typeof window.useItem === 'function') {
+      const success = window.useItem(instanceId);
+      
+      // Publish use result
+      if (window.UI && window.UI.system) {
+        window.UI.system.eventBus.publish('item:useResult', {
+          instanceId: instanceId,
+          success: success
+        });
+      }
+      
+      return success;
+    }
+    
+    return false;
+  }
+};
+
 // Initialize item templates when the script loads
 window.initializeItemTemplates();
+
+// Initialize the item system on load
+document.addEventListener('DOMContentLoaded', function() {
+  window.ItemSystem.init();
+  
+  // If UI system is already loaded, register with it
+  if (window.UI && window.UI.system) {
+    window.UI.system.registerComponent('itemSystem', window.ItemSystem);
+  }
+});
