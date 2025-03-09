@@ -158,3 +158,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+window.NarrativeComponent = NarrativeComponent;

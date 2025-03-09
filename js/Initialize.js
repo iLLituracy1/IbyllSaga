@@ -21,7 +21,7 @@ window.UI.componentConfig = {
     { name: 'narrative', class: 'NarrativeComponent', required: true },
     { name: 'actionSystem', class: 'ActionSystemComponent', required: true },
     { name: 'panelSystem', class: 'PanelSystemComponent', required: true },
-    { name: 'transition', class: 'TransitionSystem', required: false }
+    { name: 'transition', class: 'TransitionSystem', required: true }
   ]
 };
 
@@ -102,11 +102,28 @@ function initCore() {
   
   // Create separate instance for direct access
   window.uiSystem = window.UI.system;
+
+  // Explicitly create and register the essential components
+  // This ensures they're available before any other component initialization
+  if (typeof Component === 'function') {
+    // Create and register core component first
+    const coreComponent = new Component('ui-core');
+    window.UI.system.registerComponent('core', coreComponent);
+    
+    // Check for ActionSystemComponent and register as 'actions' if found
+    const ActionSystemComponent = window.UI.system.components.actionSystem;
+    if (ActionSystemComponent) {
+      window.UI.system.registerComponent('actions', ActionSystemComponent);
+    }
+  }
 }
 
 // Initialize all UI components in dependency order
 function initComponents() {
   console.log('Initializing UI components');
+  
+  // Create and register required base components first
+  ensureBaseComponents();
   
   // Initialize each component
   window.UI.componentConfig.components.forEach(componentConfig => {
@@ -119,6 +136,25 @@ function initComponents() {
   }
 }
 
+// Ensure base components like core and actions are properly registered
+function ensureBaseComponents() {
+  // Ensure core component exists
+  if (!window.UI.system.components.core && typeof Component === 'function') {
+    const coreComponent = new Component('ui-core');
+    window.UI.system.registerComponent('core', coreComponent);
+    console.log('Registered core component');
+  }
+  
+  // After all components are initialized, ensure actions component is correctly registered
+  // This needs to run after all other components are registered to make sure we can find actionSystem
+  document.addEventListener('uiSystemReady', function() {
+    if (!window.UI.system.components.actions && window.UI.system.components.actionSystem) {
+      window.UI.system.registerComponent('actions', window.UI.system.components.actionSystem);
+      console.log('Registered actionSystem as actions component');
+    }
+  });
+}
+
 // Initialize a specific component
 function initComponent(config) {
   const { name, class: className, required } = config;
@@ -127,6 +163,20 @@ function initComponent(config) {
     // Skip if already registered
     if (window.UI.system.components[name]) {
       console.log(`Component ${name} already registered`);
+      
+      // Special case for actionSystem - also register as 'actions' 
+      if (name === 'actionSystem' && !window.UI.system.components['actions']) {
+        window.UI.system.registerComponent('actions', window.UI.system.components[name]);
+        console.log('Registered actionSystem as actions component');
+      }
+      
+      return true;
+    }
+    
+    // Special case for 'core' which should be created from Component class
+    if (name === 'core' && !window.UI.system.components.core) {
+      const CoreComponent = new Component('ui-core');
+      window.UI.system.registerComponent('core', CoreComponent);
       return true;
     }
     

@@ -1038,7 +1038,15 @@ window.UIStyles = {
   }
 };
 
-// Initialize on DOMContentLoaded
+// Initialize on DOMContentLoaded or UI System Ready
 document.addEventListener('DOMContentLoaded', function() {
-  window.UIStyles.init();
+  // Check if UI system is already initialized
+  if (window.UI && window.UI.system && window.UI.system.eventBus) {
+    window.UIStyles.init();
+  } else {
+    // Wait for UI system to be ready
+    document.addEventListener('uiSystemReady', function() {
+      window.UIStyles.init();
+    });
+  }
 });

@@ -104,7 +104,12 @@ class StatusDisplayComponent extends Component {
     
     if (!this.element) {
       console.error('Failed to initialize status display');
-      return false;
+      // Try to create the root element as a recovery step
+      this.createRootElement();
+      
+      if (!this.element) {
+        return false;
+      }
     }
     
     // Get references to bar elements
@@ -117,11 +122,61 @@ class StatusDisplayComponent extends Component {
     this.values.stamina = document.getElementById(`${this.id}-stamina-value`);
     this.values.morale = document.getElementById(`${this.id}-morale-value`);
     
-    // Check if all elements were found
-    if (!this.bars.health || !this.bars.stamina || !this.bars.morale ||
-        !this.values.health || !this.values.stamina || !this.values.morale) {
-      console.error('Could not find all status bar elements');
-      return false;
+    // Create missing elements instead of failing
+    let elementsCreated = false;
+    
+    // Create bar elements if they don't exist
+    if (!this.bars.health) {
+      this.bars.health = document.createElement('div');
+      this.bars.health.id = `${this.id}-health-bar`;
+      this.bars.health.className = 'status-bar health-bar';
+      this.element.appendChild(this.bars.health);
+      elementsCreated = true;
+    }
+    
+    if (!this.bars.stamina) {
+      this.bars.stamina = document.createElement('div');
+      this.bars.stamina.id = `${this.id}-stamina-bar`;
+      this.bars.stamina.className = 'status-bar stamina-bar';
+      this.element.appendChild(this.bars.stamina);
+      elementsCreated = true;
+    }
+    
+    if (!this.bars.morale) {
+      this.bars.morale = document.createElement('div');
+      this.bars.morale.id = `${this.id}-morale-bar`;
+      this.bars.morale.className = 'status-bar morale-bar';
+      this.element.appendChild(this.bars.morale);
+      elementsCreated = true;
+    }
+    
+    // Create value elements if they don't exist
+    if (!this.values.health) {
+      this.values.health = document.createElement('div');
+      this.values.health.id = `${this.id}-health-value`;
+      this.values.health.className = 'status-value health-value';
+      this.element.appendChild(this.values.health);
+      elementsCreated = true;
+    }
+    
+    if (!this.values.stamina) {
+      this.values.stamina = document.createElement('div');
+      this.values.stamina.id = `${this.id}-stamina-value`;
+      this.values.stamina.className = 'status-value stamina-value';
+      this.element.appendChild(this.values.stamina);
+      elementsCreated = true;
+    }
+    
+    if (!this.values.morale) {
+      this.values.morale = document.createElement('div');
+      this.values.morale.id = `${this.id}-morale-value`;
+      this.values.morale.className = 'status-value morale-value';
+      this.element.appendChild(this.values.morale);
+      elementsCreated = true;
+    }
+    
+    if (elementsCreated) {
+      console.log('Created missing status elements');
     }
     
     this.log('Status display initialized');
@@ -180,25 +235,103 @@ class StatusDisplayComponent extends Component {
     
     // Check if bars are available
     if (!this.bars.health || !this.bars.stamina || !this.bars.morale) {
-      console.error('Status bars not initialized');
-      return;
+      console.log('Creating missing status bars...');
+      
+      // Try to initialize them now as a recovery measure
+      if (!this.element) {
+        this.createRootElement();
+      }
+      
+      // Create status bars if they don't exist
+      if (this.element) {
+        // Create bars if they don't exist
+        if (!this.bars.health) {
+          this.bars.health = document.createElement('div');
+          this.bars.health.id = `${this.id}-health-bar`;
+          this.bars.health.className = 'status-bar health-bar';
+          this.element.appendChild(this.bars.health);
+        }
+        
+        if (!this.bars.stamina) {
+          this.bars.stamina = document.createElement('div');
+          this.bars.stamina.id = `${this.id}-stamina-bar`;
+          this.bars.stamina.className = 'status-bar stamina-bar';
+          this.element.appendChild(this.bars.stamina);
+        }
+        
+        if (!this.bars.morale) {
+          this.bars.morale = document.createElement('div');
+          this.bars.morale.id = `${this.id}-morale-bar`;
+          this.bars.morale.className = 'status-bar morale-bar';
+          this.element.appendChild(this.bars.morale);
+        }
+        console.log('Status bars created successfully');
+      } else {
+        console.error('Cannot create status bars: root element is missing');
+        return;
+      }
+    }
+    
+    // Check if value displays are available
+    if (!this.values.health || !this.values.stamina || !this.values.morale) {
+      console.log('Creating missing status value displays...');
+      
+      // Create value displays if they don't exist
+      if (this.element) {
+        if (!this.values.health) {
+          this.values.health = document.createElement('div');
+          this.values.health.id = `${this.id}-health-value`;
+          this.values.health.className = 'status-value health-value';
+          this.element.appendChild(this.values.health);
+        }
+        
+        if (!this.values.stamina) {
+          this.values.stamina = document.createElement('div');
+          this.values.stamina.id = `${this.id}-stamina-value`;
+          this.values.stamina.className = 'status-value stamina-value';
+          this.element.appendChild(this.values.stamina);
+        }
+        
+        if (!this.values.morale) {
+          this.values.morale = document.createElement('div');
+          this.values.morale.id = `${this.id}-morale-value`;
+          this.values.morale.className = 'status-value morale-value';
+          this.element.appendChild(this.values.morale);
+        }
+        console.log('Status value displays created successfully');
+      } else {
+        console.error('Cannot create status value displays: root element is missing');
+        return;
+      }
     }
     
     try {
       // Update health bar
       const healthPercent = (this.state.health / this.state.maxHealth) * 100;
-      this.bars.health.style.width = `${healthPercent}%`;
-      this.values.health.textContent = `${Math.round(this.state.health)}/${this.state.maxHealth}`;
+      if (this.bars.health) {
+        this.bars.health.style.width = `${healthPercent}%`;
+      }
+      if (this.values.health) {
+        this.values.health.textContent = `${Math.round(this.state.health)}/${this.state.maxHealth}`;
+      }
       
       // Update stamina bar
       const staminaPercent = (this.state.stamina / this.state.maxStamina) * 100;
-      this.bars.stamina.style.width = `${staminaPercent}%`;
-      this.values.stamina.textContent = `${Math.round(this.state.stamina)}/${this.state.maxStamina}`;
+      if (this.bars.stamina) {
+        this.bars.stamina.style.width = `${staminaPercent}%`;
+      }
+      if (this.values.stamina) {
+        this.values.stamina.textContent = `${Math.round(this.state.stamina)}/${this.state.maxStamina}`;
+      }
       
       // Update morale bar
       const moralePercent = (this.state.morale / this.state.maxMorale) * 100;
-      this.bars.morale.style.width = `${moralePercent}%`;
-      this.values.morale.textContent = `${Math.round(this.state.morale)}/100`;
+      if (this.bars.morale) {
+        this.bars.morale.style.width = `${moralePercent}%`;
+      }
+      if (this.values.morale) {
+        this.values.morale.textContent = `${Math.round(this.state.morale)}/100`;
+      }
       
       // Add color classes based on percentages
       this.updateBarColors();
@@ -332,3 +465,5 @@ class StatusDisplayComponent extends Component {
     }
   }
 }
+
+window.StatusDisplayComponent = StatusDisplayComponent;

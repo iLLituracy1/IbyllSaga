@@ -111,9 +111,17 @@ class UISystem {
   initializeActionSystem() {
     this.log('Initializing action system');
     
+    // Check for both possible component names and use whichever exists
     if (!this.components.actions) {
-      console.error('Actions component not registered');
-      return;
+      // Try to see if actionSystem exists and use it as a fallback
+      if (this.components.actionSystem) {
+        // Register the actionSystem as the actions component
+        this.registerComponent('actions', this.components.actionSystem);
+        this.log('Using actionSystem component as actions');
+      } else {
+        console.error('Actions component not registered');
+        return;
+      }
     }
     
     this.components.actions.initialize();

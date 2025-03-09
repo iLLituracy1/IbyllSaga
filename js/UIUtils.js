@@ -287,6 +287,12 @@ window.UIUtils = {
         
         return null;
       }
+    },
+    
+    // Add the missing error function that's being called
+    error: function(message, details = {}) {
+      console.error(message, details);
+      // Add additional error handling if needed
     }
   },
   

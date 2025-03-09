@@ -614,3 +614,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+window.PanelSystemComponent = PanelSystemComponent;

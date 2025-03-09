@@ -20,6 +20,8 @@ class TransitionSystem extends Component {
     // Call base Component initialization
     super.initialize();
     
+    console.log("TransitionSystem initializing...");
+    
     // Initialize transitions
     this.initializeTransitions();
     
@@ -28,6 +30,9 @@ class TransitionSystem extends Component {
     
     // Override the startAdventure function
     this.overrideStartAdventure();
+    
+    // Apply direct event handlers to buttons as a backup approach
+    this.applyDirectButtonHandlers();
     
     // Determine initial state based on what's visible
     this.detectInitialState();
@@ -111,16 +116,27 @@ class TransitionSystem extends Component {
     });
     
     // Character creation section transitions
-    document.querySelectorAll('.menu-button').forEach(button => {
+    console.log('Setting up character creation buttons');
+    const menuButtons = document.querySelectorAll('.menu-button');
+    console.log(`Found ${menuButtons.length} menu buttons:`, 
+      Array.from(menuButtons).map(b => b.id).join(', '));
+    
+    menuButtons.forEach(button => {
       const id = button.id;
+      console.log(`Processing button: ${id}`);
       
       // Add listeners for character creation buttons
       if (id === 'paanic-button' || id === 'nesian-button' || 
           id === 'lunarine-button' || id === 'wyrdman-button') {
+        console.log(`Adding origin selection click handler to ${id}`);
         button.addEventListener('click', () => {
+          console.log(`${id} clicked!`);
           const origin = id.split('-')[0];
+          console.log(`Selected origin: ${origin}`);
           if (typeof window.selectOrigin === 'function') {
             window.selectOrigin(origin);
+          } else {
+            console.error('window.selectOrigin function not found!');
           }
           this.transitionCharacterCreationSections('intro', 'originSection');
         });
@@ -216,14 +232,26 @@ class TransitionSystem extends Component {
    * @param {string} toSection - ID of the section to transition to
    */
   transitionCharacterCreationSections(fromSection, toSection) {
+    console.log(`Transitioning from ${fromSection} to ${toSection}`);
+    
     // Get the section elements
     const fromElement = document.getElementById(fromSection);
     const toElement = document.getElementById(toSection);
     
+    if (!fromElement) {
+      console.error(`From section element not found: ${fromSection}`);
+    }
+    
+    if (!toElement) {
+      console.error(`To section element not found: ${toSection}`);
+    }
+    
     if (!fromElement || !toElement) {
-      console.error(`Section elements not found: ${fromSection} or ${toSection}`);
+      console.error(`Cannot complete transition from ${fromSection} to ${toSection}`);
       return;
     }
+    
+    console.log(`Found elements: from=${fromElement.id}, to=${toElement.id}`);
     
     // Create transition ID
     const transitionId = `${fromSection}_to_${toSection}`;
@@ -233,19 +261,22 @@ class TransitionSystem extends Component {
     
     // Execute before function if present
     if (transition && transition.beforeFn) {
+      console.log(`Executing before function for ${transitionId}`);
       transition.beforeFn();
     }
     
     // Hide from section and show to section
+    console.log(`Hiding ${fromElement.id} and showing ${toElement.id}`);
     fromElement.classList.add('hidden');
     toElement.classList.remove('hidden');
     
+    console.log(`Transition complete: ${fromSection} -> ${toSection}`);
+    
     // Execute after function if present
     if (transition && transition.afterFn) {
+      console.log(`Executing after function for ${transitionId}`);
       transition.afterFn();
     }
-    
-    console.log(`Transitioned from ${fromSection} to ${toSection}`);
   }
   
   /**
@@ -437,6 +468,38 @@ class TransitionSystem extends Component {
    */
   update(data) {
     // No regular update needed for now
+  }
+  
+  /**
+   * Apply direct event handlers to critical buttons as a backup approach
+   * This ensures buttons work even if the normal event binding fails
+   */
+  applyDirectButtonHandlers() {
+    console.log("Applying direct button handlers");
+    
+    // Heritage buttons direct binding
+    const heritageButtons = [
+      document.getElementById('paanic-button'),
+      document.getElementById('nesian-button'),
+      document.getElementById('lunarine-button'),
+      document.getElementById('wyrdman-button')
+    ];
+    
+    heritageButtons.forEach(button => {
+      if (button) {
+        console.log(`Adding direct handler to ${button.id}`);
+        button.onclick = (e) => {
+          console.log(`Direct click on ${button.id}`);
+          const origin = button.id.split('-')[0];
+          if (typeof window.selectOrigin === 'function') {
+            window.selectOrigin(origin);
+          }
+          this.transitionCharacterCreationSections('intro', 'originSection');
+        };
+      } else {
+        console.warn("Could not find one of the heritage buttons for direct binding");
+      }
+    });
   }
 }
 

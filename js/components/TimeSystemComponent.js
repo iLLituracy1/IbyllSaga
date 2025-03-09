@@ -285,3 +285,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+window.TimeSystemComponent = TimeSystemComponent;

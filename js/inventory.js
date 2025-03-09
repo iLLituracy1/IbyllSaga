@@ -931,6 +931,17 @@ window.InventorySystem = {
   }
 };
 
+// Convert InventorySystem to properly extend Component class
+window.InventorySystem = Object.assign({}, window.InventorySystem, {
+  setSystem: function(system) {
+    this.system = system;
+    // Inherit debug setting from system if needed
+    if (system.debug) {
+      this.debug = true;
+    }
+  }
+});
+
 // Initialize on load
 document.addEventListener('DOMContentLoaded', function() {
   // Check if UI system is ready directly or wait for it

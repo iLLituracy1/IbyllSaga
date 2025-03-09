@@ -730,3 +730,5 @@ class SidebarLayout extends Component {
 
 // Export the component
 window.SidebarLayout = SidebarLayout;
+
+window.SidebarLayout = SidebarLayout;

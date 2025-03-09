@@ -36,9 +36,20 @@ class ActionSystemComponent extends Component {
   }
 
   initialize() {
+    // Call parent initialize
     super.initialize();
     
-    // Create container for actions if not exists
+    if (!this.element) {
+      this.createRootElement();
+    }
+    
+    // Self-register as the 'actions' component to fix the "Actions component not registered" error
+    if (this.system && !this.system.components.actions) {
+      this.system.registerComponent('actions', this);
+      console.log('ActionSystemComponent: self-registered as actions component');
+    }
+    
+    // Create the actions container
     this.createActionsContainer();
     
     // Subscribe to relevant events
@@ -51,7 +62,8 @@ class ActionSystemComponent extends Component {
     // Set the initial available actions based on current game state
     this.updateAvailableActions();
     
-    console.log('Action system component initialized');
+    this.log('Action system component initialized');
+    return true;
   }
 
   createRootElement() {
@@ -370,3 +382,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+window.ActionSystemComponent = ActionSystemComponent;
