@@ -137,10 +137,10 @@
                 <p>Your origins shape your destiny in the Paanic Empire. Where do you hail from?</p>
                 
                 <div class="heritage-options">
-                    <button id="paanic-button" class="menu-button" onclick="console.log('Paanic clicked'); window.selectOrigin('Paanic'); document.getElementById('intro').classList.add('hidden'); document.getElementById('originSection').classList.remove('hidden');">Paanic</button>
-                    <button id="nesian-button" class="menu-button" onclick="console.log('Nesian clicked'); window.selectOrigin('Nesian'); document.getElementById('intro').classList.add('hidden'); document.getElementById('originSection').classList.remove('hidden');">Nesian</button>
-                    <button id="lunarine-button" class="menu-button" onclick="console.log('Lunarine clicked'); window.selectOrigin('Lunarine'); document.getElementById('intro').classList.add('hidden'); document.getElementById('originSection').classList.remove('hidden');">Lunarine</button>
-                    <button id="wyrdman-button" class="menu-button" onclick="console.log('Wyrdman clicked'); window.selectOrigin('Wyrdman'); document.getElementById('intro').classList.add('hidden'); document.getElementById('originSection').classList.remove('hidden');">Wyrdman</button>
+                    <button id="paanic-button" class="menu-button">Paanic</button>
+                    <button id="nesian-button" class="menu-button">Nesian</button>
+                    <button id="lunarine-button" class="menu-button">Lunarine</button>
+                    <button id="wyrdman-button" class="menu-button">Wyrdman</button>
                 </div>
             </div>
         </div>
@@ -154,7 +154,7 @@
                 <h2>Choose Your Career</h2>
                 <div id="careerOptions" class="career-options"></div>
                 
-                <button id="back-to-intro-button" class="back-button" onclick="window.backToIntro()">Back</button>
+                <button id="back-to-intro-button" class="back-button">Back</button>
             </div>
         </div>
         
@@ -169,8 +169,8 @@
                 </div>
                 
                 <div class="button-group">
-                    <button id="back-to-origin-button" class="back-button" onclick="window.backToOrigin()">Back</button>
-                    <button id="confirm-name-button" class="confirm-button" onclick="window.setName()">Continue</button>
+                    <button id="back-to-origin-button" class="back-button">Back</button>
+                    <button id="confirm-name-button" class="confirm-button">Continue</button>
                 </div>
             </div>
         </div>
@@ -182,8 +182,8 @@
                 <div id="characterSummary" class="character-summary-box"></div>
                 
                 <div class="button-group">
-                    <button id="back-to-name-button" class="back-button" onclick="window.backToName()">Back</button>
-                    <button id="confirm-character-button" class="confirm-button" onclick="console.log('Confirm character button clicked'); window.confirmCharacter();">Confirm</button>
+                    <button id="back-to-name-button" class="back-button">Back</button>
+                    <button id="confirm-character-button" class="confirm-button">Confirm</button>
                 </div>
             </div>
         </div>
@@ -194,7 +194,7 @@
                 <h2>Prologue</h2>
                 <div id="prologueText" class="prologue-text"></div>
                 
-                <button id="continue-to-empire-button" class="continue-button" onclick="console.log('Continue to empire button clicked'); window.showEmpireUpdate()">Continue</button>
+                <button id="continue-to-empire-button" class="continue-button">Continue</button>
             </div>
         </div>
         
@@ -204,7 +204,7 @@
                 <h2>The Paanic Empire</h2>
                 <div id="empireText" class="empire-text"></div>
                 
-                <button class="start-button" onclick="console.log('Start adventure button clicked'); window.startAdventure()">Begin Your Journey</button>
+                <button id="start-adventure-button" class="start-button">Begin Your Journey</button>
             </div>
         </div>
     </div>
@@ -536,105 +536,5 @@
     <div id="character-creator">
         <!-- Character creation content already defined above -->
     </div>
-    
-    <!-- Additional style fix for heritage buttons -->
-    <script>
-        // Fix for heritage buttons not displaying properly
-        window.addEventListener('load', function() {
-            console.log('Running heritage button style fix...');
-            
-            setTimeout(function() {
-                const heritageButtons = document.querySelectorAll('.heritage-options .menu-button');
-                
-                if (heritageButtons.length === 0) {
-                    console.error('No heritage buttons found!');
-                    return;
-                }
-                
-                console.log(`Found ${heritageButtons.length} heritage buttons`);
-                
-                heritageButtons.forEach(function(button) {
-                    console.log(`Fixing styles for button: ${button.id}`);
-                    
-                    // Force proper styling
-                    button.style.minHeight = '50px';
-                    button.style.minWidth = '200px';
-                    button.style.width = '100%';
-                    button.style.display = 'block';
-                    button.style.marginBottom = '10px';
-                    button.style.border = '2px solid #c9a959';
-                    button.style.backgroundColor = '#334155';
-                    button.style.color = '#e2e8f0';
-                    button.style.padding = '0.75rem 1.5rem';
-                    button.style.borderRadius = '4px';
-                    button.style.fontFamily = 'inherit';
-                    button.style.fontSize = '1rem';
-                    button.style.position = 'relative';
-                    button.style.zIndex = '10';
-                    button.style.cursor = 'pointer';
-                    
-                    // Check size after styling
-                    const rect = button.getBoundingClientRect();
-                    console.log(`Button ${button.id} after styling: width=${rect.width}, height=${rect.height}`);
-                });
-                
-                console.log('Heritage button style fix completed');
-            }, 500); // Short delay to ensure DOM is ready
-        });
-    </script>
-    
-    <!-- Emergency button fix script -->
-    <script>
-        // Wait for everything to load completely
-        window.addEventListener('load', function() {
-            console.log('Running emergency button fix...');
-            
-            // Wait a bit to make sure all systems have initialized
-            setTimeout(function() {
-                // Get all heritage buttons
-                const heritageButtons = [
-                    document.getElementById('paanic-button'),
-                    document.getElementById('nesian-button'),
-                    document.getElementById('lunarine-button'),
-                    document.getElementById('wyrdman-button')
-                ];
-                
-                // Force add click handlers
-                heritageButtons.forEach(function(button) {
-                    if (button) {
-                        console.log('Adding emergency click handler to', button.id);
-                        
-                        // Remove any existing click handlers first
-                        button.outerHTML = button.outerHTML;
-                        
-                        // Get the fresh button without handlers
-                        const newButton = document.getElementById(button.id);
-                        
-                        // Add a direct, simple click handler
-                        newButton.addEventListener('click', function(e) {
-                            console.log('Emergency click handler fired for', this.id);
-                            alert('Button clicked: ' + this.id);
-                            
-                            // Get origin from button ID and capitalize first letter
-                            const origin = this.id.split('-')[0];
-                            const capitalizedOrigin = origin.charAt(0).toUpperCase() + origin.slice(1);
-                            
-                            // Set the origin with proper capitalization
-                            if (window.selectOrigin) {
-                                console.log(`Calling selectOrigin with capitalized origin: ${capitalizedOrigin}`);
-                                window.selectOrigin(capitalizedOrigin);
-                            }
-                            
-                            // Simple show/hide
-                            document.getElementById('intro').classList.add('hidden');
-                            document.getElementById('originSection').classList.remove('hidden');
-                        });
-                    }
-                });
-                
-                console.log('Emergency button fix completed');
-            }, 2000);
-        });
-    </script>
 </body>
 </html>

@@ -137,6 +137,17 @@ class ActionSystemComponent extends Component {
   executeAction(data) {
     const action = data.action;
     
+    // IMPORTANT: Skip if already processing to prevent infinite recursion
+    if (this.processingAction === action) {
+      console.log(`Skipping duplicate action execution: ${action}`);
+      return;
+    }
+    
+    // Set flag to prevent infinite recursion
+    this.processingAction = action;
+    
+    console.log(`Executing action: ${action}`);
+    
     // Handle special context changes
     switch (action) {
       case 'train':
@@ -154,17 +165,137 @@ class ActionSystemComponent extends Component {
         this.popContext();
         break;
       default:
-        // For other actions, delegate to original handler and update actions
-        if (window.handleAction && typeof window.handleAction === 'function') {
-          window.handleAction(action);
-        } else {
-          console.warn('Original handleAction function not found');
+        // For other actions, delegate to original handler
+        // BUT DON'T USE window.handleAction which causes recursion
+        try {
+          // Here we handle the action without going through window.handleAction again
+          // This is where we process the actual game logic effects of actions
+          this.handleActionDirect(action);
+        } catch (error) {
+          console.warn('Error processing action:', error);
         }
     }
     
     // Update actions after executing
     this.updateAvailableActions();
+    
+    // Clear processing flag
+    this.processingAction = null;
+}
+
+// Add this new method to handle actions directly without going through event system again
+handleActionDirect(action) {
+  // Simple action mapping
+  if (action === 'rest') {
+    if (window.gameState) {
+      // Apply rest effects
+      window.gameState.stamina = Math.min(window.gameState.maxStamina, window.gameState.stamina + 20);
+      window.gameState.health = Math.min(window.gameState.maxHealth, window.gameState.health + 10);
+      
+      // Pass time
+      if (typeof window.updateTimeAndDay === 'function') {
+        window.updateTimeAndDay(60); // 1 hour
+      }
+      
+      // Update UI
+      if (typeof window.updateStatusBars === 'function') {
+        window.updateStatusBars();
+      }
+      
+      // Add to narrative
+      if (typeof window.addToNarrative === 'function') {
+        const restNarratives = window.narrativeElements?.rest || [
+          "You take some time to rest and recover."
+        ];
+        const randomIndex = Math.floor(Math.random() * restNarratives.length);
+        window.addToNarrative(restNarratives[randomIndex]);
+      }
+    }
   }
+  else if (action === 'patrol') {
+    if (window.gameState) {
+      // Apply patrol effects
+      window.gameState.stamina = Math.max(0, window.gameState.stamina - 15);
+      window.gameState.dailyPatrolDone = true;
+      
+      // Pass time
+      if (typeof window.updateTimeAndDay === 'function') {
+        window.updateTimeAndDay(120); // 2 hours
+      }
+      
+      // Update UI
+      if (typeof window.updateStatusBars === 'function') {
+        window.updateStatusBars();
+      }
+      
+      // Add to narrative
+      if (typeof window.addToNarrative === 'function') {
+        const patrolNarratives = window.narrativeElements?.patrol || [
+          "You patrol the camp perimeter, keeping a watchful eye."
+        ];
+        const randomIndex = Math.floor(Math.random() * patrolNarratives.length);
+        window.addToNarrative(patrolNarratives[randomIndex]);
+      }
+    }
+  }
+  else if (action === 'mess') {
+    if (window.gameState) {
+      // Apply mess hall effects
+      window.gameState.stamina = Math.min(window.gameState.maxStamina, window.gameState.stamina + 15);
+      window.gameState.morale += 5;
+      
+      // Pass time
+      if (typeof window.updateTimeAndDay === 'function') {
+        window.updateTimeAndDay(45); // 45 minutes
+      }
+      
+      // Update UI
+      if (typeof window.updateStatusBars === 'function') {
+        window.updateStatusBars();
+      }
+      
+      // Add to narrative
+      if (typeof window.addToNarrative === 'function') {
+        const messNarratives = window.narrativeElements?.mess || [
+          "You get a meal at the mess hall, exchanging news with fellow soldiers."
+        ];
+        const randomIndex = Math.floor(Math.random() * messNarratives.length);
+        window.addToNarrative(messNarratives[randomIndex]);
+      }
+    }
+  }
+  else if (action === 'guard') {
+    if (window.gameState) {
+      // Apply guard duty effects
+      window.gameState.stamina = Math.max(0, window.gameState.stamina - 10);
+      
+      // Pass time
+      if (typeof window.updateTimeAndDay === 'function') {
+        window.updateTimeAndDay(240); // 4 hours
+      }
+      
+      // Update UI
+      if (typeof window.updateStatusBars === 'function') {
+        window.updateStatusBars();
+      }
+      
+      // Add to narrative
+      if (typeof window.addToNarrative === 'function') {
+        const guardNarratives = window.narrativeElements?.guard || [
+          "You stand guard, keeping watch over the camp."
+        ];
+        const randomIndex = Math.floor(Math.random() * guardNarratives.length);
+        window.addToNarrative(guardNarratives[randomIndex]);
+      }
+    }
+  }
+  // Add more action handlers as needed
+  
+  // If action isn't handled here, log it
+  else {
+    console.log(`Action not directly handled: ${action}`);
+  }
+}
 
   pushContext(context) {
     // Save current context to stack

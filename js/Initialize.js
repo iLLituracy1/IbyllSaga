@@ -292,19 +292,31 @@ function createLegacyBridge() {
   
   // Define wrapper for action handling
   window.handleAction = function(action) {
-    if (window.UI.system && window.UI.system.components.actionSystem) {
+    if (window.UI && window.UI.system && window.UI.system.components.actionSystem) {
       try {
-        // Publish to event bus to handle action
-        window.UI.system.eventBus.publish('action:execute', { action });
+        // Use direct execution method instead of event bus to avoid infinite loop
+        if (typeof window.UI.system.components.actionSystem.handleActionDirect === 'function') {
+          window.UI.system.components.actionSystem.handleActionDirect(action);
+          return;
+        }
+        
+        // Alternatively, publish via event bus but use a flag to prevent recursion
+        window.UI.system.eventBus.publish('action:execute', { 
+          action: action,
+          // Add a prevention flag
+          isRedirect: true 
+        });
         return;
       } catch (error) {
         console.error('Error using new action system, falling back to legacy:', error);
       }
     }
     
-    // Fallback to original function
-    if (typeof originalFunctions.handleAction === 'function') {
+    // Fallback to original function if available
+    if (typeof originalFunctions !== 'undefined' && typeof originalFunctions.handleAction === 'function') {
       originalFunctions.handleAction(action);
+    } else {
+      console.warn("No fallback action handler available for:", action);
     }
   };
   
