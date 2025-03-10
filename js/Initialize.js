@@ -1,11 +1,10 @@
-// Initialize.js
-// Enhanced entry point for the UI framework
+// Initialize.js - Updated with ComponentLoader integration
 // Provides robust dependency management and initialization sequence
 
 // Create global namespace for UI framework
 window.UI = window.UI || {};
 
-// Component dependency configuration
+// Component dependency configuration - enhanced with explicit DOM dependencies
 window.UI.componentConfig = {
   // Core components that must initialize first
   core: [
@@ -15,52 +14,53 @@ window.UI.componentConfig = {
   
   // UI components with their dependencies
   components: [
-    // Base layout must be first
+    // Base layout must be first as it creates DOM structure others depend on
     { 
-      name: 'sidebar', 
+      name: 'sidebarLayout', 
       class: 'SidebarLayout', 
       required: true,
-      dependencies: []
+      dependencies: [],
+      providesDOMElements: true
     },
     // Display components depend on sidebar layout
     { 
       name: 'status', 
       class: 'StatusDisplayComponent', 
       required: true,
-      dependencies: ['sidebar']
+      dependencies: ['sidebarLayout'] 
     },
     { 
       name: 'time', 
       class: 'TimeSystemComponent', 
       required: true,
-      dependencies: ['sidebar'] 
+      dependencies: ['sidebarLayout'] 
     },
     { 
       name: 'narrative', 
       class: 'NarrativeComponent', 
       required: true,
-      dependencies: ['sidebar'] 
+      dependencies: ['sidebarLayout'] 
     },
     // Action system depends on narrative component
     { 
       name: 'actionSystem', 
       class: 'ActionSystemComponent', 
       required: true,
-      dependencies: ['narrative'] 
+      dependencies: ['narrative', 'sidebarLayout'] 
     },
-    // Panel system has no strong dependencies
+    // Panel system has sidebar as dependency for button interaction
     { 
       name: 'panelSystem', 
       class: 'PanelSystemComponent', 
       required: true,
-      dependencies: [] 
+      dependencies: ['sidebarLayout'] 
     },
     // Transition system depends on core systems
     { 
       name: 'transition', 
       class: 'TransitionSystem', 
       required: true,
-      dependencies: [] 
+      dependencies: ['sidebarLayout'] 
     }
   ]
 };
@@ -72,23 +72,18 @@ window.UI.initialize = function() {
   // Create initialization timestamp to track performance
   window.UI.initStartTime = Date.now();
   
-  // Reset any existing state to prevent conflicts
-  resetUIState();
-  
   try {
-    // Initialize the UI system
-    initCore();
+    // Check if new ComponentLoader is available
+    const useComponentLoader = typeof window.ComponentLoader === 'function';
     
-    // Enable debug mode for development (should be turned off in production)
-    if (window.UI.system) {
-      window.UI.system.debug = true;
+    if (useComponentLoader) {
+      // Use new ComponentLoader for more robust initialization
+      initWithComponentLoader();
+    } else {
+      // Fallback to legacy initialization
+      console.warn('ComponentLoader not found, using legacy initialization');
+      initLegacyApproach();
     }
-    
-    // Initialize components based on dependencies
-    initComponents();
-    
-    // Create compatibility layer with existing code
-    createLegacyBridge();
     
     // Dispatch event indicating UI system is ready
     document.dispatchEvent(new CustomEvent('uiSystemReady', {
@@ -107,6 +102,87 @@ window.UI.initialize = function() {
     return false;
   }
 };
+
+// Initialize using the new ComponentLoader
+function initWithComponentLoader() {
+  console.log('Using ComponentLoader for initialization');
+  
+  // Create UI system and event bus
+  initCore();
+  
+  // Create the ComponentLoader
+  const loader = new window.ComponentLoader();
+  window.UI.loader = loader; // Store for debugging
+  
+  // Register components with their dependencies
+  registerComponentsWithLoader(loader);
+  
+  // Initialize all components in dependency order
+  const initializedCount = loader.initializeComponents();
+  console.log(`ComponentLoader initialized ${initializedCount} components`);
+  
+  // Create compatibility layer with legacy code if needed
+  createLegacyBridge();
+}
+
+// Legacy initialization approach (existing code)
+function initLegacyApproach() {
+  // Reset any existing state to prevent conflicts
+  resetUIState();
+  
+  // Initialize the UI system
+  initCore();
+  
+  // Enable debug mode for development (should be turned off in production)
+  if (window.UI.system) {
+    window.UI.system.debug = true;
+  }
+  
+  // Initialize components based on dependencies
+  initComponents();
+  
+  // Create compatibility layer with existing code
+  createLegacyBridge();
+}
+
+// Register all components with the loader
+function registerComponentsWithLoader(loader) {
+  // Register core components first
+  window.UI.core.forEach(core => {
+    const coreComponent = window[core.class] ? new window[core.class]() : null;
+    if (coreComponent) {
+      loader.registerComponent(core.name, coreComponent, []);
+    }
+  });
+  
+  // Register UI components with their dependencies
+  window.UI.componentConfig.components.forEach(config => {
+    try {
+      // Find the component class
+      let ComponentClass = window[config.class];
+      
+      if (!ComponentClass) {
+        // Try alternate locations
+        if (typeof window.UI[config.class] === 'function') {
+          ComponentClass = window.UI[config.class];
+        } else {
+          console.warn(`Component class ${config.class} not found for ${config.name}`);
+          return;
+        }
+      }
+      
+      // Create component instance
+      const instance = new ComponentClass();
+      
+      // Register with loader
+      loader.registerComponent(config.name, instance, config.dependencies || []);
+      
+      console.log(`Registered component with loader: ${config.name}`);
+    } catch (error) {
+      console.error(`Failed to register component ${config.name}:`, error);
+    }
+  });
+}
 
 // Reset UI state to allow clean initialization
 function resetUIState() {

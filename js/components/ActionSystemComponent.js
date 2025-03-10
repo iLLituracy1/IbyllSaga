@@ -1,4 +1,5 @@
 // ActionSystemComponent.js - Manages player action buttons
+// Fixed version with consistent registration
 
 class ActionSystemComponent extends Component {
   constructor() {
@@ -40,6 +41,7 @@ class ActionSystemComponent extends Component {
     // Call parent initialize
     super.initialize();
     
+    // Get or create the element
     if (!this.element) {
       this.createRootElement();
     }
@@ -59,11 +61,21 @@ class ActionSystemComponent extends Component {
     // Set the initial available actions based on current game state
     this.updateAvailableActions();
     
+    // Provide access to this component via window.actionSystem for compatibility
+    window.actionSystem = this;
+    
     this.log('Action system component initialized');
     return true;
   }
 
   createRootElement() {
+    // First check if element already exists
+    const existingElement = document.getElementById('actions');
+    if (existingElement) {
+      this.element = existingElement;
+      return;
+    }
+    
     const actions = document.createElement('div');
     actions.id = 'actions';
     
@@ -107,14 +119,17 @@ class ActionSystemComponent extends Component {
           narrativeContainer.appendChild(narrative);
         }
         
-        // Create actions container
-        const actionsContainer = document.createElement('div');
-        actionsContainer.className = 'actions-container';
-        narrativeContainer.appendChild(actionsContainer);
+        // Create actions container if it doesn't exist
+        let actionsContainer = narrativeContainer.querySelector('.actions-container');
+        if (!actionsContainer) {
+          actionsContainer = document.createElement('div');
+          actionsContainer.className = 'actions-container';
+          narrativeContainer.appendChild(actionsContainer);
+        }
         
         // If actions element exists, move it inside container
         const existingActions = document.getElementById('actions');
-        if (existingActions) {
+        if (existingActions && existingActions.parentNode !== actionsContainer) {
           actionsContainer.appendChild(existingActions);
         }
       }
@@ -703,16 +718,30 @@ class ActionSystemComponent extends Component {
     // Add to container
     this.element.appendChild(btn);
   }
+  
+  // Explicitly make the 'actions' alias available
+  getActionsAlias() {
+    return this;
+  }
 }
 
 // Register the component with the UI system when available
 document.addEventListener('DOMContentLoaded', () => {
   if (window.uiSystem) {
-    window.uiSystem.registerComponent('actionSystem', new ActionSystemComponent());
+    // Only register once with consistent naming
+    const actionSystem = new ActionSystemComponent();
+    window.uiSystem.registerComponent('actionSystem', actionSystem);
+    
+    // Make the component available globally for compatibility
+    window.actionSystem = actionSystem;
   } else {
     // If UI system isn't ready yet, wait for it
     document.addEventListener('uiSystemReady', () => {
-      window.uiSystem.registerComponent('actionSystem', new ActionSystemComponent());
+      const actionSystem = new ActionSystemComponent();
+      window.uiSystem.registerComponent('actionSystem', actionSystem);
+      
+      // Make the component available globally for compatibility
+      window.actionSystem = actionSystem;
     });
   }
 });
