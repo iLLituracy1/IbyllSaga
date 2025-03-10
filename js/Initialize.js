@@ -5,7 +5,7 @@
 // Create global namespace for UI framework
 window.UI = window.UI || {};
 
-// Configuration for component dependencies and initialization order
+// Component dependency configuration
 window.UI.componentConfig = {
   // Core components that must initialize first
   core: [
@@ -13,21 +13,61 @@ window.UI.componentConfig = {
     { name: 'eventBus', class: 'EventBus', required: true }
   ],
   
-  // UI components in dependency order
+  // UI components with their dependencies
   components: [
-    { name: 'sidebar', class: 'SidebarLayout', required: true }, // <-- Changed to required: true
-    { name: 'status', class: 'StatusDisplayComponent', required: true },
-    { name: 'time', class: 'TimeSystemComponent', required: true },
-    { name: 'narrative', class: 'NarrativeComponent', required: true },
-    { name: 'actionSystem', class: 'ActionSystemComponent', required: true },
-    { name: 'panelSystem', class: 'PanelSystemComponent', required: true },
-    { name: 'transition', class: 'TransitionSystem', required: true }
+    // Base layout must be first
+    { 
+      name: 'sidebar', 
+      class: 'SidebarLayout', 
+      required: true,
+      dependencies: []
+    },
+    // Display components depend on sidebar layout
+    { 
+      name: 'status', 
+      class: 'StatusDisplayComponent', 
+      required: true,
+      dependencies: ['sidebar']
+    },
+    { 
+      name: 'time', 
+      class: 'TimeSystemComponent', 
+      required: true,
+      dependencies: ['sidebar'] 
+    },
+    { 
+      name: 'narrative', 
+      class: 'NarrativeComponent', 
+      required: true,
+      dependencies: ['sidebar'] 
+    },
+    // Action system depends on narrative component
+    { 
+      name: 'actionSystem', 
+      class: 'ActionSystemComponent', 
+      required: true,
+      dependencies: ['narrative'] 
+    },
+    // Panel system has no strong dependencies
+    { 
+      name: 'panelSystem', 
+      class: 'PanelSystemComponent', 
+      required: true,
+      dependencies: [] 
+    },
+    // Transition system depends on core systems
+    { 
+      name: 'transition', 
+      class: 'TransitionSystem', 
+      required: true,
+      dependencies: [] 
+    }
   ]
 };
 
 // Initialize function to be called after DOM is loaded
 window.UI.initialize = function() {
-  console.log('Initializing new UI framework');
+  console.log('Initializing UI framework');
   
   // Create initialization timestamp to track performance
   window.UI.initStartTime = Date.now();
@@ -40,9 +80,11 @@ window.UI.initialize = function() {
     initCore();
     
     // Enable debug mode for development (should be turned off in production)
-    window.UI.system.debug = true;
+    if (window.UI.system) {
+      window.UI.system.debug = true;
+    }
     
-    // Initialize components in correct dependency order
+    // Initialize components based on dependencies
     initComponents();
     
     // Create compatibility layer with existing code
@@ -97,97 +139,126 @@ function initCore() {
     throw new Error('Component not loaded. Make sure Component.js is included before Initialize.js');
   }
   
-  // Create the system
+  // Create the system and its event bus
   window.UI.system = new UISystem();
+  window.UI.system.eventBus = new EventBus();
   
   // Create separate instance for direct access
   window.uiSystem = window.UI.system;
-
-  // Explicitly create and register the essential components
-  // This ensures they're available before any other component initialization
-  if (typeof Component === 'function') {
-    // Create and register core component first
-    const coreComponent = new Component('ui-core');
-    window.UI.system.registerComponent('core', coreComponent);
-    
-    // Check for ActionSystemComponent and register as 'actions' if found
-    const ActionSystemComponent = window.UI.system.components.actionSystem;
-    if (ActionSystemComponent) {
-      window.UI.system.registerComponent('actions', ActionSystemComponent);
-    }
-  }
 }
 
-// Initialize all UI components in dependency order
+// Initialize all UI components based on dependency order
 function initComponents() {
   console.log('Initializing UI components');
   
-  // Create and register required base components first
-  ensureBaseComponents();
+  // Create a dependency graph to determine initialization order
+  const components = window.UI.componentConfig.components;
+  const initialized = new Set();
+  const remaining = new Set(components.map(c => c.name));
   
-  // Initialize each component
-  window.UI.componentConfig.components.forEach(componentConfig => {
-    initComponent(componentConfig);
-  });
+  // Function to check if dependencies are satisfied
+  const dependenciesMet = (componentConfig) => {
+    if (!componentConfig.dependencies || componentConfig.dependencies.length === 0) {
+      return true;
+    }
+    
+    return componentConfig.dependencies.every(dep => initialized.has(dep));
+  };
   
-  // Initialize system to wire everything together
-  if (window.UI.system.initialize) {
+  // Keep initializing components until all are done or no progress can be made
+  let progress = true;
+  let iteration = 0;
+  const MAX_ITERATIONS = 10; // Safety to prevent infinite loops
+  
+  while (remaining.size > 0 && progress && iteration < MAX_ITERATIONS) {
+    progress = false;
+    iteration++;
+    
+    console.log(`Initialization iteration ${iteration}, remaining: ${remaining.size} components`);
+    
+    // Try to initialize components whose dependencies are met
+    for (const componentConfig of components) {
+      if (!remaining.has(componentConfig.name)) continue;
+      
+      if (dependenciesMet(componentConfig)) {
+        // Initialize this component
+        const success = initComponent(componentConfig);
+        
+        if (success) {
+          initialized.add(componentConfig.name);
+          remaining.delete(componentConfig.name);
+          progress = true;
+        } else if (componentConfig.required) {
+          throw new Error(`Failed to initialize required component: ${componentConfig.name}`);
+        }
+      }
+    }
+  }
+  
+  // Check if any required components remain uninitialized
+  if (remaining.size > 0) {
+    const remainingComponents = [...remaining].join(', ');
+    console.warn(`Failed to initialize all components. Remaining: ${remainingComponents}`);
+    
+    // Check for circular dependencies
+    const remainingConfigs = components.filter(c => remaining.has(c.name));
+    const dependencies = remainingConfigs.map(c => 
+      `${c.name} depends on [${c.dependencies?.join(', ') || 'none'}]`
+    ).join('; ');
+    
+    console.warn(`Possible circular dependencies: ${dependencies}`);
+    
+    // Try to force initialize required components
+    let forcedComponents = 0;
+    for (const componentConfig of remainingConfigs) {
+      if (componentConfig.required) {
+        console.warn(`Forcing initialization of required component: ${componentConfig.name}`);
+        if (initComponent(componentConfig, true)) {
+          forcedComponents++;
+        }
+      }
+    }
+    
+    if (forcedComponents > 0) {
+      console.log(`Forced initialization of ${forcedComponents} required components`);
+    }
+  }
+  
+  // Finalize initialization by calling initialize on the system
+  if (window.UI.system && typeof window.UI.system.initialize === 'function') {
     window.UI.system.initialize();
   }
 }
 
-// Ensure base components like core and actions are properly registered
-function ensureBaseComponents() {
-  // Ensure core component exists
-  if (!window.UI.system.components.core && typeof Component === 'function') {
-    const coreComponent = new Component('ui-core');
-    window.UI.system.registerComponent('core', coreComponent);
-    console.log('Registered core component');
-  }
-  
-  // After all components are initialized, ensure actions component is correctly registered
-  // This needs to run after all other components are registered to make sure we can find actionSystem
-  document.addEventListener('uiSystemReady', function() {
-    if (!window.UI.system.components.actions && window.UI.system.components.actionSystem) {
-      window.UI.system.registerComponent('actions', window.UI.system.components.actionSystem);
-      console.log('Registered actionSystem as actions component');
-    }
-  });
-}
-
 // Initialize a specific component
-function initComponent(config) {
+function initComponent(config, force = false) {
   const { name, class: className, required } = config;
   
   try {
     // Skip if already registered
-    if (window.UI.system.components[name]) {
+    if (window.UI.system.components && window.UI.system.components[name]) {
       console.log(`Component ${name} already registered`);
-      
-      // Special case for actionSystem - also register as 'actions' 
-      if (name === 'actionSystem' && !window.UI.system.components['actions']) {
-        window.UI.system.registerComponent('actions', window.UI.system.components[name]);
-        console.log('Registered actionSystem as actions component');
-      }
-      
       return true;
     }
     
     // Special case for 'core' which should be created from Component class
-    if (name === 'core' && !window.UI.system.components.core) {
+    if (name === 'core' && !window.UI.system.components?.core) {
       const CoreComponent = new Component('ui-core');
       window.UI.system.registerComponent('core', CoreComponent);
       return true;
     }
     
     // Check if class exists in global scope
-    if (typeof window[className] !== 'function') {
+    let ComponentClass = window[className];
+    
+    if (typeof ComponentClass !== 'function') {
       // Try alternate locations
       if (typeof window.UI[className] === 'function') {
+        ComponentClass = window.UI[className];
         console.log(`Found ${className} in UI namespace`);
       } else {
         const message = `Component class ${className} not found`;
-        if (required) {
+        if (required && !force) {
           throw new Error(message);
         } else {
           console.warn(message + " (optional)");
@@ -197,18 +268,33 @@ function initComponent(config) {
     }
     
     // Create component instance
-    const Component = window[className] || window.UI[className];
-    const instance = new Component();
+    const instance = new ComponentClass();
     
     // Register with UI system
     window.UI.system.registerComponent(name, instance);
     
+    // Special case for actionSystem - also register as 'actions'
+    if (name === 'actionSystem') {
+      window.UI.system.registerComponent('actions', instance);
+      console.log('Registered actionSystem as actions component');
+    }
+    
     console.log(`Registered component: ${name}`);
+    
+    // Initialize the component if it has an initialize method
+    if (typeof instance.initialize === 'function') {
+      const result = instance.initialize();
+      if (result === false) {
+        console.warn(`Component ${name} initialization returned false`);
+        return false;
+      }
+    }
+    
     return true;
   } catch (error) {
     console.error(`Failed to initialize component ${name}:`, error);
-    if (required) {
-      throw error; // Re-throw for required components
+    if (required && !force) {
+      throw error; // Re-throw for required components unless forcing
     }
     return false;
   }
@@ -236,12 +322,6 @@ function createLegacyBridge() {
       try {
         // Update status component with current game state
         window.UI.system.components.status.update(window.gameState);
-        
-        // Also update sidebar if it exists
-        if (window.UI.system.components.sidebar) {
-          window.UI.system.components.sidebar.updateStatusBars();
-        }
-        
         return;
       } catch (error) {
         console.error('Error using new status component, falling back to legacy:', error);
@@ -294,17 +374,16 @@ function createLegacyBridge() {
   window.handleAction = function(action) {
     if (window.UI && window.UI.system && window.UI.system.components.actionSystem) {
       try {
-        // Use direct execution method instead of event bus to avoid infinite loop
+        // Use direct execution method to avoid infinite loop
         if (typeof window.UI.system.components.actionSystem.handleActionDirect === 'function') {
           window.UI.system.components.actionSystem.handleActionDirect(action);
           return;
         }
         
-        // Alternatively, publish via event bus but use a flag to prevent recursion
+        // Safely publish via event bus
         window.UI.system.eventBus.publish('action:execute', { 
           action: action,
-          // Add a prevention flag
-          isRedirect: true 
+          isRedirect: true // Prevention flag
         });
         return;
       } catch (error) {
@@ -313,7 +392,7 @@ function createLegacyBridge() {
     }
     
     // Fallback to original function if available
-    if (typeof originalFunctions !== 'undefined' && typeof originalFunctions.handleAction === 'function') {
+    if (typeof originalFunctions.handleAction === 'function') {
       originalFunctions.handleAction(action);
     } else {
       console.warn("No fallback action handler available for:", action);
@@ -447,13 +526,7 @@ function ensureLegacyFunctions() {
   }
 }
 
-// Call initialize function when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-  // Delay initialization slightly to ensure all scripts are loaded
-  setTimeout(window.UI.initialize, 100);
-});
-
-
+// Initialize game state function
 window.initializeGameState = function() {
   console.log("Initializing game state...");
   
@@ -491,3 +564,9 @@ window.initializeGameState = function() {
     window.updateStatusBars();
   }
 };
+
+// Call initialize function when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  // Short delay to ensure all scripts are loaded
+  setTimeout(window.UI.initialize, 100);
+});

@@ -12,43 +12,23 @@ class SidebarLayout extends Component {
       mobile: false,
       breakpoint: 768, // Mobile breakpoint in pixels
     };
+    
+    // DOM element references
+    this.sidebar = null;
+    this.mainContent = null;
   }
   
   initialize() {
     // Call base Component initialization
     super.initialize();
     
-    // Check if already initialized by another script
-    this.checkExistingLayout();
+    console.log("SidebarLayout: Initializing...");
     
-    if (!this.state.initialized) {
-      // Create the layout structure
-      this.createLayoutStructure();
-    } else {
-      // Just update the existing sidebar content without calling missing method
-      // Check if the updateSidebar method exists before calling it
-      if (typeof this.updateSidebar === 'function') {
-        this.updateSidebar();
-      } else {
-        // Fallback for updating sidebar content if updateSidebar doesn't exist
-        if (this.sidebar && window.player) {
-          // Update character name and details if possible
-          const nameElem = this.sidebar.querySelector('.character-name');
-          const detailsElem = this.sidebar.querySelector('.character-details');
-          
-          if (nameElem && window.player.name) {
-            nameElem.textContent = window.player.name;
-          }
-          
-          if (detailsElem && window.player.origin) {
-            detailsElem.textContent = `${window.player.origin || ''} ${window.player.career ? window.player.career.title || '' : ''}`;
-          }
-        }
-        
-        // Also update status bars if they exist
-        this.updateStatusBars();
-      }
-    }
+    // Create layout structure first - this is critical for other components
+    this.createLayoutStructure();
+    
+    // Update with player data
+    this.updateSidebar();
     
     // Set up event listeners
     this.setupEventListeners();
@@ -59,65 +39,58 @@ class SidebarLayout extends Component {
     // Subscribe to events
     this.setupEventSubscriptions();
     
-    console.log("SidebarLayout initialized");
-  }
-  
-  /**
-   * Check if sidebar layout already exists
-   */
-  checkExistingLayout() {
-    const gameContainer = document.getElementById('gameContainer');
-    if (!gameContainer) {
-      console.error("Game container not found");
-      return;
+    // Add layout styles
+    this.addLayoutStyles();
+    
+    // Mark as initialized
+    this.state.initialized = true;
+    
+    console.log("SidebarLayout: Initialized");
+    
+    // Publish initialization event
+    if (this.system && this.system.eventBus) {
+      this.system.eventBus.publish('sidebar:initialized', {
+        sidebar: this.sidebar,
+        mainContent: this.mainContent
+      });
     }
     
-    // Check if sidebar and main content already exist
-    const existingSidebar = gameContainer.querySelector('.game-sidebar');
-    const existingMainContent = gameContainer.querySelector('.game-main');
-    
-    if (existingSidebar && existingMainContent) {
-      this.state.initialized = true;
-      console.log("Existing sidebar layout found");
-      
-      // Store references
-      this.sidebar = existingSidebar;
-      this.mainContent = existingMainContent;
-    }
+    return true;
   }
   
   /**
    * Create the layout structure with sidebar and main content
    */
   createLayoutStructure() {
+    console.log("SidebarLayout: Creating layout structure");
+    
+    // Get game container
     const gameContainer = document.getElementById('gameContainer');
     if (!gameContainer) {
-      console.error("Game container not found - cannot create sidebar layout");
-      return;
+      console.error("SidebarLayout: Game container not found");
+      return false;
     }
-    
-    console.log("Creating sidebar layout structure");
     
     // First check if sidebar and main content already exist
     const existingSidebar = gameContainer.querySelector('.game-sidebar');
     const existingMain = gameContainer.querySelector('.game-main');
     
-    // If both exist, don't recreate structure
+    // If both exist, just store references
     if (existingSidebar && existingMain) {
       this.sidebar = existingSidebar;
       this.mainContent = existingMain;
-      console.log("Sidebar layout already exists, using existing elements");
-      return;
+      console.log("SidebarLayout: Using existing sidebar and main content");
+      return true;
     }
     
-    // Store original elements that need to be moved
-    const header = gameContainer.querySelector('header');
-    const narrative = document.getElementById('narrative');
-    const actions = document.getElementById('actions');
-    const statusBars = document.querySelector('.status-bars');
+    // Need to create layout structure
+    console.log("SidebarLayout: Creating new layout structure");
     
-    // Clear game container but preserve header
-    const originalHTML = gameContainer.innerHTML;
+    // Clear game container but preserve any header
+    const header = gameContainer.querySelector('header');
+    
+    // Store all existing content to preserve
+    const childNodes = Array.from(gameContainer.childNodes);
     gameContainer.innerHTML = '';
     
     // Add header back if it exists
@@ -128,84 +101,69 @@ class SidebarLayout extends Component {
       this.createHeader(gameContainer);
     }
     
-    // Create sidebar with clear debug message
+    // Create sidebar
     this.sidebar = document.createElement('div');
     this.sidebar.className = 'game-sidebar';
     this.sidebar.setAttribute('data-created', Date.now());
-    this.sidebar.innerHTML = '<div style="color: red; margin-bottom: 10px;">Sidebar created</div>';
     
     // Create main content container
     this.mainContent = document.createElement('div');
     this.mainContent.className = 'game-main';
     this.mainContent.setAttribute('data-created', Date.now());
     
-    // Add sidebar and main content to game container with clear order
+    // Add sidebar and main content to game container
     gameContainer.appendChild(this.sidebar);
     gameContainer.appendChild(this.mainContent);
     
-    // Debug indicators
-    console.log("Layout elements created", {
-      sidebar: this.sidebar,
-      mainContent: this.mainContent
-    });
-    
-    // Create the sidebar content
+    // Create sidebar content
     this.createSidebarContent();
     
-    // Create narrative container
+    // Create narrative container in main content
     const narrativeContainer = document.createElement('div');
     narrativeContainer.className = 'narrative-container';
     this.mainContent.appendChild(narrativeContainer);
     
+    // Find existing narrative and actions
+    let narrative = null;
+    let actions = null;
+    
+    childNodes.forEach(node => {
+      if (node.id === 'narrative') narrative = node;
+      if (node.id === 'actions') actions = node;
+    });
+    
+    // Create narrative element if it doesn't exist
+    if (!narrative) {
+      narrative = document.createElement('div');
+      narrative.id = 'narrative';
+      narrative.className = 'narrative';
+    }
+    
     // Create actions container
     const actionsContainer = document.createElement('div');
     actionsContainer.className = 'actions-container';
+    
+    // Create actions element if it doesn't exist
+    if (!actions) {
+      actions = document.createElement('div');
+      actions.id = 'actions';
+    }
+    
+    // Add narrative to container
+    narrativeContainer.appendChild(narrative);
+    
+    // Add actions container with actions element
     narrativeContainer.appendChild(actionsContainer);
-    
-    // Handle narrative element
-    if (narrative) {
-      console.log("Moving existing narrative element to container");
-      if (narrative.parentNode) {
-        narrative.parentNode.removeChild(narrative);
-      }
-      narrativeContainer.insertBefore(narrative, actionsContainer);
-    } else {
-      console.log("Creating new narrative element");
-      const newNarrative = document.createElement('div');
-      newNarrative.id = 'narrative';
-      newNarrative.className = 'narrative';
-      narrativeContainer.insertBefore(newNarrative, actionsContainer);
-    }
-    
-    // Handle actions element
-    if (actions) {
-      console.log("Moving existing actions element to container");
-      if (actions.parentNode) {
-        actions.parentNode.removeChild(actions);
-      }
-      actionsContainer.appendChild(actions);
-    } else {
-      console.log("Creating new actions element");
-      const newActions = document.createElement('div');
-      newActions.id = 'actions';
-      actionsContainer.appendChild(newActions);
-    }
+    actionsContainer.appendChild(actions);
     
     // Add mobile sidebar toggle
     const sidebarToggle = document.createElement('div');
     sidebarToggle.className = 'sidebar-toggle';
     sidebarToggle.innerHTML = '☰';
-    sidebarToggle.addEventListener('click', () => {
-      this.toggleMobileSidebar();
-    });
-    
     gameContainer.appendChild(sidebarToggle);
     
-    // Add layout styles
-    this.addLayoutStyles();
-    
-    this.state.initialized = true;
-    console.log("Layout structure created successfully");
+    console.log("SidebarLayout: Layout structure created successfully");
+    return true;
   }
   
   /**
@@ -215,73 +173,36 @@ class SidebarLayout extends Component {
     const header = document.createElement('header');
     header.innerHTML = `
       <h1>Kasvaari Camp</h1>
-      <div id="location">Location: Kasvaari Camp, somewhere in the Western Hierarchate of Nesia</div>
-      <div class="day-night-indicator" id="dayNightIndicator"></div>
-      <div id="timeDisplay">Time: 8:00 AM</div>
-      <div id="dayDisplay">Day 1</div>
+      <div id="location">Location: Kasvaari Camp, Western Hierarchate</div>
+      <div class="time-display-container">
+        <div id="dayNightIndicator" class="day-night-indicator"></div>
+        <div class="time-info">
+          <div id="timeDisplay">Time: 8:00 AM</div>
+          <div id="dayDisplay">Day 1</div>
+        </div>
+      </div>
     `;
     gameContainer.appendChild(header);
-    console.log("Created new header");
+    console.log("SidebarLayout: Created new header");
   }
   
   /**
    * Create the sidebar content
    */
   createSidebarContent() {
-    console.log("Creating sidebar content with player:", window.player);
+    console.log("SidebarLayout: Creating sidebar content");
     
-    // Make sure we have the player object with all required properties
-    if (!window.player || !window.player.name) {
-      this.sidebar.innerHTML = `
-        <div class="character-summary">
-          <div class="character-name">Unknown Soldier</div>
-          <div class="character-details">Player data not initialized</div>
-        </div>
-        
-        <div class="quick-status">
-          <div class="status-bar">
-            <div class="status-label">Health</div>
-            <div class="bar-container">
-              <div id="sidebarHealthBar" class="bar health-bar" style="width: 100%;"></div>
-            </div>
-            <div id="sidebarHealthValue" class="bar-value">100/100</div>
-          </div>
-          <div class="status-bar">
-            <div class="status-label">Stamina</div>
-            <div class="bar-container">
-              <div id="sidebarStaminaBar" class="bar stamina-bar" style="width: 100%;"></div>
-            </div>
-            <div id="sidebarStaminaValue" class="bar-value">100/100</div>
-          </div>
-          <div class="status-bar">
-            <div class="status-label">Morale</div>
-            <div class="bar-container">
-              <div id="sidebarMoraleBar" class="bar morale-bar" style="width: 75%;"></div>
-            </div>
-            <div id="sidebarMoraleValue" class="bar-value">75/100</div>
-          </div>
-        </div>
-        
-        <div class="sidebar-nav">
-          <button class="sidebar-nav-button" data-action="profile">
-            <span class="nav-icon">👤</span> Profile
-          </button>
-          <button class="sidebar-nav-button" data-action="inventory">
-            <span class="nav-icon">🎒</span> Inventory
-          </button>
-          <button class="sidebar-nav-button" data-action="questLog">
-            <span class="nav-icon">📜</span> Quest Log
-          </button>
-        </div>
-      `;
-      return;
+    // Make sure we have the sidebar element
+    if (!this.sidebar) {
+      console.error("SidebarLayout: Sidebar element not found");
+      return false;
     }
     
-    // Create character summary with player data
-    this.sidebar.innerHTML = `
+    // Initial HTML for sidebar
+    let sidebarHtml = `
       <div class="character-summary">
-        <div class="character-name">${window.player.name}</div>
-        <div class="character-details">${window.player.origin || ''} ${window.player.career ? window.player.career.title || '' : ''}</div>
+        <div class="character-name">${window.player?.name || "Unknown Soldier"}</div>
+        <div class="character-details">${window.player?.origin || ''} ${window.player?.career?.title || ''}</div>
       </div>
       
       <div class="quick-status">
@@ -321,56 +242,52 @@ class SidebarLayout extends Component {
       </div>
     `;
     
-    // Set up sidebar nav buttons
-    const navButtons = this.sidebar.querySelectorAll('.sidebar-nav-button');
-    navButtons.forEach(button => {
-      button.addEventListener('click', (e) => {
-        e.preventDefault();
-        const action = button.getAttribute('data-action');
-        
-        if (action === 'profile' || action === 'inventory' || action === 'questLog') {
-          // Use panel system to open the corresponding panel
-          if (this.system && this.system.eventBus) {
-            this.system.eventBus.publish('panel:toggle', { id: action });
-          }
-        } else if (typeof window.handleAction === 'function') {
-          // Use action system for other actions
-          window.handleAction(action);
-        }
-      });
-    });
-  }
+    // Set the sidebar content
+    this.sidebar.innerHTML = sidebarHtml;
     
-    // Update status bars with current game state
-    updateStatusBars() {
-      if (!window.gameState) return;
-      
-      // Get sidebar bars
-      const healthBar = document.getElementById('sidebarHealthBar');
-      const staminaBar = document.getElementById('sidebarStaminaBar');
-      const moraleBar = document.getElementById('sidebarMoraleBar');
-      const healthValue = document.getElementById('sidebarHealthValue');
-      const staminaValue = document.getElementById('sidebarStaminaValue');
-      const moraleValue = document.getElementById('sidebarMoraleValue');
-      
-      // Update health bar
-      if (healthBar && healthValue) {
-        healthBar.style.width = `${(window.gameState.health / window.gameState.maxHealth) * 100}%`;
-        healthValue.textContent = `${Math.round(window.gameState.health)}/${window.gameState.maxHealth}`;
+    return true;
+  }
+  
+  /**
+   * Update status bars with current game state
+   */
+  updateStatusBars() {
+    // Skip if sidebar doesn't exist or game state isn't available
+    if (!this.sidebar || !window.gameState) return;
+    
+    // Get sidebar bars
+    const healthBar = document.getElementById('sidebarHealthBar');
+    const staminaBar = document.getElementById('sidebarStaminaBar');
+    const moraleBar = document.getElementById('sidebarMoraleBar');
+    const healthValue = document.getElementById('sidebarHealthValue');
+    const staminaValue = document.getElementById('sidebarStaminaValue');
+    const moraleValue = document.getElementById('sidebarMoraleValue');
+    
+    // If any elements are missing, try to update via the status component
+    if (!healthBar || !staminaBar || !moraleBar || 
+        !healthValue || !staminaValue || !moraleValue) {
+      // Defer to status component if available
+      if (this.system && this.system.components && this.system.components.status) {
+        this.system.components.status.update(window.gameState);
       }
-      
-      // Update stamina bar
-      if (staminaBar && staminaValue) {
-        staminaBar.style.width = `${(window.gameState.stamina / window.gameState.maxStamina) * 100}%`;
-        staminaValue.textContent = `${Math.round(window.gameState.stamina)}/${window.gameState.maxStamina}`;
-      }
-      
-      // Update morale bar
-      if (moraleBar && moraleValue) {
-        moraleBar.style.width = `${window.gameState.morale}%`;
-        moraleValue.textContent = `${Math.round(window.gameState.morale)}/100`;
-      }
+      return;
     }
+    
+    // Update health bar
+    const healthPercent = (window.gameState.health / window.gameState.maxHealth) * 100;
+    healthBar.style.width = `${healthPercent}%`;
+    healthValue.textContent = `${Math.round(window.gameState.health)}/${window.gameState.maxHealth}`;
+    
+    // Update stamina bar
+    const staminaPercent = (window.gameState.stamina / window.gameState.maxStamina) * 100;
+    staminaBar.style.width = `${staminaPercent}%`;
+    staminaValue.textContent = `${Math.round(window.gameState.stamina)}/${window.gameState.maxStamina}`;
+    
+    // Update morale bar
+    const moralePercent = window.gameState.morale;
+    moraleBar.style.width = `${moralePercent}%`;
+    moraleValue.textContent = `${Math.round(window.gameState.morale)}/100`;
+  }
   
   /**
    * Set up event listeners for sidebar interactions
@@ -380,18 +297,20 @@ class SidebarLayout extends Component {
     if (this.sidebar) {
       const navButtons = this.sidebar.querySelectorAll('.sidebar-nav-button');
       navButtons.forEach(button => {
-        // Remove existing click listeners
-        const newButton = button.cloneNode(true);
-        button.parentNode.replaceChild(newButton, button);
-        
-        // Add new click handler
-        newButton.addEventListener('click', (e) => {
+        // Use event delegation instead of replacing elements
+        button.addEventListener('click', (e) => {
           e.preventDefault();
-          const action = newButton.getAttribute('data-action');
+          const action = button.getAttribute('data-action');
           
+          // Handle actions based on type
           if (action === 'profile' || action === 'inventory' || action === 'questLog') {
-            // Use panel system to open the corresponding panel
-            this.system.eventBus.publish('openPanel', { panel: action });
+            // Use panel system if available
+            if (this.system && this.system.eventBus) {
+              this.system.eventBus.publish('panel:toggle', { id: action });
+            } else if (typeof window[`handle${action.charAt(0).toUpperCase() + action.slice(1)}`] === 'function') {
+              // Fallback to legacy functions
+              window[`handle${action.charAt(0).toUpperCase() + action.slice(1)}`]();
+            }
           } else if (typeof window.handleAction === 'function') {
             // Use action system for other actions
             window.handleAction(action);
@@ -405,15 +324,10 @@ class SidebarLayout extends Component {
       });
     }
     
-    // Set up sidebar toggle if it exists
+    // Set up sidebar toggle for mobile
     const sidebarToggle = document.querySelector('.sidebar-toggle');
     if (sidebarToggle) {
-      // Remove existing listeners
-      const newToggle = sidebarToggle.cloneNode(true);
-      sidebarToggle.parentNode.replaceChild(newToggle, sidebarToggle);
-      
-      // Add new click handler
-      newToggle.addEventListener('click', () => {
+      sidebarToggle.addEventListener('click', () => {
         this.toggleMobileSidebar();
       });
     }
@@ -718,54 +632,59 @@ class SidebarLayout extends Component {
     
     // Add to document head
     document.head.appendChild(style);
-    console.log("Added layout styles");
+    console.log("SidebarLayout: Added layout styles");
   }
   
   /**
    * Set up event subscriptions
    */
   setupEventSubscriptions() {
+    if (!this.system || !this.system.eventBus) return;
+    
     // Subscribe to status bar update events
-    this.system.eventBus.subscribe('updateStatusBars', () => {
+    this.system.eventBus.subscribe('status:update', (data) => {
       this.updateStatusBars();
     });
     
     // Subscribe to player update events
-    this.system.eventBus.subscribe('playerUpdated', () => {
+    this.system.eventBus.subscribe('player:updated', (data) => {
       this.updateSidebar();
     });
     
     // Subscribe to game start event
-    this.system.eventBus.subscribe('gameStarted', () => {
+    this.system.eventBus.subscribe('game:started', (data) => {
       this.updateSidebar();
     });
   }
   
-
+  /**
+   * Update the sidebar content with player data
+   */
   updateSidebar() {
     // Only update if sidebar exists
     if (!this.sidebar) return;
     
     // Update character summary
-    if (window.player && window.player.name) {
+    if (window.player) {
       const nameElem = this.sidebar.querySelector('.character-name');
       const detailsElem = this.sidebar.querySelector('.character-details');
       
-      if (nameElem) {
+      if (nameElem && window.player.name) {
         nameElem.textContent = window.player.name;
       }
       
       if (detailsElem) {
-        detailsElem.textContent = `${window.player.origin || ''} ${window.player.career ? window.player.career.title || '' : ''}`;
+        const origin = window.player.origin || '';
+        const career = window.player.career ? window.player.career.title || '' : '';
+        detailsElem.textContent = `${origin} ${career}`;
       }
     }
     
     // Update status bars
     this.updateStatusBars();
     
-    console.log("Sidebar content updated");
+    console.log("SidebarLayout: Sidebar content updated");
   }
-
 
   /**
    * Update method called by the UI system
@@ -773,10 +692,13 @@ class SidebarLayout extends Component {
   update(data) {
     // Update status bars
     this.updateStatusBars();
+    
+    // Update sidebar content if player data is included
+    if (data && data.player) {
+      this.updateSidebar();
+    }
   }
 }
 
 // Export the component
-window.SidebarLayout = SidebarLayout;
-
 window.SidebarLayout = SidebarLayout;

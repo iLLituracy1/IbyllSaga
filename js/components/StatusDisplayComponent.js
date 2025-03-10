@@ -39,10 +39,91 @@ class StatusDisplayComponent extends Component {
   }
   
   /**
+   * Initialize the component
+   */
+  initialize() {
+    // Call parent initialize
+    super.initialize();
+    
+    // Wait for sidebar layout to be initialized
+    if (this.system && this.system.components && this.system.components.sidebar) {
+      // No need to wait for sidebar specifically - we'll just proceed
+    } else {
+      console.log("StatusDisplayComponent: Sidebar component not found, proceeding anyway");
+    }
+    
+    // Find or create the status display element
+    this.element = document.getElementById(this.id);
+    if (!this.element) {
+      this.createRootElement();
+    }
+    
+    // Get references to bar elements
+    this.findBarElements();
+    
+    // Subscribe to game state updates
+    if (this.system && this.system.eventBus) {
+      this.system.eventBus.subscribe('gameState:updated', this.update.bind(this));
+      this.system.eventBus.subscribe('status:update', this.update.bind(this));
+    }
+    
+    // Perform initial render with current game state
+    if (window.gameState) {
+      this.update(window.gameState);
+    } else {
+      this.render();
+    }
+    
+    this.log('Status display component initialized');
+    return true;
+  }
+  
+  /**
+   * Find bar and value elements by ID
+   */
+  findBarElements() {
+    // Find bar elements
+    this.bars.health = document.getElementById(`${this.id}-health-bar`) || 
+                       document.getElementById('sidebarHealthBar');
+    this.bars.stamina = document.getElementById(`${this.id}-stamina-bar`) || 
+                        document.getElementById('sidebarStaminaBar');
+    this.bars.morale = document.getElementById(`${this.id}-morale-bar`) || 
+                      document.getElementById('sidebarMoraleBar');
+    
+    // Find value elements
+    this.values.health = document.getElementById(`${this.id}-health-value`) || 
+                        document.getElementById('sidebarHealthValue');
+    this.values.stamina = document.getElementById(`${this.id}-stamina-value`) || 
+                          document.getElementById('sidebarStaminaValue');
+    this.values.morale = document.getElementById(`${this.id}-morale-value`) ||
+                        document.getElementById('sidebarMoraleValue');
+    
+    // Log elements found
+    const foundHealth = this.bars.health && this.values.health;
+    const foundStamina = this.bars.stamina && this.values.stamina;
+    const foundMorale = this.bars.morale && this.values.morale;
+    
+    this.log(`StatusDisplayComponent: Health elements found: ${foundHealth}`);
+    this.log(`StatusDisplayComponent: Stamina elements found: ${foundStamina}`);
+    this.log(`StatusDisplayComponent: Morale elements found: ${foundMorale}`);
+    
+    // Return true if all elements found
+    return foundHealth && foundStamina && foundMorale;
+  }
+  
+  /**
    * Create the root element for this component
    */
   createRootElement() {
     this.log('Creating status display element');
+    
+    // First check if sidebar already has status bars we can use
+    const sidebarBars = document.querySelectorAll('.quick-status .status-bar');
+    if (sidebarBars.length >= 3) {
+      this.log('Using existing sidebar status bars');
+      // We don't need to create elements, we'll use the sidebar ones
+      return;
+    }
     
     // Create root element
     const element = document.createElement('div');
@@ -75,112 +156,26 @@ class StatusDisplayComponent extends Component {
     `;
     
     // Find where to insert the element
-    let parentElement = document.getElementById('gameContainer');
-    let narrativeElement = document.getElementById('narrative');
+    const gameContainer = document.getElementById('gameContainer');
+    const mainContent = document.querySelector('.game-main');
+    const narrativeContainer = document.querySelector('.narrative-container');
     
-    // Insert before narrative if both elements exist
-    if (parentElement && narrativeElement && narrativeElement.parentNode === parentElement) {
-      parentElement.insertBefore(element, narrativeElement);
-    } 
-    // Fallback: append to game container
-    else if (parentElement) {
-      parentElement.appendChild(element);
-    } 
-    // Last resort: append to body
-    else {
+    // Choose insertion point based on what exists
+    if (narrativeContainer) {
+      narrativeContainer.insertBefore(element, narrativeContainer.firstChild);
+    } else if (mainContent) {
+      mainContent.insertBefore(element, mainContent.firstChild);
+    } else if (gameContainer) {
+      gameContainer.appendChild(element);
+    } else {
       document.body.appendChild(element);
+      this.log('Could not find appropriate parent, appended to body');
     }
     
     // Store reference to the element
     this.element = element;
-  }
-  
-  /**
-   * Initialize the component
-   */
-  initialize() {
-    // Call parent initialize
-    super.initialize();
     
-    if (!this.element) {
-      console.error('Failed to initialize status display');
-      // Try to create the root element as a recovery step
-      this.createRootElement();
-      
-      if (!this.element) {
-        return false;
-      }
-    }
-    
-    // Get references to bar elements
-    this.bars.health = document.getElementById(`${this.id}-health-bar`);
-    this.bars.stamina = document.getElementById(`${this.id}-stamina-bar`);
-    this.bars.morale = document.getElementById(`${this.id}-morale-bar`);
-    
-    // Get references to value display elements
-    this.values.health = document.getElementById(`${this.id}-health-value`);
-    this.values.stamina = document.getElementById(`${this.id}-stamina-value`);
-    this.values.morale = document.getElementById(`${this.id}-morale-value`);
-    
-    // Create missing elements instead of failing
-    let elementsCreated = false;
-    
-    // Create bar elements if they don't exist
-    if (!this.bars.health) {
-      this.bars.health = document.createElement('div');
-      this.bars.health.id = `${this.id}-health-bar`;
-      this.bars.health.className = 'status-bar health-bar';
-      this.element.appendChild(this.bars.health);
-      elementsCreated = true;
-    }
-    
-    if (!this.bars.stamina) {
-      this.bars.stamina = document.createElement('div');
-      this.bars.stamina.id = `${this.id}-stamina-bar`;
-      this.bars.stamina.className = 'status-bar stamina-bar';
-      this.element.appendChild(this.bars.stamina);
-      elementsCreated = true;
-    }
-    
-    if (!this.bars.morale) {
-      this.bars.morale = document.createElement('div');
-      this.bars.morale.id = `${this.id}-morale-bar`;
-      this.bars.morale.className = 'status-bar morale-bar';
-      this.element.appendChild(this.bars.morale);
-      elementsCreated = true;
-    }
-    
-    // Create value elements if they don't exist
-    if (!this.values.health) {
-      this.values.health = document.createElement('div');
-      this.values.health.id = `${this.id}-health-value`;
-      this.values.health.className = 'status-value health-value';
-      this.element.appendChild(this.values.health);
-      elementsCreated = true;
-    }
-    
-    if (!this.values.stamina) {
-      this.values.stamina = document.createElement('div');
-      this.values.stamina.id = `${this.id}-stamina-value`;
-      this.values.stamina.className = 'status-value stamina-value';
-      this.element.appendChild(this.values.stamina);
-      elementsCreated = true;
-    }
-    
-    if (!this.values.morale) {
-      this.values.morale = document.createElement('div');
-      this.values.morale.id = `${this.id}-morale-value`;
-      this.values.morale.className = 'status-value morale-value';
-      this.element.appendChild(this.values.morale);
-      elementsCreated = true;
-    }
-    
-    if (elementsCreated) {
-      console.log('Created missing status elements');
-    }
-    
-    this.log('Status display initialized');
-    return true;
+    this.log('Status display element created');
   }
   
   /**
@@ -192,10 +187,13 @@ class StatusDisplayComponent extends Component {
     const filteredData = this.filterData(data);
     
     // Update component state
-    super.update(filteredData);
+    Object.assign(this.state, filteredData);
     
     // Render the updated state
     this.render();
+    
+    // Create sidebar status if necessary
+    this.syncWithSidebar();
   }
   
   /**
@@ -223,7 +221,7 @@ class StatusDisplayComponent extends Component {
       stamina: this.getGameState('stamina', this.state.stamina),
       maxStamina: this.getGameState('maxStamina', this.state.maxStamina),
       morale: this.getGameState('morale', this.state.morale),
-      maxMorale: 100 // Morale is always out of 100
+      maxMorale: this.getGameState('maxMorale', this.state.maxMorale)
     };
   }
   
@@ -233,134 +231,48 @@ class StatusDisplayComponent extends Component {
   render() {
     this.log('Rendering status bars');
     
-    // Check if bars are available
-    if (!this.bars.health || !this.bars.stamina || !this.bars.morale) {
-      console.log('Creating missing status bars...');
-      
-      // Try to initialize them now as a recovery measure
-      if (!this.element) {
-        this.createRootElement();
-      }
-      
-      // Create status bars if they don't exist
-      if (this.element) {
-        // Create bars if they don't exist
-        if (!this.bars.health) {
-          this.bars.health = document.createElement('div');
-          this.bars.health.id = `${this.id}-health-bar`;
-          this.bars.health.className = 'status-bar health-bar';
-          this.element.appendChild(this.bars.health);
-        }
-        
-        if (!this.bars.stamina) {
-          this.bars.stamina = document.createElement('div');
-          this.bars.stamina.id = `${this.id}-stamina-bar`;
-          this.bars.stamina.className = 'status-bar stamina-bar';
-          this.element.appendChild(this.bars.stamina);
-        }
-        
-        if (!this.bars.morale) {
-          this.bars.morale = document.createElement('div');
-          this.bars.morale.id = `${this.id}-morale-bar`;
-          this.bars.morale.className = 'status-bar morale-bar';
-          this.element.appendChild(this.bars.morale);
-        }
-        console.log('Status bars created successfully');
-      } else {
-        console.error('Cannot create status bars: root element is missing');
-        return;
-      }
-    }
-    
-    // Check if value displays are available
-    if (!this.values.health || !this.values.stamina || !this.values.morale) {
-      console.log('Creating missing status value displays...');
-      
-      // Create value displays if they don't exist
-      if (this.element) {
-        if (!this.values.health) {
-          this.values.health = document.createElement('div');
-          this.values.health.id = `${this.id}-health-value`;
-          this.values.health.className = 'status-value health-value';
-          this.element.appendChild(this.values.health);
-        }
-        
-        if (!this.values.stamina) {
-          this.values.stamina = document.createElement('div');
-          this.values.stamina.id = `${this.id}-stamina-value`;
-          this.values.stamina.className = 'status-value stamina-value';
-          this.element.appendChild(this.values.stamina);
-        }
-        
-        if (!this.values.morale) {
-          this.values.morale = document.createElement('div');
-          this.values.morale.id = `${this.id}-morale-value`;
-          this.values.morale.className = 'status-value morale-value';
-          this.element.appendChild(this.values.morale);
-        }
-        console.log('Status value displays created successfully');
-      } else {
-        console.error('Cannot create status value displays: root element is missing');
-        return;
-      }
+    // Re-attempt to find elements if they're not available
+    if (!this.bars.health || !this.bars.stamina || !this.bars.morale ||
+        !this.values.health || !this.values.stamina || !this.values.morale) {
+      this.findBarElements();
     }
     
     try {
-      // Update health bar
-      const healthPercent = (this.state.health / this.state.maxHealth) * 100;
-      if (this.bars.health) {
+      // Update health bar if elements exist
+      if (this.bars.health && this.values.health) {
+        const healthPercent = (this.state.health / this.state.maxHealth) * 100;
         this.bars.health.style.width = `${healthPercent}%`;
-      }
-      if (this.values.health) {
         this.values.health.textContent = `${Math.round(this.state.health)}/${this.state.maxHealth}`;
+        this.updateBarColor(this.bars.health, healthPercent/100, [
+          { threshold: 0.25, className: 'critical' },
+          { threshold: 0.5, className: 'warning' }
+        ]);
       }
       
-      // Update stamina bar
-      const staminaPercent = (this.state.stamina / this.state.maxStamina) * 100;
-      if (this.bars.stamina) {
+      // Update stamina bar if elements exist
+      if (this.bars.stamina && this.values.stamina) {
+        const staminaPercent = (this.state.stamina / this.state.maxStamina) * 100;
         this.bars.stamina.style.width = `${staminaPercent}%`;
-      }
-      if (this.values.stamina) {
         this.values.stamina.textContent = `${Math.round(this.state.stamina)}/${this.state.maxStamina}`;
+        this.updateBarColor(this.bars.stamina, staminaPercent/100, [
+          { threshold: 0.25, className: 'critical' },
+          { threshold: 0.5, className: 'warning' }
+        ]);
       }
       
-      // Update morale bar
-      const moralePercent = (this.state.morale / this.state.maxMorale) * 100;
-      if (this.bars.morale) {
+      // Update morale bar if elements exist
+      if (this.bars.morale && this.values.morale) {
+        const moralePercent = (this.state.morale / this.state.maxMorale) * 100;
         this.bars.morale.style.width = `${moralePercent}%`;
-      }
-      if (this.values.morale) {
         this.values.morale.textContent = `${Math.round(this.state.morale)}/100`;
+        this.updateBarColor(this.bars.morale, moralePercent/100, [
+          { threshold: 0.25, className: 'critical' },
+          { threshold: 0.5, className: 'warning' }
+        ]);
       }
-      
-      // Add color classes based on percentages
-      this.updateBarColors();
     } catch (error) {
       console.error('Error rendering status bars:', error);
     }
-  }
-  
-  /**
-   * Update bar colors based on current values
-   */
-  updateBarColors() {
-    // Health bar colors
-    this.updateBarColor(this.bars.health, this.state.health / this.state.maxHealth, [
-      { threshold: 0.25, className: 'critical' },
-      { threshold: 0.5, className: 'warning' }
-    ]);
-    
-    // Stamina bar colors
-    this.updateBarColor(this.bars.stamina, this.state.stamina / this.state.maxStamina, [
-      { threshold: 0.25, className: 'critical' },
-      { threshold: 0.5, className: 'warning' }
-    ]);
-    
-    // Morale bar colors
-    this.updateBarColor(this.bars.morale, this.state.morale / this.state.maxMorale, [
-      { threshold: 0.25, className: 'critical' },
-      { threshold: 0.5, className: 'warning' }
-    ]);
   }
   
   /**
@@ -383,87 +295,56 @@ class StatusDisplayComponent extends Component {
   }
   
   /**
-   * Create a secondary status display for the sidebar
-   * @param {string} containerId - ID of the container element
-   * @returns {boolean} - Success status
+   * Sync status with sidebar display
    */
-  createSidebarDisplay(containerId = 'game-sidebar') {
-    this.log('Creating sidebar status display');
-    
-    // Find the container
-    const container = document.getElementById(containerId);
-    if (!container) {
-      console.error(`Sidebar container not found: ${containerId}`);
-      return false;
-    }
-    
-    // Create the sidebar status display
-    const sidebarStatus = document.createElement('div');
-    sidebarStatus.className = 'quick-status';
-    sidebarStatus.innerHTML = `
-      <div class="status-bar">
-        <div class="status-label">Health</div>
-        <div class="bar-container">
-          <div id="sidebarHealthBar" class="bar health-bar" style="width: ${(this.state.health / this.state.maxHealth) * 100}%;"></div>
-        </div>
-        <div id="sidebarHealthValue" class="bar-value">${Math.round(this.state.health)}/${this.state.maxHealth}</div>
-      </div>
-      <div class="status-bar">
-        <div class="status-label">Stamina</div>
-        <div class="bar-container">
-          <div id="sidebarStaminaBar" class="bar stamina-bar" style="width: ${(this.state.stamina / this.state.maxStamina) * 100}%;"></div>
-        </div>
-        <div id="sidebarStaminaValue" class="bar-value">${Math.round(this.state.stamina)}/${this.state.maxStamina}</div>
-      </div>
-      <div class="status-bar">
-        <div class="status-label">Morale</div>
-        <div class="bar-container">
-          <div id="sidebarMoraleBar" class="bar morale-bar" style="width: ${this.state.morale}%;"></div>
-        </div>
-        <div id="sidebarMoraleValue" class="bar-value">${Math.round(this.state.morale)}/100</div>
-      </div>
-    `;
-    
-    // Find insertion point - after character-summary if it exists, or as first child
-    const characterSummary = container.querySelector('.character-summary');
-    if (characterSummary) {
-      characterSummary.after(sidebarStatus);
-    } else {
-      container.prepend(sidebarStatus);
-    }
-    
-    this.log('Sidebar status display created');
-    return true;
-  }
-  
-  /**
-   * Update the sidebar status display
-   */
-  updateSidebarDisplay() {
+  syncWithSidebar() {
+    // Update sidebar display if our elements are different from sidebar elements
     const sidebarHealthBar = document.getElementById('sidebarHealthBar');
     const sidebarStaminaBar = document.getElementById('sidebarStaminaBar');
     const sidebarMoraleBar = document.getElementById('sidebarMoraleBar');
     
-    const sidebarHealthValue = document.getElementById('sidebarHealthValue');
-    const sidebarStaminaValue = document.getElementById('sidebarStaminaValue');
-    const sidebarMoraleValue = document.getElementById('sidebarMoraleValue');
-    
-    // Update if elements exist
-    if (sidebarHealthBar && sidebarHealthValue) {
-      sidebarHealthBar.style.width = `${(this.state.health / this.state.maxHealth) * 100}%`;
-      sidebarHealthValue.textContent = `${Math.round(this.state.health)}/${this.state.maxHealth}`;
+    // Only sync if sidebar elements exist and are different from our elements
+    if (sidebarHealthBar && sidebarHealthBar !== this.bars.health) {
+      const healthPercent = (this.state.health / this.state.maxHealth) * 100;
+      sidebarHealthBar.style.width = `${healthPercent}%`;
+      
+      const sidebarHealthValue = document.getElementById('sidebarHealthValue');
+      if (sidebarHealthValue) {
+        sidebarHealthValue.textContent = `${Math.round(this.state.health)}/${this.state.maxHealth}`;
+      }
     }
     
-    if (sidebarStaminaBar && sidebarStaminaValue) {
-      sidebarStaminaBar.style.width = `${(this.state.stamina / this.state.maxStamina) * 100}%`;
-      sidebarStaminaValue.textContent = `${Math.round(this.state.stamina)}/${this.state.maxStamina}`;
+    if (sidebarStaminaBar && sidebarStaminaBar !== this.bars.stamina) {
+      const staminaPercent = (this.state.stamina / this.state.maxStamina) * 100;
+      sidebarStaminaBar.style.width = `${staminaPercent}%`;
+      
+      const sidebarStaminaValue = document.getElementById('sidebarStaminaValue');
+      if (sidebarStaminaValue) {
+        sidebarStaminaValue.textContent = `${Math.round(this.state.stamina)}/${this.state.maxStamina}`;
+      }
     }
     
-    if (sidebarMoraleBar && sidebarMoraleValue) {
-      sidebarMoraleBar.style.width = `${this.state.morale}%`;
-      sidebarMoraleValue.textContent = `${Math.round(this.state.morale)}/100`;
+    if (sidebarMoraleBar && sidebarMoraleBar !== this.bars.morale) {
+      const moralePercent = (this.state.morale / this.state.maxMorale) * 100;
+      sidebarMoraleBar.style.width = `${moralePercent}%`;
+      
+      const sidebarMoraleValue = document.getElementById('sidebarMoraleValue');
+      if (sidebarMoraleValue) {
+        sidebarMoraleValue.textContent = `${Math.round(this.state.morale)}/100`;
+      }
     }
+  }
+  
+  /**
+   * Get a value from game state safely
+   * @param {string} key - The key to get from game state
+   * @param {*} defaultValue - Default value if not found
+   */
+  getGameState(key, defaultValue) {
+    if (!window.gameState) return defaultValue;
+    return window.gameState[key] !== undefined ? window.gameState[key] : defaultValue;
   }
 }
 
+// Export the component for use in other modules
 window.StatusDisplayComponent = StatusDisplayComponent;
