@@ -1,5 +1,5 @@
-// ComponentLoader.js - A new module to handle proper component initialization
-// This replaces the initialization logic in Initialize.js and UISystem.js
+// Enhanced ComponentLoader.js - Fixes component registration and initialization issues
+// This fixes duplicate registrations and ensures proper dependency resolution
 
 class ComponentLoader {
   constructor() {
@@ -7,6 +7,7 @@ class ComponentLoader {
     this.registeredComponents = new Map(); // Map component name to instance
     this.dependencyGraph = new Map(); // Map component name to its dependencies
     this.initialized = new Set(); // Set of initialized components
+    this.aliasMap = new Map(); // Map alias names to canonical names
     this.createdDOMElements = new Set(); // Track created DOM elements to prevent duplication
     this.debug = true;
   }
@@ -16,8 +17,16 @@ class ComponentLoader {
    * @param {string} name - Component name
    * @param {object} component - Component instance
    * @param {Array} dependencies - Array of component names this component depends on
+   * @param {Array} aliases - Optional aliases for this component
+   * @returns {boolean} - Success status
    */
-  registerComponent(name, component, dependencies = []) {
+  registerComponent(name, component, dependencies = [], aliases = []) {
+    // Skip if already registered with same instance
+    if (this.registeredComponents.has(name) && this.registeredComponents.get(name) === component) {
+      this.log(`Component ${name} already registered with same instance`);
+      return true;
+    }
+
     this.log(`Registering component: ${name}`);
     
     // Store component instance
@@ -25,6 +34,12 @@ class ComponentLoader {
     
     // Store component dependencies
     this.dependencyGraph.set(name, dependencies);
+    
+    // Register aliases
+    aliases.forEach(alias => {
+      this.aliasMap.set(alias, name);
+      this.log(`Registered alias: ${alias} → ${name}`);
+    });
     
     // Set system reference on component
     if (component && typeof component.setSystem === 'function') {
@@ -36,6 +51,7 @@ class ComponentLoader {
 
   /**
    * Initialize all components in dependency order
+   * @returns {number} - Number of initialized components
    */
   initializeComponents() {
     this.log('Initializing components in dependency order');
@@ -66,13 +82,21 @@ class ComponentLoader {
             pending.delete(componentName);
             progress = true;
             
-            // Register with UI system
+            // Register with UI system - IMPORTANT: we register AFTER successful initialization
             const component = this.registeredComponents.get(componentName);
             if (window.UI && window.UI.system && component) {
               window.UI.system.registerComponent(componentName, component);
+              
+              // Also register any aliases
+              this.aliasMap.forEach((canonical, alias) => {
+                if (canonical === componentName) {
+                  window.UI.system.registerComponent(alias, component);
+                  this.log(`Registered component alias with UI system: ${alias} → ${componentName}`);
+                }
+              });
             }
           } else {
-            this.log(`Failed to initialize component: ${componentName}`, 'error');
+            this.log(`Failed to initialize component: ${componentName}`, 'warn');
           }
         }
       }
@@ -91,9 +115,6 @@ class ComponentLoader {
     
     this.log(`Completed initialization of ${this.initialized.size} components`);
     
-    // Set up legacy function bridges after all components are initialized
-    this.setupLegacyBridges();
-    
     return this.initialized.size;
   }
 
@@ -106,7 +127,11 @@ class ComponentLoader {
     const dependencies = this.dependencyGraph.get(componentName) || [];
     
     // Component can be initialized if all dependencies are already initialized
-    return dependencies.every(dep => this.initialized.has(dep));
+    return dependencies.every(dep => {
+      // If dependency is an alias, get the canonical name
+      const canonicalDep = this.aliasMap.get(dep) || dep;
+      return this.initialized.has(canonicalDep);
+    });
   }
 
   /**
@@ -169,14 +194,10 @@ class ComponentLoader {
    * @param {object} component - Component instance
    */
   ensureDOMElements(componentName, component) {
-    // For sidebar layout, make sure critical DOM structure exists
+    // Only the SidebarLayout should be creating the game structure
+    // Other components should wait for it
     if (componentName === 'sidebarLayout') {
       this.ensureSidebarDOMStructure(component);
-    }
-    
-    // For core component, ensure game container exists
-    if (componentName === 'core') {
-      this.ensureGameContainer();
     }
   }
 
@@ -191,7 +212,11 @@ class ComponentLoader {
     }
     
     // Get or create game container
-    const gameContainer = this.ensureGameContainer();
+    const gameContainer = document.getElementById('gameContainer');
+    if (!gameContainer) {
+      this.log('Game container not found, cannot ensure sidebar structure', 'error');
+      return;
+    }
     
     // Look for existing sidebar and main content
     const existingSidebar = gameContainer.querySelector('.game-sidebar');
@@ -201,117 +226,19 @@ class ComponentLoader {
     if (existingSidebar && existingMain) {
       this.log('Sidebar structure already exists');
       this.createdDOMElements.add('sidebarStructure');
+      
+      // Set references on component if it has properties for them
+      if (sidebarComponent) {
+        if (sidebarComponent.sidebar === undefined) sidebarComponent.sidebar = existingSidebar;
+        if (sidebarComponent.mainContent === undefined) sidebarComponent.mainContent = existingMain;
+      }
+      
       return;
     }
     
-    // Get or create header
-    let header = gameContainer.querySelector('header');
-    if (!header) {
-      header = document.createElement('header');
-      header.innerHTML = `
-        <h1>Kasvaari Camp</h1>
-        <div id="location">Location: Kasvaari Camp, Western Hierarchate</div>
-        <div class="time-display-container">
-          <div id="dayNightIndicator" class="day-night-indicator"></div>
-          <div class="time-info">
-            <div id="timeDisplay">Time: 8:00 AM</div>
-            <div id="dayDisplay">Day 1</div>
-          </div>
-        </div>
-      `;
-      gameContainer.appendChild(header);
-    }
-    
-    // Create sidebar if needed
-    let sidebar = existingSidebar;
-    if (!sidebar) {
-      sidebar = document.createElement('div');
-      sidebar.className = 'game-sidebar';
-      gameContainer.appendChild(sidebar);
-    }
-    
-    // Create main content if needed
-    let mainContent = existingMain;
-    if (!mainContent) {
-      mainContent = document.createElement('div');
-      mainContent.className = 'game-main';
-      gameContainer.appendChild(mainContent);
-    }
-    
-    // Create narrative container in main content
-    let narrativeContainer = mainContent.querySelector('.narrative-container');
-    if (!narrativeContainer) {
-      narrativeContainer = document.createElement('div');
-      narrativeContainer.className = 'narrative-container';
-      mainContent.appendChild(narrativeContainer);
-    }
-    
-    // Create narrative element if needed
-    let narrative = narrativeContainer.querySelector('#narrative');
-    if (!narrative) {
-      narrative = document.createElement('div');
-      narrative.id = 'narrative';
-      narrative.className = 'narrative';
-      narrativeContainer.appendChild(narrative);
-    }
-    
-    // Create actions container if needed
-    let actionsContainer = narrativeContainer.querySelector('.actions-container');
-    if (!actionsContainer) {
-      actionsContainer = document.createElement('div');
-      actionsContainer.className = 'actions-container';
-      narrativeContainer.appendChild(actionsContainer);
-    }
-    
-    // Create actions element if needed
-    let actions = actionsContainer.querySelector('#actions');
-    if (!actions) {
-      actions = document.createElement('div');
-      actions.id = 'actions';
-      actionsContainer.appendChild(actions);
-    }
-    
-    // Add mobile sidebar toggle if needed
-    if (!gameContainer.querySelector('.sidebar-toggle')) {
-      const sidebarToggle = document.createElement('div');
-      sidebarToggle.className = 'sidebar-toggle';
-      sidebarToggle.textContent = '☰';
-      gameContainer.appendChild(sidebarToggle);
-    }
-    
-    this.log('Created sidebar structure');
-    this.createdDOMElements.add('sidebarStructure');
-    
-    // If sidebar component has properties to store these elements, set them
-    if (sidebarComponent) {
-      if (sidebarComponent.sidebar === undefined) sidebarComponent.sidebar = sidebar;
-      if (sidebarComponent.mainContent === undefined) sidebarComponent.mainContent = mainContent;
-    }
-  }
-
-  /**
-   * Ensure game container exists
-   * @returns {HTMLElement} - The game container
-   */
-  ensureGameContainer() {
-    // Check if we already ensured this
-    if (this.createdDOMElements.has('gameContainer')) {
-      return document.getElementById('gameContainer');
-    }
-    
-    // Get or create game container
-    let gameContainer = document.getElementById('gameContainer');
-    if (!gameContainer) {
-      gameContainer = document.createElement('div');
-      gameContainer.id = 'gameContainer';
-      document.body.appendChild(gameContainer);
-    }
-    
-    // Make sure it's visible
-    gameContainer.classList.remove('hidden');
-    
-    this.createdDOMElements.add('gameContainer');
-    return gameContainer;
+    // We won't create the structure here - we'll let the SidebarLayout component do it
+    // We'll just make a note that we've checked
+    this.log('SidebarLayout will create the structure during initialization');
   }
 
   /**
@@ -329,12 +256,15 @@ class ComponentLoader {
       const dependencies = this.dependencyGraph.get(node) || [];
       
       for (const dep of dependencies) {
-        if (!visited.has(dep)) {
-          if (detectCycle(dep)) {
+        // If dependency is an alias, get the canonical name
+        const canonicalDep = this.aliasMap.get(dep) || dep;
+        
+        if (!visited.has(canonicalDep)) {
+          if (detectCycle(canonicalDep)) {
             return true;
           }
-        } else if (recursionStack.has(dep)) {
-          this.log(`Circular dependency detected: ${node} -> ${dep}`, 'error');
+        } else if (recursionStack.has(canonicalDep)) {
+          this.log(`Circular dependency detected: ${node} → ${dep}`, 'error');
           return true;
         }
       }
@@ -381,43 +311,6 @@ class ComponentLoader {
         this.log(`Error force initializing component ${componentName}: ${error}`, 'error');
       }
     }
-  }
-
-  /**
-   * Set up legacy function bridges for backwards compatibility
-   */
-  setupLegacyBridges() {
-    this.log('Setting up legacy function bridges');
-    
-    // Store original functions
-    const originals = {
-      updateStatusBars: window.updateStatusBars,
-      setNarrative: window.setNarrative,
-      addToNarrative: window.addToNarrative,
-      handleAction: window.handleAction,
-      updateTimeAndDay: window.updateTimeAndDay
-    };
-    
-    // Bridge for status bars update
-    if (typeof window.updateStatusBars === 'function') {
-      window.updateStatusBars = (data) => {
-        try {
-          // Try new system first
-          if (window.UI && window.UI.system && window.UI.system.components.status) {
-            window.UI.system.components.status.update(data || window.gameState);
-            return;
-          }
-        } catch (error) {
-          console.error('Error in new updateStatusBars, using original:', error);
-          if (typeof originals.updateStatusBars === 'function') {
-            originals.updateStatusBars(data);
-          }
-        }
-      };
-    }
-    
-    // Other bridges would be similar to above pattern
-    // ...
   }
 
   /**

@@ -1,5 +1,5 @@
-// SidebarLayoutComponent.js
-// Handles the sidebar layout integration for the game UI
+// SidebarLayoutComponent.js - Fixed to reliably create the base DOM structure
+// This component should run before others that depend on the DOM structure
 
 class SidebarLayout extends Component {
   constructor() {
@@ -10,12 +10,14 @@ class SidebarLayout extends Component {
       sidebarVisible: true,
       mobileSidebarOpen: false,
       mobile: false,
-      breakpoint: 768, // Mobile breakpoint in pixels
+      breakpoint: 768, // Mobile breakpoint in pixels,
+      domStructureCreated: false
     };
     
     // DOM element references
     this.sidebar = null;
     this.mainContent = null;
+    this.narrativeContainer = null;
   }
   
   initialize() {
@@ -26,6 +28,9 @@ class SidebarLayout extends Component {
     
     // Create layout structure first - this is critical for other components
     this.createLayoutStructure();
+    
+    // Add layout styles
+    this.addLayoutStyles();
     
     // Update with player data
     this.updateSidebar();
@@ -39,19 +44,25 @@ class SidebarLayout extends Component {
     // Subscribe to events
     this.setupEventSubscriptions();
     
-    // Add layout styles
-    this.addLayoutStyles();
-    
     // Mark as initialized
     this.state.initialized = true;
+    this.state.domStructureCreated = true;
     
     console.log("SidebarLayout: Initialized");
     
-    // Publish initialization event
+    // Publish initialization event with element references
     if (this.system && this.system.eventBus) {
       this.system.eventBus.publish('sidebar:initialized', {
         sidebar: this.sidebar,
-        mainContent: this.mainContent
+        mainContent: this.mainContent,
+        narrativeContainer: this.narrativeContainer
+      });
+      
+      // Also publish a DOM ready event that other components can listen for
+      this.system.eventBus.publish('dom:structure:ready', {
+        sidebar: this.sidebar,
+        mainContent: this.mainContent,
+        narrativeContainer: this.narrativeContainer
       });
     }
     
@@ -60,6 +71,7 @@ class SidebarLayout extends Component {
   
   /**
    * Create the layout structure with sidebar and main content
+   * This is the most critical function as other components depend on this structure
    */
   createLayoutStructure() {
     console.log("SidebarLayout: Creating layout structure");
@@ -79,7 +91,12 @@ class SidebarLayout extends Component {
     if (existingSidebar && existingMain) {
       this.sidebar = existingSidebar;
       this.mainContent = existingMain;
+      
+      // Find narrative container
+      this.narrativeContainer = existingMain.querySelector('.narrative-container');
+      
       console.log("SidebarLayout: Using existing sidebar and main content");
+      this.state.domStructureCreated = true;
       return true;
     }
     
@@ -119,9 +136,9 @@ class SidebarLayout extends Component {
     this.createSidebarContent();
     
     // Create narrative container in main content
-    const narrativeContainer = document.createElement('div');
-    narrativeContainer.className = 'narrative-container';
-    this.mainContent.appendChild(narrativeContainer);
+    this.narrativeContainer = document.createElement('div');
+    this.narrativeContainer.className = 'narrative-container';
+    this.mainContent.appendChild(this.narrativeContainer);
     
     // Find existing narrative and actions
     let narrative = null;
@@ -150,10 +167,10 @@ class SidebarLayout extends Component {
     }
     
     // Add narrative to container
-    narrativeContainer.appendChild(narrative);
+    this.narrativeContainer.appendChild(narrative);
     
     // Add actions container with actions element
-    narrativeContainer.appendChild(actionsContainer);
+    this.narrativeContainer.appendChild(actionsContainer);
     actionsContainer.appendChild(actions);
     
     // Add mobile sidebar toggle
@@ -163,6 +180,7 @@ class SidebarLayout extends Component {
     gameContainer.appendChild(sidebarToggle);
     
     console.log("SidebarLayout: Layout structure created successfully");
+    this.state.domStructureCreated = true;
     return true;
   }
   
@@ -394,6 +412,90 @@ class SidebarLayout extends Component {
     }
   }
   
+  /**
+   * Setup event subscriptions
+   */
+  setupEventSubscriptions() {
+    if (!this.system || !this.system.eventBus) return;
+    
+    // Subscribe to status bar update events
+    this.system.eventBus.subscribe('status:update', (data) => {
+      this.updateStatusBars();
+    });
+    
+    // Subscribe to player update events
+    this.system.eventBus.subscribe('player:updated', (data) => {
+      this.updateSidebar();
+    });
+    
+    // Subscribe to game start event
+    this.system.eventBus.subscribe('game:started', (data) => {
+      this.updateSidebar();
+    });
+    
+    // Subscribe to DOM query events - other components can ask for elements
+    this.system.eventBus.subscribe('dom:query', (query) => {
+      if (query.type === 'getElement') {
+        const element = this.getElement(query.id);
+        this.system.eventBus.publish('dom:response', {
+          requestId: query.requestId,
+          element: element
+        });
+      }
+    });
+  }
+  
+  /**
+   * Get a DOM element from the layout
+   * @param {string} elementId - ID of the element to get
+   * @returns {HTMLElement|null} - The requested element or null
+   */
+  getElement(elementId) {
+    switch (elementId) {
+      case 'sidebar':
+        return this.sidebar;
+      case 'mainContent':
+        return this.mainContent;
+      case 'narrativeContainer':
+        return this.narrativeContainer;
+      case 'narrative':
+        return document.getElementById('narrative');
+      case 'actions':
+        return document.getElementById('actions');
+      default:
+        return document.getElementById(elementId);
+    }
+  }
+  
+  /**
+   * Update the sidebar content with player data
+   */
+  updateSidebar() {
+    // Only update if sidebar exists
+    if (!this.sidebar) return;
+    
+    // Update character summary
+    if (window.player) {
+      const nameElem = this.sidebar.querySelector('.character-name');
+      const detailsElem = this.sidebar.querySelector('.character-details');
+      
+      if (nameElem && window.player.name) {
+        nameElem.textContent = window.player.name;
+      }
+      
+      if (detailsElem) {
+        const origin = window.player.origin || '';
+        const career = window.player.career ? window.player.career.title || '' : '';
+        detailsElem.textContent = `${origin} ${career}`;
+      }
+    }
+    
+    // Update status bars
+    this.updateStatusBars();
+    
+    console.log("SidebarLayout: Sidebar content updated");
+  }
+
   /**
    * Add CSS styles for the layout
    */
@@ -633,57 +735,6 @@ class SidebarLayout extends Component {
     // Add to document head
     document.head.appendChild(style);
     console.log("SidebarLayout: Added layout styles");
-  }
-  
-  /**
-   * Set up event subscriptions
-   */
-  setupEventSubscriptions() {
-    if (!this.system || !this.system.eventBus) return;
-    
-    // Subscribe to status bar update events
-    this.system.eventBus.subscribe('status:update', (data) => {
-      this.updateStatusBars();
-    });
-    
-    // Subscribe to player update events
-    this.system.eventBus.subscribe('player:updated', (data) => {
-      this.updateSidebar();
-    });
-    
-    // Subscribe to game start event
-    this.system.eventBus.subscribe('game:started', (data) => {
-      this.updateSidebar();
-    });
-  }
-  
-  /**
-   * Update the sidebar content with player data
-   */
-  updateSidebar() {
-    // Only update if sidebar exists
-    if (!this.sidebar) return;
-    
-    // Update character summary
-    if (window.player) {
-      const nameElem = this.sidebar.querySelector('.character-name');
-      const detailsElem = this.sidebar.querySelector('.character-details');
-      
-      if (nameElem && window.player.name) {
-        nameElem.textContent = window.player.name;
-      }
-      
-      if (detailsElem) {
-        const origin = window.player.origin || '';
-        const career = window.player.career ? window.player.career.title || '' : '';
-        detailsElem.textContent = `${origin} ${career}`;
-      }
-    }
-    
-    // Update status bars
-    this.updateStatusBars();
-    
-    console.log("SidebarLayout: Sidebar content updated");
   }
 
   /**
