@@ -514,9 +514,43 @@ window.CharacterCreationSystem = {
       return;
     }
     
+    // First hide creator to avoid visual issues during transition
     creator.classList.add('hidden');
+    
+    // Ensure gameContainer is ready
     gameContainer.classList.remove('hidden');
     
+    // Check for UI system and explicitly initialize the sidebar if needed
+    if (window.UI && window.UI.system) {
+      // 1. First check if the sidebar component exists
+      if (window.UI.system.components.sidebar) {
+        console.log("Explicitly initializing sidebar");
+        try {
+          // Force reinitialization of sidebar
+          window.UI.system.components.sidebar.initialize();
+        } catch (e) {
+          console.error("Error initializing sidebar:", e);
+        }
+      } else {
+        console.error("Sidebar component not found in UI system");
+      }
+        
+      // 2. Request a proper transition through the transition system
+      window.UI.system.eventBus.publish('requestTransition', { 
+        from: 'characterCreation', 
+        to: 'mainGame'
+      });
+        
+      // 3. Notify that adventure is starting
+      window.UI.system.eventBus.publish('adventure:start', { player: window.player });
+    } else {
+      console.warn("UI system not found, falling back to basic initialization");
+      this.basicGameInitialization();
+    }
+  },
+  
+  // Basic game initialization without UI system
+  basicGameInitialization: function() {
     // Initialize game state
     if (typeof window.initializeGameState === 'function') {
       window.initializeGameState();
@@ -540,6 +574,7 @@ window.CharacterCreationSystem = {
       
       window.setNarrative(introNarrative);
     }
+  
     
     // Publish event if UI system is available
     if (window.UI && window.UI.system) {

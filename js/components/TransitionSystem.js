@@ -355,14 +355,18 @@ class TransitionSystem extends Component {
     // Get the main elements
     const creatorElement = document.getElementById(this.state.mainElementIds.creator);
     const gameContainerElement = document.getElementById(this.state.mainElementIds.gameContainer);
+    const gameTitleElement = document.getElementById('game-title');
     
     if (!creatorElement || !gameContainerElement) {
       console.error("Creator or gameContainer element not found");
       return;
     }
     
-    // Hide creator and show game container
+    // Hide creator and game title, show game container
     creatorElement.classList.add('hidden');
+    if (gameTitleElement) {
+      gameTitleElement.classList.add('hidden');
+    }
     gameContainerElement.classList.remove('hidden');
     
     console.log("Transitioned from character creation to main game");
@@ -418,6 +422,15 @@ class TransitionSystem extends Component {
    */
   finalizeGameTransition() {
     console.log("Finalizing game transition");
+    
+    // Ensure sidebar layout is initialized
+    if (this.system.components.sidebar && typeof this.system.components.sidebar.initialize === 'function') {
+      // Force re-initialization of sidebar layout
+      this.system.components.sidebar.initialize();
+      console.log("Sidebar layout initialized");
+    } else {
+      console.error("Sidebar layout component not found - layout may be incorrect");
+    }
     
     // Initialize game state if the function exists
     if (typeof window.initializeGameState === 'function') {

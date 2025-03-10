@@ -1,4 +1,4 @@
-// SidebarLayout.js
+// SidebarLayoutComponent.js
 // Handles the sidebar layout integration for the game UI
 
 class SidebarLayout extends Component {
@@ -25,8 +25,29 @@ class SidebarLayout extends Component {
       // Create the layout structure
       this.createLayoutStructure();
     } else {
-      // Just update the existing sidebar
-      this.updateSidebar();
+      // Just update the existing sidebar content without calling missing method
+      // Check if the updateSidebar method exists before calling it
+      if (typeof this.updateSidebar === 'function') {
+        this.updateSidebar();
+      } else {
+        // Fallback for updating sidebar content if updateSidebar doesn't exist
+        if (this.sidebar && window.player) {
+          // Update character name and details if possible
+          const nameElem = this.sidebar.querySelector('.character-name');
+          const detailsElem = this.sidebar.querySelector('.character-details');
+          
+          if (nameElem && window.player.name) {
+            nameElem.textContent = window.player.name;
+          }
+          
+          if (detailsElem && window.player.origin) {
+            detailsElem.textContent = `${window.player.origin || ''} ${window.player.career ? window.player.career.title || '' : ''}`;
+          }
+        }
+        
+        // Also update status bars if they exist
+        this.updateStatusBars();
+      }
     }
     
     // Set up event listeners
@@ -71,11 +92,23 @@ class SidebarLayout extends Component {
   createLayoutStructure() {
     const gameContainer = document.getElementById('gameContainer');
     if (!gameContainer) {
-      console.error("Game container not found");
+      console.error("Game container not found - cannot create sidebar layout");
       return;
     }
     
     console.log("Creating sidebar layout structure");
+    
+    // First check if sidebar and main content already exist
+    const existingSidebar = gameContainer.querySelector('.game-sidebar');
+    const existingMain = gameContainer.querySelector('.game-main');
+    
+    // If both exist, don't recreate structure
+    if (existingSidebar && existingMain) {
+      this.sidebar = existingSidebar;
+      this.mainContent = existingMain;
+      console.log("Sidebar layout already exists, using existing elements");
+      return;
+    }
     
     // Store original elements that need to be moved
     const header = gameContainer.querySelector('header');
@@ -83,7 +116,8 @@ class SidebarLayout extends Component {
     const actions = document.getElementById('actions');
     const statusBars = document.querySelector('.status-bars');
     
-    // Clear game container
+    // Clear game container but preserve header
+    const originalHTML = gameContainer.innerHTML;
     gameContainer.innerHTML = '';
     
     // Add header back if it exists
@@ -94,56 +128,67 @@ class SidebarLayout extends Component {
       this.createHeader(gameContainer);
     }
     
-    // Create sidebar
+    // Create sidebar with clear debug message
     this.sidebar = document.createElement('div');
     this.sidebar.className = 'game-sidebar';
+    this.sidebar.setAttribute('data-created', Date.now());
+    this.sidebar.innerHTML = '<div style="color: red; margin-bottom: 10px;">Sidebar created</div>';
     
     // Create main content container
     this.mainContent = document.createElement('div');
     this.mainContent.className = 'game-main';
+    this.mainContent.setAttribute('data-created', Date.now());
     
-    // Add sidebar and main content to game container
+    // Add sidebar and main content to game container with clear order
     gameContainer.appendChild(this.sidebar);
     gameContainer.appendChild(this.mainContent);
+    
+    // Debug indicators
+    console.log("Layout elements created", {
+      sidebar: this.sidebar,
+      mainContent: this.mainContent
+    });
     
     // Create the sidebar content
     this.createSidebarContent();
     
-    // Move narrative and actions to main content
-    if (narrative && actions) {
-      const narrativeContainer = document.createElement('div');
-      narrativeContainer.className = 'narrative-container';
-      
-      // Create wrapper for actions
-      const actionsContainer = document.createElement('div');
-      actionsContainer.className = 'actions-container';
-      
-      // Move to new structure
+    // Create narrative container
+    const narrativeContainer = document.createElement('div');
+    narrativeContainer.className = 'narrative-container';
+    this.mainContent.appendChild(narrativeContainer);
+    
+    // Create actions container
+    const actionsContainer = document.createElement('div');
+    actionsContainer.className = 'actions-container';
+    narrativeContainer.appendChild(actionsContainer);
+    
+    // Handle narrative element
+    if (narrative) {
+      console.log("Moving existing narrative element to container");
       if (narrative.parentNode) {
         narrative.parentNode.removeChild(narrative);
       }
-      
+      narrativeContainer.insertBefore(narrative, actionsContainer);
+    } else {
+      console.log("Creating new narrative element");
+      const newNarrative = document.createElement('div');
+      newNarrative.id = 'narrative';
+      newNarrative.className = 'narrative';
+      narrativeContainer.insertBefore(newNarrative, actionsContainer);
+    }
+    
+    // Handle actions element
+    if (actions) {
+      console.log("Moving existing actions element to container");
       if (actions.parentNode) {
         actions.parentNode.removeChild(actions);
       }
-      
       actionsContainer.appendChild(actions);
-      narrativeContainer.appendChild(narrative);
-      narrativeContainer.appendChild(actionsContainer);
-      
-      this.mainContent.appendChild(narrativeContainer);
     } else {
-      console.warn("Narrative or actions not found");
-      
-      // Create empty containers if needed
-      this.mainContent.innerHTML = `
-        <div class="narrative-container">
-          <div id="narrative" class="narrative"></div>
-          <div class="actions-container">
-            <div id="actions"></div>
-          </div>
-        </div>
-      `;
+      console.log("Creating new actions element");
+      const newActions = document.createElement('div');
+      newActions.id = 'actions';
+      actionsContainer.appendChild(newActions);
     }
     
     // Add mobile sidebar toggle
@@ -160,7 +205,7 @@ class SidebarLayout extends Component {
     this.addLayoutStyles();
     
     this.state.initialized = true;
-    console.log("Layout structure created");
+    console.log("Layout structure created successfully");
   }
   
   /**
@@ -183,7 +228,9 @@ class SidebarLayout extends Component {
    * Create the sidebar content
    */
   createSidebarContent() {
-    // Safety check for player object
+    console.log("Creating sidebar content with player:", window.player);
+    
+    // Make sure we have the player object with all required properties
     if (!window.player || !window.player.name) {
       this.sidebar.innerHTML = `
         <div class="character-summary">
@@ -283,7 +330,9 @@ class SidebarLayout extends Component {
         
         if (action === 'profile' || action === 'inventory' || action === 'questLog') {
           // Use panel system to open the corresponding panel
-          this.system.eventBus.publish('openPanel', { panel: action });
+          if (this.system && this.system.eventBus) {
+            this.system.eventBus.publish('panel:toggle', { id: action });
+          }
         } else if (typeof window.handleAction === 'function') {
           // Use action system for other actions
           window.handleAction(action);
@@ -291,64 +340,37 @@ class SidebarLayout extends Component {
       });
     });
   }
-  
-  /**
-   * Update the sidebar content (called when player data changes)
-   */
-  updateSidebar() {
-    // Only update if sidebar exists
-    if (!this.sidebar) return;
     
-    // Update character summary
-    if (window.player && window.player.name) {
-      const nameElem = this.sidebar.querySelector('.character-name');
-      const detailsElem = this.sidebar.querySelector('.character-details');
+    // Update status bars with current game state
+    updateStatusBars() {
+      if (!window.gameState) return;
       
-      if (nameElem) {
-        nameElem.textContent = window.player.name;
+      // Get sidebar bars
+      const healthBar = document.getElementById('sidebarHealthBar');
+      const staminaBar = document.getElementById('sidebarStaminaBar');
+      const moraleBar = document.getElementById('sidebarMoraleBar');
+      const healthValue = document.getElementById('sidebarHealthValue');
+      const staminaValue = document.getElementById('sidebarStaminaValue');
+      const moraleValue = document.getElementById('sidebarMoraleValue');
+      
+      // Update health bar
+      if (healthBar && healthValue) {
+        healthBar.style.width = `${(window.gameState.health / window.gameState.maxHealth) * 100}%`;
+        healthValue.textContent = `${Math.round(window.gameState.health)}/${window.gameState.maxHealth}`;
       }
       
-      if (detailsElem) {
-        detailsElem.textContent = `${window.player.origin || ''} ${window.player.career ? window.player.career.title || '' : ''}`;
+      // Update stamina bar
+      if (staminaBar && staminaValue) {
+        staminaBar.style.width = `${(window.gameState.stamina / window.gameState.maxStamina) * 100}%`;
+        staminaValue.textContent = `${Math.round(window.gameState.stamina)}/${window.gameState.maxStamina}`;
+      }
+      
+      // Update morale bar
+      if (moraleBar && moraleValue) {
+        moraleBar.style.width = `${window.gameState.morale}%`;
+        moraleValue.textContent = `${Math.round(window.gameState.morale)}/100`;
       }
     }
-    
-    // Update status bars
-    this.updateStatusBars();
-  }
-  
-  /**
-   * Update the status bars in the sidebar
-   */
-  updateStatusBars() {
-    if (!window.gameState) return;
-    
-    // Get sidebar bars
-    const healthBar = document.getElementById('sidebarHealthBar');
-    const staminaBar = document.getElementById('sidebarStaminaBar');
-    const moraleBar = document.getElementById('sidebarMoraleBar');
-    const healthValue = document.getElementById('sidebarHealthValue');
-    const staminaValue = document.getElementById('sidebarStaminaValue');
-    const moraleValue = document.getElementById('sidebarMoraleValue');
-    
-    // Update health bar
-    if (healthBar && healthValue) {
-      healthBar.style.width = `${(window.gameState.health / window.gameState.maxHealth) * 100}%`;
-      healthValue.textContent = `${Math.round(window.gameState.health)}/${window.gameState.maxHealth}`;
-    }
-    
-    // Update stamina bar
-    if (staminaBar && staminaValue) {
-      staminaBar.style.width = `${(window.gameState.stamina / window.gameState.maxStamina) * 100}%`;
-      staminaValue.textContent = `${Math.round(window.gameState.stamina)}/${window.gameState.maxStamina}`;
-    }
-    
-    // Update morale bar
-    if (moraleBar && moraleValue) {
-      moraleBar.style.width = `${window.gameState.morale}%`;
-      moraleValue.textContent = `${Math.round(window.gameState.morale)}/100`;
-    }
-  }
   
   /**
    * Set up event listeners for sidebar interactions
@@ -719,6 +741,32 @@ class SidebarLayout extends Component {
     });
   }
   
+
+  updateSidebar() {
+    // Only update if sidebar exists
+    if (!this.sidebar) return;
+    
+    // Update character summary
+    if (window.player && window.player.name) {
+      const nameElem = this.sidebar.querySelector('.character-name');
+      const detailsElem = this.sidebar.querySelector('.character-details');
+      
+      if (nameElem) {
+        nameElem.textContent = window.player.name;
+      }
+      
+      if (detailsElem) {
+        detailsElem.textContent = `${window.player.origin || ''} ${window.player.career ? window.player.career.title || '' : ''}`;
+      }
+    }
+    
+    // Update status bars
+    this.updateStatusBars();
+    
+    console.log("Sidebar content updated");
+  }
+
+
   /**
    * Update method called by the UI system
    */

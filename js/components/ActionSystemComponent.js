@@ -185,6 +185,8 @@ class ActionSystemComponent extends Component {
 
 // Add this new method to handle actions directly without going through event system again
 handleActionDirect(action) {
+  console.log(`Executing action directly: ${action}`);
+  
   // Simple action mapping
   if (action === 'rest') {
     if (window.gameState) {
@@ -289,8 +291,182 @@ handleActionDirect(action) {
       }
     }
   }
-  // Add more action handlers as needed
-  
+  // Add handling for train action
+  else if (action === 'train') {
+    // Instead of entering training context, implement direct training effects
+    if (window.gameState) {
+      // Apply training effects
+      window.gameState.stamina = Math.max(0, window.gameState.stamina - 25);
+      
+      // Increment training count
+      window.gameState.trainingCount = (window.gameState.trainingCount || 0) + 1;
+      
+      // Pass time
+      if (typeof window.updateTimeAndDay === 'function') {
+        window.updateTimeAndDay(120); // 2 hours
+      }
+      
+      // Update UI
+      if (typeof window.updateStatusBars === 'function') {
+        window.updateStatusBars();
+      }
+      
+      // Add to narrative
+      if (typeof window.addToNarrative === 'function') {
+        const trainingNarratives = window.narrativeElements?.training || [
+          "You push yourself through grueling training drills, honing your skills and building strength."
+        ];
+        const randomIndex = Math.floor(Math.random() * trainingNarratives.length);
+        window.addToNarrative(trainingNarratives[randomIndex]);
+      }
+      
+      // Improve skills based on training
+      if (window.player) {
+        const skillName = Math.random() < 0.5 ? 'melee' : 'marksmanship';
+        window.player.skills[skillName] += 0.1;
+        window.addToNarrative(`Your ${skillName} skill has improved slightly.`);
+      }
+    }
+  }
+  // Add handling for training submenu actions
+  else if (action === 'physical_training') {
+    if (window.gameState) {
+      window.gameState.stamina = Math.max(0, window.gameState.stamina - 30);
+      
+      if (typeof window.updateTimeAndDay === 'function') {
+        window.updateTimeAndDay(90); // 1.5 hours
+      }
+      
+      if (typeof window.updateStatusBars === 'function') {
+        window.updateStatusBars();
+      }
+      
+      if (typeof window.addToNarrative === 'function') {
+        window.addToNarrative("You complete a series of strenuous physical exercises, pushing your body to its limits.");
+      }
+      
+      if (window.player) {
+        // Improve physical-related skills
+        window.player.skills.melee += 0.2;
+        window.addToNarrative("Your physical prowess has improved.");
+      }
+    }
+    
+    // Return to default context
+    this.popContext();
+  }
+  else if (action === 'mental_training') {
+    if (window.gameState) {
+      window.gameState.stamina = Math.max(0, window.gameState.stamina - 10);
+      
+      if (typeof window.updateTimeAndDay === 'function') {
+        window.updateTimeAndDay(120); // 2 hours
+      }
+      
+      if (typeof window.updateStatusBars === 'function') {
+        window.updateStatusBars();
+      }
+      
+      if (typeof window.addToNarrative === 'function') {
+        window.addToNarrative("You spend time studying military tactics and strategy, exercising your mind.");
+      }
+      
+      if (window.player) {
+        // Improve mental-related skills
+        window.player.skills.tactics += 0.2;
+        window.addToNarrative("Your tactical acumen has improved.");
+      }
+    }
+    
+    // Return to default context
+    this.popContext();
+  }
+  else if (action === 'melee_drill') {
+    if (window.gameState) {
+      window.gameState.stamina = Math.max(0, window.gameState.stamina - 25);
+      
+      if (typeof window.updateTimeAndDay === 'function') {
+        window.updateTimeAndDay(90); // 1.5 hours
+      }
+      
+      if (typeof window.updateStatusBars === 'function') {
+        window.updateStatusBars();
+      }
+      
+      if (typeof window.addToNarrative === 'function') {
+        window.addToNarrative("You practice melee combat techniques, sparring with fellow soldiers.");
+      }
+      
+      if (window.player) {
+        // Improve melee skill
+        window.player.skills.melee += 0.3;
+        window.addToNarrative("Your melee combat skills have noticeably improved.");
+      }
+    }
+    
+    // Return to default context
+    this.popContext();
+  }
+  else if (action === 'ranged_drill') {
+    if (window.gameState) {
+      window.gameState.stamina = Math.max(0, window.gameState.stamina - 20);
+      
+      if (typeof window.updateTimeAndDay === 'function') {
+        window.updateTimeAndDay(90); // 1.5 hours
+      }
+      
+      if (typeof window.updateStatusBars === 'function') {
+        window.updateStatusBars();
+      }
+      
+      if (typeof window.addToNarrative === 'function') {
+        window.addToNarrative("You spend time at the firing range, perfecting your aim with ranged weapons.");
+      }
+      
+      if (window.player) {
+        // Improve marksmanship skill
+        window.player.skills.marksmanship += 0.3;
+        window.addToNarrative("Your marksmanship has noticeably improved.");
+      }
+    }
+    
+    // Return to default context
+    this.popContext();
+  }
+  else if (action === 'squad_exercises') {
+    if (window.gameState) {
+      window.gameState.stamina = Math.max(0, window.gameState.stamina - 35);
+      
+      if (typeof window.updateTimeAndDay === 'function') {
+        window.updateTimeAndDay(150); // 2.5 hours
+      }
+      
+      if (typeof window.updateStatusBars === 'function') {
+        window.updateStatusBars();
+      }
+      
+      if (typeof window.addToNarrative === 'function') {
+        window.addToNarrative("You participate in squad formation exercises, practicing coordinated movement and tactics.");
+      }
+      
+      if (window.player) {
+        // Improve multiple skills
+        window.player.skills.discipline += 0.2;
+        window.player.skills.command += 0.2;
+        window.addToNarrative("Your discipline and command abilities have improved.");
+      }
+    }
+    
+    // Return to default context
+    this.popContext();
+  }
+  // Handle specific context changer commands
+  else if (action === 'back_from_training' || 
+           action === 'back_from_gambling' || 
+           action === 'back_from_brawler') {
+    // Return to default context
+    this.popContext();
+  }
   // If action isn't handled here, log it
   else {
     console.log(`Action not directly handled: ${action}`);

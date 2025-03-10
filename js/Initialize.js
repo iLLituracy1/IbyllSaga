@@ -15,7 +15,7 @@ window.UI.componentConfig = {
   
   // UI components in dependency order
   components: [
-    { name: 'sidebar', class: 'SidebarLayout', required: false },
+    { name: 'sidebar', class: 'SidebarLayout', required: true }, // <-- Changed to required: true
     { name: 'status', class: 'StatusDisplayComponent', required: true },
     { name: 'time', class: 'TimeSystemComponent', required: true },
     { name: 'narrative', class: 'NarrativeComponent', required: true },
@@ -452,3 +452,42 @@ document.addEventListener('DOMContentLoaded', function() {
   // Delay initialization slightly to ensure all scripts are loaded
   setTimeout(window.UI.initialize, 100);
 });
+
+
+window.initializeGameState = function() {
+  console.log("Initializing game state...");
+  
+  // Create game state if it doesn't exist
+  if (!window.gameState) {
+    window.gameState = {
+      health: 100,
+      maxHealth: 100,
+      stamina: 100,
+      maxStamina: 100,
+      morale: 75,
+      maxMorale: 100,
+      level: 1,
+      experience: 0,
+      skillPoints: 0,
+      inBattle: false,
+      inMission: false,
+      day: 1,
+      time: 480, // 8:00 AM
+      dailyPatrolDone: false,
+      trainingCount: 0,
+      locationsDiscovered: 0,
+      mainQuest: {
+        stage: 1,
+        completed: false
+      },
+      sideQuests: []
+    };
+  }
+  
+  console.log("Game state initialized:", window.gameState);
+  
+  // Update UI with initial game state
+  if (typeof window.updateStatusBars === 'function') {
+    window.updateStatusBars();
+  }
+};

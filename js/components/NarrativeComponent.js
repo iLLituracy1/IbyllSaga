@@ -1,4 +1,5 @@
-// NarrativeComponent.js - Handles the game's narrative display
+// NarrativeComponent.js - Complete implementation with all required methods
+// This is a complete implementation of the NarrativeComponent class
 
 class NarrativeComponent extends Component {
   constructor() {
@@ -29,12 +30,29 @@ class NarrativeComponent extends Component {
   createRootElement() {
     const narrative = document.createElement('div');
     narrative.id = 'narrative';
-    narrative.className = 'narrative-day location-camp';
+    narrative.className = 'narrative narrative-day location-camp';
+    
+    // Apply styles to control overflow and maintain visibility of action buttons
+    narrative.style.maxHeight = 'calc(100vh - 330px)';
+    narrative.style.overflowY = 'auto';
+    narrative.style.scrollBehavior = 'smooth';
     
     // Find parent container (typically game-main or gameContainer)
     const parent = document.querySelector('.game-main') || document.getElementById('gameContainer');
     if (parent) {
-      parent.appendChild(narrative);
+      // Check if we need to create a narrative container
+      let narrativeContainer = parent.querySelector('.narrative-container');
+      if (!narrativeContainer) {
+        narrativeContainer = document.createElement('div');
+        narrativeContainer.className = 'narrative-container';
+        narrativeContainer.style.position = 'relative';
+        narrativeContainer.style.maxHeight = 'calc(100vh - 250px)';
+        narrativeContainer.style.display = 'flex';
+        narrativeContainer.style.flexDirection = 'column';
+        parent.appendChild(narrativeContainer);
+      }
+      
+      narrativeContainer.appendChild(narrative);
     } else {
       document.body.appendChild(narrative);
       console.warn('Could not find parent for narrative, appended to body');
