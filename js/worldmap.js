@@ -501,32 +501,165 @@ const WorldMap = (function() {
     
     // Public API
     return {
-        /**
-         * Initialize the world map system
-         */
-        init: function() {
-            console.log("Initializing World Map system...");
+        
+
+          /**
+     * Create the world map panel
+     * This should be called only once during initialization
+     */
+    createWorldMapPanel: function() {
+        console.log("Creating world map panel...");
+        
+        // Check if panel already exists
+        if (document.getElementById('world-panel')) {
+            console.log("World map panel already exists, skipping creation");
+            return;
+        }
+        
+        // Create panel container
+        const worldPanel = document.createElement('div');
+        worldPanel.id = 'world-panel';
+        worldPanel.className = 'world-panel hidden-panel'; // Start hidden
+        
+        // Add panel content
+        worldPanel.innerHTML = `
+            <h2>World Map</h2>
+            <div class="region-info">
+                <div class="region-name">
+                    <div class="region-label">Current Region:</div>
+                    <div id="current-region-name">Loading...</div>
+                </div>
+                <div class="region-description" id="region-description">Exploring your surroundings...</div>
+                <div class="resource-modifiers">
+                    <h3>Resource Modifiers</h3>
+                    <div class="modifier-grid">
+                        <div class="modifier">
+                            <div class="modifier-label">Food:</div>
+                            <div id="food-modifier">1.0</div>
+                        </div>
+                        <div class="modifier">
+                            <div class="modifier-label">Wood:</div>
+                            <div id="wood-modifier">1.0</div>
+                        </div>
+                        <div class="modifier">
+                            <div class="modifier-label">Stone:</div>
+                            <div id="stone-modifier">1.0</div>
+                        </div>
+                        <div class="modifier">
+                            <div class="modifier-label">Metal:</div>
+                            <div id="metal-modifier">1.0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="nearby-settlements">
+                <h3>Nearby Settlements</h3>
+                <div id="settlements-list">None discovered yet.</div>
+            </div>
+            <div class="world-actions">
+                <button id="btn-explore" disabled>Explore (Coming Soon)</button>
+                <button id="btn-raid" disabled>Raid (Coming Soon)</button>
+                <button id="btn-trade" disabled>Trade (Coming Soon)</button>
+            </div>
+        `;
+        
+        // Add to game content
+        const gameContent = document.querySelector('.game-content');
+        if (gameContent) {
+            gameContent.appendChild(worldPanel);
             
-            // Generate the world
-            generateWorld();
-            
-            // Log player location
-            const playerSettlement = getPlayerSettlement();
-            if (playerSettlement) {
-                const playerRegion = worldMap.regions.find(r => r.id === playerSettlement.region);
-                const playerLandmass = worldMap.landmasses.find(lm => lm.id === playerSettlement.landmass);
-                
-                console.log(`Player settlement: ${playerSettlement.name}`);
-                console.log(`Located in region: ${playerRegion.name} (${REGION_TYPES[playerRegion.type].name})`);
-                console.log(`On landmass: ${playerLandmass.name} (${playerLandmass.type})`);
-                
-                // Log to game console
-                Utils.log(`Your settlement is established in ${playerRegion.name}, a ${REGION_TYPES[playerRegion.type].name} region.`, "important");
-                Utils.log(REGION_TYPES[playerRegion.type].description);
+            // Register with NavigationSystem if it exists
+            if (typeof NavigationSystem !== 'undefined') {
+                NavigationSystem.registerPanel('world-panel', 'world');
+                console.log("World panel registered with navigation system");
             }
+        }
+    },   
+     /**
+ * Initialize the world map system
+ */
+init: function() {
+    console.log("Initializing World Map system...");
+    
+    // Generate the world data first
+    generateWorld();
+    
+    // Create the UI panel
+    this.createWorldMapPanel();
+    
+    // Log player location
+    const playerSettlement = getPlayerSettlement();
+    if (playerSettlement) {
+        const playerRegion = worldMap.regions.find(r => r.id === playerSettlement.region);
+        const playerLandmass = worldMap.landmasses.find(lm => lm.id === playerSettlement.landmass);
+        
+        console.log(`Player settlement: ${playerSettlement.name}`);
+        console.log(`Located in region: ${playerRegion.name} (${REGION_TYPES[playerRegion.type].name})`);
+        console.log(`On landmass: ${playerLandmass.name} (${playerLandmass.type})`);
+        
+        // Log to game console
+        Utils.log(`Your settlement is established in ${playerRegion.name}, a ${REGION_TYPES[playerRegion.type].name} region.`, "important");
+        Utils.log(REGION_TYPES[playerRegion.type].description);
+    }
+    
+    
+    console.log("World Map system initialized");
+},
+
+/**
+ * Update the world map UI elements with current data
+ * Public method to be called from GameEngine
+ */
+updateUI: function() {
+    // Get player region data
+    const playerRegion = this.getPlayerRegion();
+    
+    if (!playerRegion) {
+        return;
+    }
+    
+    // Update region name and description
+    const regionNameEl = document.getElementById('current-region-name');
+    const regionDescEl = document.getElementById('region-description');
+    if (regionNameEl) regionNameEl.textContent = playerRegion.name;
+    if (regionDescEl) regionDescEl.textContent = playerRegion.description;
+    
+    // Update resource modifiers
+    const foodModEl = document.getElementById('food-modifier');
+    const woodModEl = document.getElementById('wood-modifier');
+    const stoneModEl = document.getElementById('stone-modifier');
+    const metalModEl = document.getElementById('metal-modifier');
+    
+    if (foodModEl) foodModEl.textContent = playerRegion.resourceModifiers.food.toFixed(1);
+    if (woodModEl) woodModEl.textContent = playerRegion.resourceModifiers.wood.toFixed(1);
+    if (stoneModEl) stoneModEl.textContent = playerRegion.resourceModifiers.stone.toFixed(1);
+    if (metalModEl) metalModEl.textContent = playerRegion.resourceModifiers.metal.toFixed(1);
+    
+    // Update nearby settlements
+    const playerSettlement = this.getPlayerSettlement();
+    const settlementsListElement = document.getElementById('settlements-list');
+    
+    if (playerSettlement && settlementsListElement) {
+        const nearbySettlements = this.getNearbySettlements(playerSettlement.id);
+        
+        if (nearbySettlements.length > 0) {
+            let settlementsHTML = '';
             
-            console.log("World Map system initialized");
-        },
+            nearbySettlements.forEach(settlement => {
+                settlementsHTML += `
+                    <div class="settlement-item settlement-${settlement.type.toLowerCase()}">
+                        <div class="settlement-name">${settlement.name}</div>
+                        <div class="settlement-type">${settlement.type}</div>
+                    </div>
+                `;
+            });
+            
+            settlementsListElement.innerHTML = settlementsHTML;
+        } else {
+            settlementsListElement.textContent = 'No settlements nearby.';
+        }
+    }
+},
         
         /**
          * Get the world map data
@@ -691,6 +824,13 @@ const WorldMap = (function() {
             });
         },
         
+        
+
+
+
+
+
+
         // Methods to be implemented in future iterations
         
         /**

@@ -1,5 +1,5 @@
 /**
- * Viking Legacy - Game Navigation System (Fixed Version)
+ * Viking Legacy - Game Navigation System
  * Creates a tabbed interface to manage different game panels
  */
 
@@ -48,14 +48,23 @@ const NavigationSystem = (function() {
         }
     };
     
+    // Map of panel registration status
+    let registeredPanels = {};
+    
     /**
      * Create the navigation bar
      */
     function createNavigation() {
-        // Create tab content container that will hold game content
-        const tabContentContainer = document.createElement('div');
-        tabContentContainer.className = 'tab-content-container';
-        tabContentContainer.id = 'tab-content-container';
+        console.log("Creating game navigation bar...");
+        
+        // Get the game container and game content
+        const gameContainer = document.getElementById('game-container');
+        const gameContent = document.querySelector('.game-content');
+        
+        if (!gameContainer || !gameContent) {
+            console.error('Game container or content not found');
+            return;
+        }
         
         // Create navigation container
         const navContainer = document.createElement('div');
@@ -77,25 +86,9 @@ const NavigationSystem = (function() {
         
         navContainer.innerHTML = tabsHtml;
         
-        // Get the game container and game content
-        const gameContainer = document.getElementById('game-container');
-        const gameContent = document.querySelector('.game-content');
-        
-        if (!gameContainer || !gameContent) {
-            console.error('Game container or content not found');
-            return;
-        }
-        
         // Insert navigation after header, before game content
         const header = gameContainer.querySelector('header');
         gameContainer.insertBefore(navContainer, header.nextSibling);
-        
-        // Move game controls out if they're inside game content
-        const gameControls = gameContent.querySelector('.game-controls');
-        if (gameControls) {
-            gameContent.removeChild(gameControls);
-            gameContainer.appendChild(gameControls);
-        }
         
         // Add tab click event listeners
         const tabElements = document.querySelectorAll('.nav-tab');
@@ -106,8 +99,9 @@ const NavigationSystem = (function() {
             });
         });
         
-        // Important step: Find all panels and position them correctly
-        findAndPositionPanels();
+        // Modify game content layout for tab system
+        console.log("Modifying game content layout for tab system...");
+        gameContent.classList.add('tabbed-content');
         
         // Initial tab setup
         organizeGamePanels();
@@ -116,49 +110,16 @@ const NavigationSystem = (function() {
     }
     
     /**
-     * Find all registered panels and position them correctly
-     * This is critical for proper panel display
-     */
-    function findAndPositionPanels() {
-        const gameContent = document.querySelector('.game-content');
-        if (!gameContent) return;
-        
-        // Clear existing style
-        gameContent.style.gridTemplateColumns = 'none';
-        gameContent.style.gridTemplateRows = 'none';
-        gameContent.style.display = 'block';
-        
-        // Get all panel IDs from all tabs
-        const allPanelIds = [];
-        for (const tabKey in tabs) {
-            allPanelIds.push(...tabs[tabKey].panels);
-        }
-        
-        // Get unique panel IDs
-        const uniquePanelIds = [...new Set(allPanelIds)];
-        
-        // Apply initial styling to all panels
-        uniquePanelIds.forEach(panelId => {
-            const panel = document.getElementById(panelId);
-            if (panel) {
-                // Reset grid positioning
-                panel.style.gridColumn = 'auto';
-                panel.style.gridRow = 'auto';
-                panel.style.margin = '20px 0';
-                panel.style.position = 'relative';
-                
-                // Initially hide all panels
-                panel.style.display = 'none';
-            }
-        });
-    }
-    
-    /**
      * Switch to a different tab
      * @param {string} tabKey - Key of the tab to switch to
      */
     function switchTab(tabKey) {
-        if (!tabs[tabKey]) return;
+        console.log(`Switching to tab: ${tabKey}`);
+        
+        if (!tabs[tabKey]) {
+            console.warn(`Unknown tab: ${tabKey}`);
+            return;
+        }
         
         // Update active tab
         activeTab = tabKey;
@@ -181,33 +142,36 @@ const NavigationSystem = (function() {
      * Organize game panels based on active tab
      */
     function organizeGamePanels() {
-        // Get all potential panels
-        const allPanelIds = [];
-        for (const tabKey in tabs) {
-            allPanelIds.push(...tabs[tabKey].panels);
-        }
+        console.log(`Organizing panels for tab: ${activeTab}`);
         
-        // Get unique panel IDs
-        const uniquePanelIds = [...new Set(allPanelIds)];
+        // Get all panels
+        const allPanels = document.querySelectorAll('[id$="-panel"]');
+        console.log(`Found ${allPanels.length} total panels`);
         
         // Hide all panels first
-        uniquePanelIds.forEach(panelId => {
-            const panel = document.getElementById(panelId);
-            if (panel) {
-                panel.style.display = 'none';
-            }
+        allPanels.forEach(panel => {
+            panel.classList.remove('visible-panel');
+            panel.classList.add('hidden-panel');
+            
+            // Track this panel
+            registeredPanels[panel.id] = true;
         });
         
+        // Get panels for active tab
+        const activeTabPanels = tabs[activeTab]?.panels || [];
+        console.log(`Showing ${activeTabPanels.length} panels for ${activeTab} tab`);
+        
         // Show panels for active tab
-        const activeTabPanels = tabs[activeTab].panels;
         activeTabPanels.forEach(panelId => {
             const panel = document.getElementById(panelId);
             if (panel) {
-                panel.style.display = 'block';
+                panel.classList.remove('hidden-panel');
+                panel.classList.add('visible-panel');
+                console.log(`Showing panel: ${panelId}`);
+            } else {
+                console.log(`Panel not found: ${panelId}`);
             }
         });
-        
-        console.log(`Switched to ${activeTab} tab, showing panels:`, activeTabPanels);
     }
     
     /**
@@ -216,7 +180,7 @@ const NavigationSystem = (function() {
      * @returns {boolean} - Whether the panel belongs to the active tab
      */
     function isPanelVisible(panelId) {
-        return tabs[activeTab].panels.includes(panelId);
+        return tabs[activeTab]?.panels.includes(panelId) || false;
     }
     
     /**
@@ -225,22 +189,38 @@ const NavigationSystem = (function() {
      * @param {string} tabKey - Key of the tab to add it to
      */
     function registerPanel(panelId, tabKey) {
-        if (!tabs[tabKey]) return;
+        if (!tabs[tabKey]) {
+            console.warn(`Cannot register panel ${panelId} - unknown tab: ${tabKey}`);
+            return;
+        }
         
+        console.log(`Registering panel: ${panelId} with tab: ${tabKey}`);
+        
+        // Add to tab's panel list if not already included
         if (!tabs[tabKey].panels.includes(panelId)) {
             tabs[tabKey].panels.push(panelId);
         }
         
-        // Update visibility if needed
+        // Check if panel exists in DOM
         const panel = document.getElementById(panelId);
         if (panel) {
-            // Reset grid positioning
-            panel.style.gridColumn = 'auto';
-            panel.style.gridRow = 'auto';
-            panel.style.margin = '20px 0';
+            // Apply appropriate visibility
+            if (activeTab === tabKey) {
+                panel.classList.remove('hidden-panel');
+                panel.classList.add('visible-panel');
+                console.log(`Panel ${panelId} set to visible (matches active tab)`);
+            } else {
+                panel.classList.remove('visible-panel');
+                panel.classList.add('hidden-panel');
+                console.log(`Panel ${panelId} set to hidden (doesn't match active tab)`);
+            }
             
-            // Set display based on active tab
-            panel.style.display = activeTab === tabKey ? 'block' : 'none';
+            // Track this panel
+            registeredPanels[panelId] = true;
+        } else {
+            // Panel doesn't exist yet - will be handled when it's created
+            console.log(`Panel ${panelId} not found in DOM yet, will be handled when created`);
+            registeredPanels[panelId] = 'pending';
         }
     }
     
@@ -249,13 +229,9 @@ const NavigationSystem = (function() {
      */
     function addNavigationStyles() {
         const styleElement = document.createElement('style');
+        styleElement.id = 'navigation-styles';
         styleElement.textContent = `
             /* Game Navigation Styles */
-            .game-container {
-                display: flex;
-                flex-direction: column;
-            }
-            
             .game-navigation {
                 display: flex;
                 flex-wrap: wrap;
@@ -304,11 +280,19 @@ const NavigationSystem = (function() {
                 font-size: 1.2rem;
             }
             
-            /* Critical fix: Ensure game content does not use grid */
-            .game-content {
+            /* Tab content layout */
+            .tabbed-content {
+                display: block;
+                position: relative;
+            }
+            
+            /* Panel visibility classes */
+            .hidden-panel {
+                display: none !important;
+            }
+            
+            .visible-panel {
                 display: block !important;
-                margin: 0;
-                border-radius: 0 0 8px 8px;
             }
             
             /* Responsive styles */
@@ -383,10 +367,18 @@ const NavigationSystem = (function() {
         /**
          * Check if a panel is currently visible
          * @param {string} panelId - ID of the panel
-         * @returns {boolean} - Whether the panel is visible
+         * @returns {boolean} - Whether the panel belongs to the active tab
          */
         isPanelVisible: function(panelId) {
             return isPanelVisible(panelId);
+        },
+        
+        /**
+         * Force a refresh of the panel visibility
+         * Useful if panels were dynamically added or modified
+         */
+        refreshPanels: function() {
+            organizeGamePanels();
         }
     };
 })();

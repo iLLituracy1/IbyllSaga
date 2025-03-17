@@ -892,11 +892,6 @@ const BuildingSystem = (function() {
             </div>
         `;
 
-                // After adding to DOM, register with NavigationSystem
-        if (typeof NavigationSystem !== 'undefined') {
-            NavigationSystem.registerPanel('building-panel', 'buildings');
-        }
-
         
         // Add to game content
         const gameContent = document.querySelector('.game-content');
@@ -915,7 +910,7 @@ const BuildingSystem = (function() {
             
             // Initial update of UI
             updateBuildingUI();
-            
+
                         // Register with NavigationSystem if it exists
             if (typeof NavigationSystem !== 'undefined') {
                 NavigationSystem.registerPanel('building-panel', 'buildings');

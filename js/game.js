@@ -138,13 +138,11 @@ const GameEngine = (function() {
     /**
      * Update world map UI with current information
      */
-    function updateWorldMapUI() {
-        // Get player region data
-        const playerRegion = WorldMap.getPlayerRegion();
-        
-        if (!playerRegion) {
-            return;
+        // Use WorldMap's updateUI method if available
+        if (WorldMap && typeof WorldMap.updateUI === 'function') {
+            WorldMap.updateUI();
         }
+    
         
         // Update region name and description
         const regionNameEl = document.getElementById('current-region-name');
@@ -187,7 +185,7 @@ const GameEngine = (function() {
                 settlementsListElement.textContent = 'No settlements nearby.';
             }
         }
-    }
+    
     
     /**
      * Process a single game tick
@@ -245,7 +243,7 @@ const GameEngine = (function() {
         );
         
         // Update World Map UI
-        updateWorldMapUI();
+        WorldMap.updateUI();
         
         // Update statistics panel if needed
         if (typeof StatisticsPanel !== 'undefined' && typeof StatisticsPanel.update === 'function') {
@@ -324,49 +322,59 @@ const GameEngine = (function() {
             Utils.log("Trading feature coming soon!", "important");
         });
     }
+
     
     // Public API
     return {
         /**
          * Initialize the game engine and all modules
          */
-        init: function() {
-            console.log("Initializing Viking Legacy game...");
-            
-            // Initialize modules
-            ResourceManager.init();
-            PopulationManager.init();
-            EventManager.init();
-            RankManager.init();
-            WorldMap.init(); // Initialize world map
-            LandManager.init();
-            StatisticsPanel.init();
-            BuildingSystem.init();
-
-
-            NavigationSystem.init();
-
-               // Register static panels with NavigationSystem
-            if (typeof NavigationSystem !== 'undefined') {
-                NavigationSystem.registerPanel('resources-panel', 'settlement');
-                NavigationSystem.registerPanel('population-panel', 'settlement');
-                NavigationSystem.registerPanel('actions-panel', 'settlement');
-                NavigationSystem.registerPanel('log-panel', 'saga');
-                NavigationSystem.registerPanel('world-panel', 'world');
-            }
-            
-            // Set up event listeners
-            setupEventListeners();
-            
-            // Update UI
-            updateDateDisplay();
-            updateWorldMapUI(); // Initial world map UI update
-            
-            // Start game loop
-            this.startGame();
-            
-            console.log("Game initialized successfully");
-        },
+        // Replace the init function in GameEngine
+    init: function() {
+    console.log("Initializing Viking Legacy game...");
+    
+    // Step 1: Initialize NavigationSystem first
+    NavigationSystem.init();
+    
+    // Step 2: Initialize core systems
+    ResourceManager.init();
+    
+    // Step 3: Initialize population and rank systems
+    PopulationManager.init();
+    RankManager.init();
+    
+    // Step 4: Initialize world and event systems
+    WorldMap.init();
+    EventManager.init();
+    
+    // Step 5: Register core panels that exist in HTML
+    NavigationSystem.registerPanel('resources-panel', 'settlement');
+    NavigationSystem.registerPanel('population-panel', 'settlement');
+    NavigationSystem.registerPanel('actions-panel', 'settlement');
+    NavigationSystem.registerPanel('log-panel', 'saga');
+    NavigationSystem.registerPanel('world-panel', 'world');
+    
+    // Step 6: Initialize feature modules that create their own panels
+    LandManager.init();
+    StatisticsPanel.init();
+    BuildingSystem.init();
+    
+    // Step 7: Perform a final panels refresh
+    NavigationSystem.refreshPanels();
+    
+    // Step 8: Set up event listeners after all panels are ready
+    setupEventListeners();
+    
+    // Step 9: Update initial UI state
+    updateDateDisplay();
+    WorldMap.updateUI();
+ 
+    
+    // Step 10: Start game loop
+    this.startGame();
+    
+    console.log("Game initialized successfully");
+},
         
         /**
          * Start the game simulation

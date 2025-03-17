@@ -36,6 +36,7 @@ const LandManager = (function() {
                 wood: 3  // Wood per acre
             },
             manpowerRequired: 5, // Workers required per acre
+            fameReward: .10,
             completionEvent: true // Generate an event when completed
         },
         CONVERT_FARMLAND: {

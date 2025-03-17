@@ -1,0 +1,108 @@
+/**
+ * Viking Legacy - Responsive Layout Fixes
+ * 
+ * This fixes the layout to be properly responsive
+ * and ensure controls are always visible.
+ */
+
+/* Fix container layout */
+.game-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 30px 15px;
+    min-height: 80vh;
+    box-sizing: border-box;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ensure game content has proper layout */
+.game-content {
+    display: block; /* Override grid layout */
+    width: 100%;
+    position: relative;
+    margin-bottom: 70px; /* Space for controls */
+}
+
+/* Fix panel layout without grid */
+.resources-panel,
+.population-panel,
+.actions-panel,
+.log-panel,
+.world-panel,
+.land-panel,
+.building-panel,
+.statistics-panel {
+    width: 100%;
+    margin: 20px 0;
+    box-sizing: border-box;
+}
+
+/* Two column layout for larger screens */
+@media (min-width: 769px) {
+    .resources-panel,
+    .population-panel,
+    .actions-panel,
+    .log-panel {
+        width: 48%;
+        float: left;
+        margin-right: 2%;
+    }
+    
+    .population-panel,
+    .log-panel {
+        margin-right: 0;
+        float: right;
+    }
+    
+    /* Full width panels */
+    .world-panel,
+    .land-panel,
+    .building-panel,
+    .statistics-panel {
+        clear: both;
+        width: 100%;
+    }
+    
+    /* Clearfix for floated panels */
+    .game-content::after {
+        content: "";
+        display: table;
+        clear: both;
+    }
+}
+
+/* Make sure game controls are always visible */
+.game-controls {
+    position: fixed;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    background: #f7f0e3;
+    border: 2px solid #8b7355;
+    border-radius: 8px;
+    padding: 10px 15px;
+    z-index: 100;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive adjustments for controls */
+@media (max-width: 480px) {
+    .game-controls {
+        width: 90%;
+        padding: 8px;
+    }
+    
+    .game-controls button {
+        padding: 6px 10px;
+        font-size: 0.9rem;
+    }
+}
+
+/* Make sure modals appear on top of everything */
+.event-modal {
+    z-index: 1001;
+}
