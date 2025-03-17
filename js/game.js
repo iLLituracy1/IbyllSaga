@@ -9,21 +9,21 @@ const GameEngine = (function() {
     const DAYS_PER_MONTH = 30;
     const SEASONS = ["Spring", "Summer", "Fall", "Winter"];
     
-    // Game speed settings (days per tick) - Moved inside IIFE
+    // Game speed settings (days per tick)
     const gameSpeeds = {
         slow: 1,
         normal: 1,
         fast: 1
     };
     
-    // Game tick interval (in milliseconds) - Moved inside IIFE
+    // Game tick interval (in milliseconds)
     const tickIntervals = {
         slow: 3000,
         normal: 2000,
         fast: 1000
     };
     
-    // Day progress update intervals (ms) - Moved inside IIFE
+    // Day progress update intervals (ms)
     const dayProgressIntervals = {
         slow: 300,
         normal: 200,
@@ -201,25 +201,6 @@ const GameEngine = (function() {
         
         document.getElementById('btn-pause').addEventListener('click', function() {
             GameEngine.togglePause();
-        });
-        
-        // Action buttons
-        document.getElementById('btn-hunt').addEventListener('click', function() {
-            const foodGained = Utils.randomBetween(5, 10);
-            ResourceManager.addResources({ food: foodGained });
-            Utils.log(`Your hunting party returns with ${foodGained} food.`);
-        });
-        
-        document.getElementById('btn-gather').addEventListener('click', function() {
-            const woodGained = Utils.randomBetween(3, 8);
-            ResourceManager.addResources({ wood: woodGained });
-            Utils.log(`Your workers gather ${woodGained} wood from the forest.`);
-        });
-        
-        document.getElementById('btn-mine').addEventListener('click', function() {
-            const stoneGained = Utils.randomBetween(2, 5);
-            ResourceManager.addResources({ stone: stoneGained });
-            Utils.log(`Your workers mine ${stoneGained} stone.`);
         });
         
         // Building buttons
