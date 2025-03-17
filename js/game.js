@@ -136,6 +136,60 @@ const GameEngine = (function() {
     }
     
     /**
+     * Update world map UI with current information
+     */
+    function updateWorldMapUI() {
+        // Get player region data
+        const playerRegion = WorldMap.getPlayerRegion();
+        
+        if (!playerRegion) {
+            return;
+        }
+        
+        // Update region name and description
+        const regionNameEl = document.getElementById('current-region-name');
+        const regionDescEl = document.getElementById('region-description');
+        if (regionNameEl) regionNameEl.textContent = playerRegion.name;
+        if (regionDescEl) regionDescEl.textContent = playerRegion.description;
+        
+        // Update resource modifiers
+        const foodModEl = document.getElementById('food-modifier');
+        const woodModEl = document.getElementById('wood-modifier');
+        const stoneModEl = document.getElementById('stone-modifier');
+        const metalModEl = document.getElementById('metal-modifier');
+        
+        if (foodModEl) foodModEl.textContent = playerRegion.resourceModifiers.food.toFixed(1);
+        if (woodModEl) woodModEl.textContent = playerRegion.resourceModifiers.wood.toFixed(1);
+        if (stoneModEl) stoneModEl.textContent = playerRegion.resourceModifiers.stone.toFixed(1);
+        if (metalModEl) metalModEl.textContent = playerRegion.resourceModifiers.metal.toFixed(1);
+        
+        // Update nearby settlements
+        const playerSettlement = WorldMap.getPlayerSettlement();
+        const settlementsListElement = document.getElementById('settlements-list');
+        
+        if (playerSettlement && settlementsListElement) {
+            const nearbySettlements = WorldMap.getNearbySettlements(playerSettlement.id);
+            
+            if (nearbySettlements.length > 0) {
+                let settlementsHTML = '';
+                
+                nearbySettlements.forEach(settlement => {
+                    settlementsHTML += `
+                        <div class="settlement-item settlement-${settlement.type.toLowerCase()}">
+                            <div class="settlement-name">${settlement.name}</div>
+                            <div class="settlement-type">${settlement.type}</div>
+                        </div>
+                    `;
+                });
+                
+                settlementsListElement.innerHTML = settlementsHTML;
+            } else {
+                settlementsListElement.textContent = 'No settlements nearby.';
+            }
+        }
+    }
+    
+    /**
      * Process a single game tick
      */
     function processTick() {
@@ -176,10 +230,31 @@ const GameEngine = (function() {
             tickSize
         );
         
+        // Process world map (AI settlements, etc.)
+        WorldMap.processTick(gameState, tickSize);
+        
         // Update resource production rates based on current worker assignments
         ResourceManager.updateProductionRates(
             PopulationManager.getWorkerAssignments()
         );
+        
+        // Update World Map UI
+        updateWorldMapUI();
+    }
+    
+    /**
+     * Safely add event listener to an element if it exists
+     * @param {string} elementId - ID of the element
+     * @param {string} eventType - Type of event (e.g., 'click')
+     * @param {Function} handler - Event handler function
+     */
+    function safeAddEventListener(elementId, eventType, handler) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.addEventListener(eventType, handler);
+        } else {
+            console.warn(`Element with ID '${elementId}' not found for event listener.`);
+        }
     }
     
     /**
@@ -187,24 +262,24 @@ const GameEngine = (function() {
      */
     function setupEventListeners() {
         // Game speed controls
-        document.getElementById('btn-speed-slow').addEventListener('click', function() {
+        safeAddEventListener('btn-speed-slow', 'click', function() {
             GameEngine.setGameSpeed('slow');
         });
         
-        document.getElementById('btn-speed-normal').addEventListener('click', function() {
+        safeAddEventListener('btn-speed-normal', 'click', function() {
             GameEngine.setGameSpeed('normal');
         });
         
-        document.getElementById('btn-speed-fast').addEventListener('click', function() {
+        safeAddEventListener('btn-speed-fast', 'click', function() {
             GameEngine.setGameSpeed('fast');
         });
         
-        document.getElementById('btn-pause').addEventListener('click', function() {
+        safeAddEventListener('btn-pause', 'click', function() {
             GameEngine.togglePause();
         });
         
         // Building buttons
-        document.getElementById('btn-build-house').addEventListener('click', function() {
+        safeAddEventListener('btn-build-house', 'click', function() {
             if (ResourceManager.canAffordBuilding('house')) {
                 if (ResourceManager.payForBuilding('house')) {
                     PopulationManager.addBuilding('house');
@@ -216,7 +291,7 @@ const GameEngine = (function() {
             }
         });
         
-        document.getElementById('btn-build-farm').addEventListener('click', function() {
+        safeAddEventListener('btn-build-farm', 'click', function() {
             if (ResourceManager.canAffordBuilding('farm')) {
                 if (ResourceManager.payForBuilding('farm')) {
                     ResourceManager.applyProductionModifier("food", 1.2);
@@ -228,7 +303,7 @@ const GameEngine = (function() {
             }
         });
         
-        document.getElementById('btn-build-smith').addEventListener('click', function() {
+        safeAddEventListener('btn-build-smith', 'click', function() {
             if (ResourceManager.canAffordBuilding('smithy')) {
                 if (ResourceManager.payForBuilding('smithy')) {
                     ResourceManager.applyProductionModifier("metal", 1.5);
@@ -257,6 +332,19 @@ const GameEngine = (function() {
                 PopulationManager.assignWorkers(role, -1);
             });
         });
+        
+        // World action buttons (coming soon)
+        safeAddEventListener('btn-explore', 'click', function() {
+            Utils.log("Exploration feature coming soon!", "important");
+        });
+        
+        safeAddEventListener('btn-raid', 'click', function() {
+            Utils.log("Raiding feature coming soon!", "important");
+        });
+        
+        safeAddEventListener('btn-trade', 'click', function() {
+            Utils.log("Trading feature coming soon!", "important");
+        });
     }
     
     // Public API
@@ -272,12 +360,14 @@ const GameEngine = (function() {
             PopulationManager.init();
             EventManager.init();
             RankManager.init();
+            WorldMap.init(); // Initialize world map
             
             // Set up event listeners
             setupEventListeners();
             
             // Update UI
             updateDateDisplay();
+            updateWorldMapUI(); // Initial world map UI update
             
             // Start game loop
             this.startGame();
@@ -315,7 +405,10 @@ const GameEngine = (function() {
                 }, progressInterval);
                 
                 // Update UI
-                document.getElementById('btn-pause').textContent = "Pause";
+                const pauseButton = document.getElementById('btn-pause');
+                if (pauseButton) {
+                    pauseButton.textContent = "Pause";
+                }
                 
                 console.log("Game started");
             }
@@ -337,7 +430,10 @@ const GameEngine = (function() {
                 gameState.dayProgressTimer = null;
                 
                 // Update UI
-                document.getElementById('btn-pause').textContent = "Resume";
+                const pauseButton = document.getElementById('btn-pause');
+                if (pauseButton) {
+                    pauseButton.textContent = "Resume";
+                }
                 
                 console.log("Game paused");
             }
@@ -397,11 +493,15 @@ const GameEngine = (function() {
                 }, progressInterval);
             }
             
-            // Update UI
-            document.getElementById('btn-speed-slow').classList.remove('active');
-            document.getElementById('btn-speed-normal').classList.remove('active');
-            document.getElementById('btn-speed-fast').classList.remove('active');
-            document.getElementById(`btn-speed-${speed}`).classList.add('active');
+            // Update UI - safely
+            document.querySelectorAll('#btn-speed-slow, #btn-speed-normal, #btn-speed-fast').forEach(btn => {
+                if (btn) btn.classList.remove('active');
+            });
+            
+            const activeButton = document.getElementById(`btn-speed-${speed}`);
+            if (activeButton) {
+                activeButton.classList.add('active');
+            }
             
             console.log(`Game speed set to ${speed}`);
         },
@@ -419,7 +519,10 @@ const GameEngine = (function() {
                 productionRates: ResourceManager.getProductionRates(),
                 characters: PopulationManager.getCharacters(),
                 leader: PopulationManager.getDynastyLeader(),
-                activeEvents: EventManager.getActiveEvents()
+                activeEvents: EventManager.getActiveEvents(),
+                playerRegion: WorldMap.getPlayerRegion(),
+                playerSettlement: WorldMap.getPlayerSettlement(),
+                worldOverview: WorldMap.getWorldOverview()
             };
         },
         

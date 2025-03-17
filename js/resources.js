@@ -50,14 +50,26 @@ const ResourceManager = (function() {
     
     // Private methods
     /**
-     * Calculate production rates based on workers and modifiers
+     * Calculate production rates based on workers, modifiers, and region
      * @param {Object} workers - Object containing worker assignments
      */
     function calculateProductionRates(workers) {
-        productionRates.food = workers.farmers * baseProductionRates.food * productionModifiers.food;
-        productionRates.wood = workers.woodcutters * baseProductionRates.wood * productionModifiers.wood;
-        productionRates.stone = workers.miners * baseProductionRates.stone * productionModifiers.stone;
-        productionRates.metal = workers.miners * baseProductionRates.metal * productionModifiers.metal;
+        // Get region modifiers if available
+        let regionModifiers = { food: 1.0, wood: 1.0, stone: 1.0, metal: 1.0 };
+        
+        // Check if WorldMap exists and has a player region
+        if (typeof WorldMap !== 'undefined' && WorldMap.getPlayerRegion) {
+            const playerRegion = WorldMap.getPlayerRegion();
+            if (playerRegion && playerRegion.resourceModifiers) {
+                regionModifiers = playerRegion.resourceModifiers;
+            }
+        }
+        
+        // Apply both regular modifiers and region modifiers
+        productionRates.food = workers.farmers * baseProductionRates.food * productionModifiers.food * regionModifiers.food;
+        productionRates.wood = workers.woodcutters * baseProductionRates.wood * productionModifiers.wood * regionModifiers.wood;
+        productionRates.stone = workers.miners * baseProductionRates.stone * productionModifiers.stone * regionModifiers.stone;
+        productionRates.metal = workers.miners * baseProductionRates.metal * productionModifiers.metal * regionModifiers.metal;
         
         // Update UI
         updateResourceRatesUI();

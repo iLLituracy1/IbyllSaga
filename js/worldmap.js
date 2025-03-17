@@ -1,0 +1,752 @@
+/**
+ * Viking Legacy - World Map System
+ * Handles world generation, regions, landmasses, and AI entities
+ */
+
+const WorldMap = (function() {
+    // Private variables
+    let worldMap = {
+        landmasses: [],
+        regions: [],
+        settlements: [],
+        playerRegion: null,
+        playerLandmass: null,
+        mapSize: { width: 800, height: 600 } // Default map size in arbitrary units
+    };
+    
+    // Landmass types
+    const LANDMASS_TYPES = {
+        VIKING_HOMELAND: "Viking Homeland",
+        ANGLO_LANDS: "Anglo Lands",     // Not-England
+        FRANKISH_LANDS: "Frankish Lands", // Not-France
+        NEUTRAL_LANDS: "Neutral Lands"
+    };
+    
+    // Region types with resource modifiers
+    const REGION_TYPES = {
+        FOREST: {
+            name: "Forest",
+            resourceModifiers: {
+                food: 1.2,
+                wood: 1.5,
+                stone: 0.8,
+                metal: 0.7
+            },
+            description: "Dense forests provide ample wood but make mining difficult."
+        },
+        PLAINS: {
+            name: "Plains",
+            resourceModifiers: {
+                food: 1.3,
+                wood: 0.7,
+                stone: 0.9,
+                metal: 0.8
+            },
+            description: "Fertile plains ideal for farming and settlement."
+        },
+        MOUNTAINS: {
+            name: "Mountains",
+            resourceModifiers: {
+                food: 0.7,
+                wood: 0.8,
+                stone: 1.5,
+                metal: 1.7
+            },
+            description: "Rich in stone and metals, but farming is difficult."
+        },
+        COASTAL: {
+            name: "Coastal",
+            resourceModifiers: {
+                food: 1.3,
+                wood: 1.0,
+                stone: 1.0,
+                metal: 0.7
+            },
+            description: "Coastal regions provide fishing and trade opportunities."
+        },
+        FJORD: {
+            name: "Fjord",
+            resourceModifiers: {
+                food: 1.1,
+                wood: 1.2,
+                stone: 1.2,
+                metal: 0.9
+            },
+            description: "Sheltered waterways with access to both sea and land resources."
+        }
+    };
+    
+    // Settlement types
+    const SETTLEMENT_TYPES = {
+        VIKING: "Viking",
+        ANGLO: "Anglo",
+        FRANKISH: "Frankish",
+        NEUTRAL: "Neutral"
+    };
+    
+    // Settlement structure - used to create AI settlements
+    const settlementTemplate = {
+        id: "",
+        name: "",
+        type: "",
+        position: { x: 0, y: 0 },
+        region: null,
+        landmass: null,
+        resources: {},
+        population: 0,
+        buildings: {},
+        military: {
+            warriors: 0,
+            ships: 0,
+            defenses: 0
+        },
+        relations: {}, // Relations with other settlements, including player
+        faction: "", // Which faction this settlement belongs to
+        rank: 0, // Similar to player ranks
+        isPlayer: false
+    };
+    
+    // Private methods
+    
+    /**
+     * Generate a random name for a region or settlement based on its type
+     * @param {string} type - Type of region or settlement
+     * @returns {string} - Generated name
+     */
+    function generateName(type) {
+        const vikingPrefixes = ["Thor", "Odin", "Fjord", "Nord", "Frost", "Vald", "Heim", "Björn"];
+        const vikingSuffixes = ["heim", "vík", "gard", "borg", "strand", "fjord", "dal", "ness"];
+        
+        const angloSaxonPrefixes = ["Wes", "East", "North", "Sud", "Wood", "Win", "Ash", "Ox"];
+        const angloSaxonSuffixes = ["ton", "ford", "bury", "ham", "wick", "shire", "field", "wold"];
+        
+        const frankishPrefixes = ["Beau", "Mont", "Saint", "Neu", "Roche", "Ville", "Clair", "Grand"];
+        const frankishSuffixes = ["mont", "ville", "bourg", "court", "valleé", "champs", "fort", "lac"];
+        
+        let prefixes, suffixes;
+        
+        switch (type) {
+            case SETTLEMENT_TYPES.VIKING:
+            case LANDMASS_TYPES.VIKING_HOMELAND:
+                prefixes = vikingPrefixes;
+                suffixes = vikingSuffixes;
+                break;
+            case SETTLEMENT_TYPES.ANGLO:
+            case LANDMASS_TYPES.ANGLO_LANDS:
+                prefixes = angloSaxonPrefixes;
+                suffixes = angloSaxonSuffixes;
+                break;
+            case SETTLEMENT_TYPES.FRANKISH:
+            case LANDMASS_TYPES.FRANKISH_LANDS:
+                prefixes = frankishPrefixes;
+                suffixes = frankishSuffixes;
+                break;
+            default:
+                // Mix of styles for neutral areas
+                prefixes = [...vikingPrefixes, ...angloSaxonPrefixes, ...frankishPrefixes];
+                suffixes = [...vikingSuffixes, ...angloSaxonSuffixes, ...frankishSuffixes];
+        }
+        
+        const prefix = prefixes[Utils.randomBetween(0, prefixes.length - 1)];
+        const suffix = suffixes[Utils.randomBetween(0, suffixes.length - 1)];
+        
+        return prefix + suffix;
+    }
+    
+    /**
+     * Generate a landmass
+     * @param {string} type - Type of landmass
+     * @param {Object} position - Position of the landmass center
+     * @param {number} size - Size of the landmass
+     * @returns {Object} - Generated landmass
+     */
+    function generateLandmass(type, position, size) {
+        const landmass = {
+            id: `landmass_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            name: generateName(type),
+            type: type,
+            position: position,
+            size: size,
+            regions: [],
+            settlements: []
+        };
+        
+        return landmass;
+    }
+    
+    /**
+     * Generate a region within a landmass
+     * @param {Object} landmass - Parent landmass
+     * @param {string} type - Region type
+     * @param {Object} position - Position of the region
+     * @param {number} size - Size of the region
+     * @returns {Object} - Generated region
+     */
+    function generateRegion(landmass, type, position, size) {
+        const regionType = REGION_TYPES[type];
+        
+        if (!regionType) {
+            console.error(`Unknown region type: ${type}`);
+            return null;
+        }
+        
+        const region = {
+            id: `region_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            name: generateName(landmass.type) + " " + regionType.name,
+            type: type,
+            typeName: regionType.name,
+            position: position,
+            size: size,
+            landmass: landmass.id,
+            resourceModifiers: regionType.resourceModifiers,
+            description: regionType.description,
+            settlements: []
+        };
+        
+        return region;
+    }
+    
+    /**
+     * Generate a settlement within a region
+     * @param {Object} region - Parent region
+     * @param {string} type - Settlement type
+     * @param {Object} position - Position of the settlement
+     * @param {boolean} isPlayer - Whether this is the player's settlement
+     * @returns {Object} - Generated settlement
+     */
+    function generateSettlement(region, type, position, isPlayer = false) {
+        const landmass = worldMap.landmasses.find(lm => lm.id === region.landmass);
+        
+        if (!landmass) {
+            console.error(`Landmass not found for region: ${region.id}`);
+            return null;
+        }
+        
+        // Basic resources based on region modifiers
+        const baseResources = {
+            food: Utils.randomBetween(30, 70) * region.resourceModifiers.food,
+            wood: Utils.randomBetween(20, 50) * region.resourceModifiers.wood,
+            stone: Utils.randomBetween(10, 30) * region.resourceModifiers.stone,
+            metal: Utils.randomBetween(5, 15) * region.resourceModifiers.metal
+        };
+        
+        // Initialize with random starting population based on type
+        let initialPopulation;
+        let initialRank;
+        let militaryStrength;
+        
+        if (isPlayer) {
+            // Use existing player values
+            initialPopulation = 5; // Player starts with 5
+            initialRank = 0; // Lowest rank
+            militaryStrength = {
+                warriors: 1,
+                ships: 0,
+                defenses: 0
+            };
+        } else {
+            // AI settlement - more established
+            switch (type) {
+                case SETTLEMENT_TYPES.VIKING:
+                    initialPopulation = Utils.randomBetween(5, 20);
+                    initialRank = Utils.randomBetween(0, 5);
+                    militaryStrength = {
+                        warriors: Utils.randomBetween(1, 5),
+                        ships: Utils.randomBetween(0, 2),
+                        defenses: Utils.randomBetween(0, 2)
+                    };
+                    break;
+                case SETTLEMENT_TYPES.ANGLO:
+                case SETTLEMENT_TYPES.FRANKISH:
+                    initialPopulation = Utils.randomBetween(10, 30);
+                    initialRank = Utils.randomBetween(2, 7);
+                    militaryStrength = {
+                        warriors: Utils.randomBetween(3, 8),
+                        ships: Utils.randomBetween(0, 1),
+                        defenses: Utils.randomBetween(2, 5) // Higher defenses
+                    };
+                    break;
+                default: // Neutral
+                    initialPopulation = Utils.randomBetween(3, 15);
+                    initialRank = Utils.randomBetween(0, 3);
+                    militaryStrength = {
+                        warriors: Utils.randomBetween(1, 3),
+                        ships: Utils.randomBetween(0, 1),
+                        defenses: Utils.randomBetween(1, 3)
+                    };
+            }
+        }
+        
+        const settlement = Object.assign({}, settlementTemplate, {
+            id: `settlement_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            name: isPlayer ? "Your Settlement" : generateName(type),
+            type: type,
+            position: position,
+            region: region.id,
+            landmass: landmass.id,
+            resources: baseResources,
+            population: initialPopulation,
+            military: militaryStrength,
+            faction: type, // Simplified faction = type for now
+            rank: initialRank,
+            isPlayer: isPlayer
+        });
+        
+        // Initialize relations with random values
+        worldMap.settlements.forEach(otherSettlement => {
+            // Initial relations based on factions
+            let relationValue;
+            
+            if (settlement.faction === otherSettlement.faction) {
+                // Same faction - friendly
+                relationValue = Utils.randomBetween(50, 100);
+            } else if (
+                (settlement.faction === SETTLEMENT_TYPES.VIKING && 
+                 (otherSettlement.faction === SETTLEMENT_TYPES.ANGLO || otherSettlement.faction === SETTLEMENT_TYPES.FRANKISH)) ||
+                ((settlement.faction === SETTLEMENT_TYPES.ANGLO || settlement.faction === SETTLEMENT_TYPES.FRANKISH) && 
+                 otherSettlement.faction === SETTLEMENT_TYPES.VIKING)
+            ) {
+                // Vikings vs Anglo/Frankish - hostile
+                relationValue = Utils.randomBetween(0, 30);
+            } else {
+                // Other combinations - neutral
+                relationValue = Utils.randomBetween(30, 70);
+            }
+            
+            settlement.relations[otherSettlement.id] = relationValue;
+            
+            // Add reciprocal relation
+            otherSettlement.relations[settlement.id] = relationValue;
+        });
+        
+        return settlement;
+    }
+    
+    /**
+     * Generate a complete world map
+     */
+    function generateWorld() {
+        console.log("Generating world map...");
+        
+        // Clear existing world
+        worldMap.landmasses = [];
+        worldMap.regions = [];
+        worldMap.settlements = [];
+        
+        // Map dimensions
+        const mapWidth = worldMap.mapSize.width;
+        const mapHeight = worldMap.mapSize.height;
+        
+        // 1. Generate landmasses
+        
+        // Viking homeland (always present)
+        const vikingLandmass = generateLandmass(
+            LANDMASS_TYPES.VIKING_HOMELAND,
+            { x: mapWidth * 0.25, y: mapHeight * 0.3 },
+            { width: mapWidth * 0.3, height: mapHeight * 0.3 }
+        );
+        worldMap.landmasses.push(vikingLandmass);
+        
+        // Anglo lands (Not-England)
+        const angloLandmass = generateLandmass(
+            LANDMASS_TYPES.ANGLO_LANDS,
+            { x: mapWidth * 0.4, y: mapHeight * 0.7 },
+            { width: mapWidth * 0.2, height: mapHeight * 0.25 }
+        );
+        worldMap.landmasses.push(angloLandmass);
+        
+        // Frankish lands (Not-France)
+        const frankishLandmass = generateLandmass(
+            LANDMASS_TYPES.FRANKISH_LANDS,
+            { x: mapWidth * 0.7, y: mapHeight * 0.6 },
+            { width: mapWidth * 0.25, height: mapHeight * 0.35 }
+        );
+        worldMap.landmasses.push(frankishLandmass);
+        
+        // 2. Generate regions for each landmass
+        
+        // Helper function to create multiple regions
+        const createRegionsForLandmass = (landmass, regionCount) => {
+            // Distribute region types based on landmass type
+            let regionTypes = [];
+            
+            if (landmass.type === LANDMASS_TYPES.VIKING_HOMELAND) {
+                regionTypes = ['FOREST', 'MOUNTAINS', 'COASTAL', 'FJORD', 'PLAINS'];
+            } else if (landmass.type === LANDMASS_TYPES.ANGLO_LANDS) {
+                regionTypes = ['FOREST', 'PLAINS', 'COASTAL', 'PLAINS', 'PLAINS'];
+            } else if (landmass.type === LANDMASS_TYPES.FRANKISH_LANDS) {
+                regionTypes = ['PLAINS', 'FOREST', 'MOUNTAINS', 'COASTAL', 'PLAINS'];
+            } else {
+                regionTypes = ['FOREST', 'PLAINS', 'MOUNTAINS', 'COASTAL'];
+            }
+            
+            // Subdivide landmass into regions
+            const regionWidth = landmass.size.width / Math.ceil(Math.sqrt(regionCount));
+            const regionHeight = landmass.size.height / Math.ceil(Math.sqrt(regionCount));
+            
+            for (let i = 0; i < regionCount; i++) {
+                // Calculate position within landmass
+                const offsetX = Utils.randomBetween(-regionWidth * 0.2, regionWidth * 0.2);
+                const offsetY = Utils.randomBetween(-regionHeight * 0.2, regionHeight * 0.2);
+                
+                const posX = landmass.position.x - landmass.size.width/2 + 
+                            (i % Math.ceil(Math.sqrt(regionCount))) * regionWidth + regionWidth/2 + offsetX;
+                const posY = landmass.position.y - landmass.size.height/2 + 
+                            Math.floor(i / Math.ceil(Math.sqrt(regionCount))) * regionHeight + regionHeight/2 + offsetY;
+                
+                // Select region type
+                const regionType = regionTypes[i % regionTypes.length];
+                
+                // Create region
+                const region = generateRegion(
+                    landmass,
+                    regionType,
+                    { x: posX, y: posY },
+                    { width: regionWidth * 0.9, height: regionHeight * 0.9 }
+                );
+                
+                worldMap.regions.push(region);
+                landmass.regions.push(region.id);
+            }
+        };
+        
+        // Create regions for each landmass
+        createRegionsForLandmass(vikingLandmass, 6);  // More regions in Viking homeland
+        createRegionsForLandmass(angloLandmass, 4);   // Anglo lands
+        createRegionsForLandmass(frankishLandmass, 5); // Frankish lands
+        
+        // 3. Generate settlements
+        
+        // Helper function to create settlements in a region
+        const createSettlements = (region, count, type, includePlayer = false) => {
+            const landmass = worldMap.landmasses.find(lm => lm.id === region.landmass);
+            
+            for (let i = 0; i < count; i++) {
+                // For player settlement
+                const isPlayer = includePlayer && i === 0;
+                
+                // Calculate position within region
+                const offsetX = Utils.randomBetween(-region.size.width * 0.3, region.size.width * 0.3);
+                const offsetY = Utils.randomBetween(-region.size.height * 0.3, region.size.height * 0.3);
+                
+                const position = {
+                    x: region.position.x + offsetX,
+                    y: region.position.y + offsetY
+                };
+                
+                // Create settlement
+                const settlement = generateSettlement(
+                    region,
+                    type,
+                    position,
+                    isPlayer
+                );
+                
+                worldMap.settlements.push(settlement);
+                region.settlements.push(settlement.id);
+                landmass.settlements.push(settlement.id);
+                
+                // Set as player settlement if needed
+                if (isPlayer) {
+                    worldMap.playerRegion = region;
+                    worldMap.playerLandmass = landmass;
+                }
+            }
+        };
+        
+        // Set player in a random region in Viking homeland
+        const playerRegion = worldMap.regions.find(r => {
+            const landmass = worldMap.landmasses.find(lm => lm.id === r.landmass);
+            return landmass && landmass.type === LANDMASS_TYPES.VIKING_HOMELAND;
+        });
+        
+        if (playerRegion) {
+            createSettlements(playerRegion, 1, SETTLEMENT_TYPES.VIKING, true);
+        }
+        
+        // Create other Viking settlements
+        worldMap.regions.forEach(region => {
+            const landmass = worldMap.landmasses.find(lm => lm.id === region.landmass);
+            
+            if (!landmass) return;
+            
+            // Skip player region for additional settlements
+            if (region.id === worldMap.playerRegion?.id) return;
+            
+            if (landmass.type === LANDMASS_TYPES.VIKING_HOMELAND) {
+                // 1-2 Viking settlements per region in homeland
+                createSettlements(region, Utils.randomBetween(1, 2), SETTLEMENT_TYPES.VIKING);
+            } else if (landmass.type === LANDMASS_TYPES.ANGLO_LANDS) {
+                // 1-3 Anglo settlements per region
+                createSettlements(region, Utils.randomBetween(1, 3), SETTLEMENT_TYPES.ANGLO);
+            } else if (landmass.type === LANDMASS_TYPES.FRANKISH_LANDS) {
+                // 1-3 Frankish settlements per region
+                createSettlements(region, Utils.randomBetween(1, 3), SETTLEMENT_TYPES.FRANKISH);
+            }
+        });
+        
+        console.log("World generation complete");
+        console.log(`Created ${worldMap.landmasses.length} landmasses`);
+        console.log(`Created ${worldMap.regions.length} regions`);
+        console.log(`Created ${worldMap.settlements.length} settlements`);
+    }
+    
+    /**
+     * Find the player's settlement
+     * @returns {Object|null} - Player settlement or null if not found
+     */
+    function getPlayerSettlement() {
+        return worldMap.settlements.find(s => s.isPlayer);
+    }
+    
+    // Public API
+    return {
+        /**
+         * Initialize the world map system
+         */
+        init: function() {
+            console.log("Initializing World Map system...");
+            
+            // Generate the world
+            generateWorld();
+            
+            // Log player location
+            const playerSettlement = getPlayerSettlement();
+            if (playerSettlement) {
+                const playerRegion = worldMap.regions.find(r => r.id === playerSettlement.region);
+                const playerLandmass = worldMap.landmasses.find(lm => lm.id === playerSettlement.landmass);
+                
+                console.log(`Player settlement: ${playerSettlement.name}`);
+                console.log(`Located in region: ${playerRegion.name} (${REGION_TYPES[playerRegion.type].name})`);
+                console.log(`On landmass: ${playerLandmass.name} (${playerLandmass.type})`);
+                
+                // Log to game console
+                Utils.log(`Your settlement is established in ${playerRegion.name}, a ${REGION_TYPES[playerRegion.type].name} region.`, "important");
+                Utils.log(REGION_TYPES[playerRegion.type].description);
+            }
+            
+            console.log("World Map system initialized");
+        },
+        
+        /**
+         * Get the world map data
+         * @returns {Object} - World map data
+         */
+        getWorldMap: function() {
+            return { ...worldMap };
+        },
+        
+        /**
+         * Get regions by landmass
+         * @param {string} landmassId - ID of the landmass
+         * @returns {Array} - Array of regions in the landmass
+         */
+        getRegionsByLandmass: function(landmassId) {
+            return worldMap.regions.filter(r => r.landmass === landmassId);
+        },
+        
+        /**
+         * Get settlements by region
+         * @param {string} regionId - ID of the region
+         * @returns {Array} - Array of settlements in the region
+         */
+        getSettlementsByRegion: function(regionId) {
+            return worldMap.settlements.filter(s => s.region === regionId);
+        },
+        
+        /**
+         * Get landmass by ID
+         * @param {string} landmassId - ID of the landmass
+         * @returns {Object|undefined} - Landmass object
+         */
+        getLandmass: function(landmassId) {
+            return worldMap.landmasses.find(lm => lm.id === landmassId);
+        },
+        
+        /**
+         * Get region by ID
+         * @param {string} regionId - ID of the region
+         * @returns {Object|undefined} - Region object
+         */
+        getRegion: function(regionId) {
+            return worldMap.regions.find(r => r.id === regionId);
+        },
+        
+        /**
+         * Get settlement by ID
+         * @param {string} settlementId - ID of the settlement
+         * @returns {Object|undefined} - Settlement object
+         */
+        getSettlement: function(settlementId) {
+            return worldMap.settlements.find(s => s.id === settlementId);
+        },
+        
+        /**
+         * Get the player's settlement
+         * @returns {Object|undefined} - Player settlement
+         */
+        getPlayerSettlement: getPlayerSettlement,
+        
+        /**
+         * Get the player's region
+         * @returns {Object|undefined} - Player region
+         */
+        getPlayerRegion: function() {
+            return worldMap.playerRegion;
+        },
+        
+        /**
+         * Get the player's landmass
+         * @returns {Object|undefined} - Player landmass
+         */
+        getPlayerLandmass: function() {
+            return worldMap.playerLandmass;
+        },
+        
+        /**
+         * Get nearby settlements to a given settlement
+         * @param {string} settlementId - ID of the settlement
+         * @param {number} [maxDistance=100] - Maximum distance to consider
+         * @returns {Array} - Array of nearby settlements
+         */
+        getNearbySettlements: function(settlementId, maxDistance = 100) {
+            const settlement = this.getSettlement(settlementId);
+            if (!settlement) return [];
+            
+            return worldMap.settlements.filter(s => {
+                if (s.id === settlementId) return false;
+                
+                const dx = s.position.x - settlement.position.x;
+                const dy = s.position.y - settlement.position.y;
+                const distance = Math.sqrt(dx*dx + dy*dy);
+                
+                return distance <= maxDistance;
+            });
+        },
+        
+        /**
+         * Process a game tick for all world entities
+         * @param {Object} gameState - Current game state
+         * @param {number} tickSize - Size of the game tick in days
+         */
+        processTick: function(gameState, tickSize) {
+            // Update AI settlements
+            worldMap.settlements.forEach(settlement => {
+                // Skip player settlement, that's handled by the game engine
+                if (settlement.isPlayer) return;
+                
+                // Simple AI behavior - grow population, gather resources
+                if (tickSize > 0) {
+                    // Population growth - very simple model
+                    if (Utils.chanceOf(2 * tickSize)) {
+                        settlement.population += 1;
+                    }
+                    
+                    // Resource gathering - based on region modifiers
+                    const region = this.getRegion(settlement.region);
+                    if (region) {
+                        // Base production rates * population * region modifier
+                        const foodProduced = 0.5 * settlement.population * region.resourceModifiers.food * tickSize;
+                        const woodProduced = 0.3 * settlement.population * region.resourceModifiers.wood * tickSize;
+                        const stoneProduced = 0.2 * settlement.population * region.resourceModifiers.stone * tickSize;
+                        const metalProduced = 0.1 * settlement.population * region.resourceModifiers.metal * tickSize;
+                        
+                        // Update resources
+                        settlement.resources.food += foodProduced;
+                        settlement.resources.wood += woodProduced;
+                        settlement.resources.stone += stoneProduced;
+                        settlement.resources.metal += metalProduced;
+                        
+                        // Consumption
+                        const foodConsumed = settlement.population * 0.8 * tickSize;
+                        settlement.resources.food = Math.max(0, settlement.resources.food - foodConsumed);
+                    }
+                    
+                    // Military growth
+                    if (settlement.resources.food > settlement.population * 10 && 
+                        settlement.resources.metal > 5 && 
+                        Utils.chanceOf(3 * tickSize)) {
+                        settlement.military.warriors += 1;
+                        settlement.resources.food -= 10;
+                        settlement.resources.metal -= 1;
+                    }
+                    
+                    // Build defenses
+                    if (settlement.resources.wood > 20 && 
+                        settlement.resources.stone > 10 && 
+                        Utils.chanceOf(2 * tickSize)) {
+                        settlement.military.defenses += 1;
+                        settlement.resources.wood -= 20;
+                        settlement.resources.stone -= 10;
+                    }
+                    
+                    // Viking settlements might build ships
+                    if (settlement.type === SETTLEMENT_TYPES.VIKING && 
+                        settlement.resources.wood > 30 && 
+                        Utils.chanceOf(1 * tickSize)) {
+                        settlement.military.ships += 1;
+                        settlement.resources.wood -= 30;
+                    }
+                }
+            });
+        },
+        
+        // Methods to be implemented in future iterations
+        
+        /**
+         * Perform a raid from one settlement to another
+         * @param {string} attackerId - ID of the attacking settlement
+         * @param {string} targetId - ID of the target settlement
+         * @returns {Object} - Result of the raid
+         */
+        performRaid: function(attackerId, targetId) {
+            // Placeholder for raid logic
+            // This will be implemented in future iterations
+            return {
+                success: false,
+                message: "Raiding functionality is not yet implemented."
+            };
+        },
+        
+        /**
+         * Get available raid targets for a settlement
+         * @param {string} settlementId - ID of the settlement
+         * @returns {Array} - Array of potential raid targets
+         */
+        getAvailableRaidTargets: function(settlementId) {
+            // Placeholder
+            return [];
+        },
+        
+        /**
+         * Get basic world map details to display to the player
+         * @returns {Object} - Simplified world data for UI display
+         */
+        getWorldOverview: function() {
+            return {
+                landmasses: worldMap.landmasses.map(lm => ({
+                    id: lm.id,
+                    name: lm.name,
+                    type: lm.type
+                })),
+                playerRegion: worldMap.playerRegion ? {
+                    id: worldMap.playerRegion.id,
+                    name: worldMap.playerRegion.name,
+                    type: REGION_TYPES[worldMap.playerRegion.type].name,
+                    resourceModifiers: worldMap.playerRegion.resourceModifiers
+                } : null,
+                playerLandmass: worldMap.playerLandmass ? {
+                    id: worldMap.playerLandmass.id,
+                    name: worldMap.playerLandmass.name,
+                    type: worldMap.playerLandmass.type
+                } : null,
+                nearbySettlements: this.getPlayerSettlement() ? 
+                    this.getNearbySettlements(this.getPlayerSettlement().id).map(s => ({
+                        id: s.id,
+                        name: s.name,
+                        type: s.type
+                    })) : []
+            };
+        }
+    };
+})();

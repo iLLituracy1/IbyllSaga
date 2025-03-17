@@ -545,3 +545,186 @@ button:disabled {
 ::-webkit-scrollbar-thumb:hover {
     background: #8b5d33;
 }
+
+/* World Map Panel Styles */
+.world-panel {
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    margin-top: 20px;
+    grid-column: 1 / 3;
+    grid-row: 3 / 4;
+}
+
+.region-info {
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    border-left: 4px solid #2d3748;
+}
+
+.region-name {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.region-label {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.region-description {
+    font-style: italic;
+    color: #4a5568;
+    margin-bottom: 10px;
+}
+
+.resource-modifiers {
+    margin-top: 10px;
+}
+
+.resource-modifiers h3 {
+    font-size: 1rem;
+    margin-bottom: 5px;
+}
+
+.modifier-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.modifier {
+    display: flex;
+    align-items: center;
+    background-color: #f8f9fa;
+    padding: 5px 8px;
+    border-radius: 3px;
+    border-left: 3px solid #4a5568;
+}
+
+.modifier-label {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.nearby-settlements {
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    border-left: 4px solid #2b6cb0;
+}
+
+.nearby-settlements h3 {
+    font-size: 1rem;
+    margin-bottom: 5px;
+}
+
+.settlement-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px;
+    margin: 5px 0;
+    background-color: #f8f9fa;
+    border-radius: 3px;
+}
+
+.settlement-viking {
+    border-left: 3px solid #e53e3e;
+}
+
+.settlement-anglo {
+    border-left: 3px solid #3182ce;
+}
+
+.settlement-frankish {
+    border-left: 3px solid #805ad5;
+}
+
+.settlement-neutral {
+    border-left: 3px solid #718096;
+}
+
+.settlement-name {
+    font-weight: 500;
+}
+
+.settlement-type {
+    font-size: 0.8rem;
+    color: #718096;
+}
+
+.world-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.world-actions button {
+    flex: 1;
+}
+
+/* Update existing grid layout to accommodate the world panel */
+.game-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 20px;
+}
+
+/* Adjust existing panel positions */
+.resources-panel {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+}
+
+.population-panel {
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
+}
+
+.actions-panel {
+    grid-column: 1 / 2;
+    grid-row: 2 / 3;
+}
+
+.log-panel {
+    grid-column: 2 / 3;
+    grid-row: 2 / 3;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .game-content {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto auto;
+    }
+    
+    .resources-panel, .population-panel, .actions-panel, .log-panel, .world-panel {
+        grid-column: 1;
+    }
+    
+    .resources-panel {
+        grid-row: 1;
+    }
+    
+    .population-panel {
+        grid-row: 2;
+    }
+    
+    .actions-panel {
+        grid-row: 3;
+    }
+    
+    .log-panel {
+        grid-row: 4;
+    }
+    
+    .world-panel {
+        grid-row: 5;
+    }
+}

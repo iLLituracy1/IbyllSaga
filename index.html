@@ -123,6 +123,136 @@
                     <p>Your saga begins. As a new jarl, you establish a small homestead with your family and loyal followers.</p>
                 </div>
             </div>
+
+            <!-- World Map Panel HTML -->
+<div class="world-panel">
+    <h2>World Map</h2>
+    <div class="region-info">
+        <div class="region-name">
+            <div class="region-label">Current Region:</div>
+            <div id="current-region-name">Loading...</div>
+        </div>
+        <div class="region-description" id="region-description">Exploring your surroundings...</div>
+        <div class="resource-modifiers">
+            <h3>Resource Modifiers</h3>
+            <div class="modifier-grid">
+                <div class="modifier">
+                    <div class="modifier-label">Food:</div>
+                    <div id="food-modifier">1.0</div>
+                </div>
+                <div class="modifier">
+                    <div class="modifier-label">Wood:</div>
+                    <div id="wood-modifier">1.0</div>
+                </div>
+                <div class="modifier">
+                    <div class="modifier-label">Stone:</div>
+                    <div id="stone-modifier">1.0</div>
+                </div>
+                <div class="modifier">
+                    <div class="modifier-label">Metal:</div>
+                    <div id="metal-modifier">1.0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="nearby-settlements">
+        <h3>Nearby Settlements</h3>
+        <div id="settlements-list">None discovered yet.</div>
+    </div>
+    <div class="world-actions">
+        <button id="btn-explore" disabled>Explore (Coming Soon)</button>
+        <button id="btn-raid" disabled>Raid (Coming Soon)</button>
+        <button id="btn-trade" disabled>Trade (Coming Soon)</button>
+    </div>
+</div>
+
+<!-- CSS for World Map Panel -->
+<style>
+.world-panel {
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    margin-top: 20px;
+}
+
+.region-info {
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    border-left: 4px solid #2d3748;
+}
+
+.region-name {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.region-label {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.region-description {
+    font-style: italic;
+    color: #4a5568;
+    margin-bottom: 10px;
+}
+
+.resource-modifiers {
+    margin-top: 10px;
+}
+
+.resource-modifiers h3 {
+    font-size: 1rem;
+    margin-bottom: 5px;
+}
+
+.modifier-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.modifier {
+    display: flex;
+    align-items: center;
+    background-color: #f8f9fa;
+    padding: 5px 8px;
+    border-radius: 3px;
+    border-left: 3px solid #4a5568;
+}
+
+.modifier-label {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.nearby-settlements {
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    border-left: 4px solid #2b6cb0;
+}
+
+.nearby-settlements h3 {
+    font-size: 1rem;
+    margin-bottom: 5px;
+}
+
+.world-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.world-actions button {
+    flex: 1;
+}
+</style>
         </div>
 
         <div class="game-controls">
@@ -139,6 +269,7 @@
     <script src="js/population.js"></script>
     <script src="js/events.js"></script>
     <script src="js/rank.js"></script>
+    <script src="js/worldmap.js"></script>
     <script src="js/game.js"></script>
 </body>
 </html>
