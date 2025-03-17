@@ -357,6 +357,39 @@ const ResourceManager = (function() {
             
             // This would need UI updates for new resources as well
             console.log(`Added new resource type: ${resourceName}`);
-        }
+        },
+
+                    /**
+             * Get base production rates
+             * @returns {Object} - Base production rates
+             */
+            getBaseProductionRates: function() {
+                return { ...baseProductionRates };
+            },
+
+            /**
+             * Set base production rates from buildings
+             * @param {Object} rates - New base rates
+             */
+            updateBaseProductionRates: function(rates) {
+                for (const resource in rates) {
+                    if (baseProductionRates.hasOwnProperty(resource)) {
+                        baseProductionRates[resource] = rates[resource];
+                    }
+                }
+                
+                // Recalculate production rates
+                const workerAssignments = PopulationManager.getWorkerAssignments();
+                this.updateProductionRates(workerAssignments);
+            },
+
+            /**
+             * Add storage capacity (for storehouse buildings)
+             * @param {Object} capacities - Storage capacities to add
+             */
+            addStorageCapacity: function(capacities) {
+                // TODO: Implement resource storage limits
+                console.log("Storage capacity increased:", capacities);
+            }
     };
 })();

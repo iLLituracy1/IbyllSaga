@@ -30,13 +30,12 @@ const LandManager = (function() {
             name: "Expand Homestead",
             description: "Claim additional unclaimed land to expand your homestead.",
             targetType: "value", // Target is a specific value
-            baseRate: 0.2, // Acres per day
+            baseRate: 0.05, // Acres per day
             baseCost: {
                 food: 5, // Food per acre
                 wood: 3  // Wood per acre
             },
-            manpowerRequired: 1, // Workers required per acre
-            fameReward: 2, // Fame per acre claimed
+            manpowerRequired: 5, // Workers required per acre
             completionEvent: true // Generate an event when completed
         },
         CONVERT_FARMLAND: {
@@ -44,14 +43,14 @@ const LandManager = (function() {
             name: "Develop Farmland",
             description: "Convert land to farmland to increase food production.",
             targetType: "percentage", // Target is a percentage of total land
-            baseRate: 0.3, // Acres per day
+            baseRate: 0.03, // Acres per day
             baseCost: {
                 food: 2,
                 wood: 2
             },
-            manpowerRequired: 1,
+            manpowerRequired: 5,
             resourceModifier: {
-                food: 0.05 // Each acre increases food production by 5%
+                food: 0.07 // Each acre increases food production by 5%
             },
             completionEvent: false
         },
@@ -60,12 +59,12 @@ const LandManager = (function() {
             name: "Develop Woodland",
             description: "Convert land to managed woodland to increase wood production.",
             targetType: "percentage",
-            baseRate: 0.3,
+            baseRate: 0.03,
             baseCost: {
                 food: 1,
                 wood: 1
             },
-            manpowerRequired: 1,
+            manpowerRequired: 5,
             resourceModifier: {
                 wood: 0.05 // Each acre increases wood production by 5%
             },
@@ -76,13 +75,13 @@ const LandManager = (function() {
             name: "Develop Mining Area",
             description: "Convert land to mining area to increase stone and metal production.",
             targetType: "percentage",
-            baseRate: 0.2, // Slower than other conversions
+            baseRate: 0.02, // Slower than other conversions
             baseCost: {
                 food: 3,
                 wood: 3,
                 stone: 1
             },
-            manpowerRequired: 2, // Requires more workers
+            manpowerRequired: 5, // Requires more workers
             resourceModifier: {
                 stone: 0.04,
                 metal: 0.03
@@ -100,7 +99,7 @@ const LandManager = (function() {
                 wood: 8,
                 stone: 3
             },
-            manpowerRequired: 2,
+            manpowerRequired: 5,
             housingCapacityIncrease: 2, // Each acre increases housing capacity
             completionEvent: true
         }
@@ -455,6 +454,7 @@ const LandManager = (function() {
                     </div>
                 </div>
             `;
+        
             
             // Add to game content
             const gameContent = document.querySelector('.game-content');
@@ -732,6 +732,11 @@ const LandManager = (function() {
                         }
                     </style>
                 `);
+
+                            // Register with NavigationSystem if it exists
+            if (typeof NavigationSystem !== 'undefined') {
+                NavigationSystem.registerPanel('land-panel', 'land');
+            }
             }
         },
         

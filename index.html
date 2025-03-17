@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div class="game-container">
+    <div class="game-container" id="game-container">
         <header>
             <h1>Viking Legacy</h1>
             <div id="date-container">
@@ -34,7 +34,7 @@
             </div>
         </header>
 
-        <div class="game-content">
+        <div class="game-content" id="game-content">
             <div class="resources-panel">
                 <h2>Resources</h2>
                 <div class="resource-grid">
@@ -89,11 +89,6 @@
 
             <div class="actions-panel">
                 <h2>Settlement</h2>
-                <div class="build-actions">
-                    <h3>Build</h3>
-                    <button id="btn-build-house">Build House</button>
-                    <button id="btn-build-farm">Build Farm</button>
-                    <button id="btn-build-smith">Build Smithy</button>
                 </div>
                 <div class="assign-actions">
                     <h3>Assign Workers</h3>
@@ -253,16 +248,29 @@
 .world-actions button {
     flex: 1;
 }
-</style>
-        </div>
 
-        <div class="game-controls">
-            <button id="btn-speed-slow">Slow</button>
-            <button id="btn-speed-normal" class="active">Normal</button>
-            <button id="btn-speed-fast">Fast</button>
-            <button id="btn-pause">Pause</button>
-        </div>
-    </div>
+
+
+.game-controls {
+    display: flex;
+    justify-content: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 2px solid #c9ba9b;
+}
+
+</style>
+</div> <!-- Close game-content -->
+
+<div class="game-controls">
+    <button id="btn-speed-slow">Slow</button>
+    <button id="btn-speed-normal" class="active">Normal</button>
+    <button id="btn-speed-fast">Fast</button>
+    <button id="btn-pause">Pause</button>
+</div>
+</div> <!-- Close game-container -->
+</body>
+    
 
     <!-- JavaScript Modules -->
     <script src="js/utils.js"></script>
@@ -273,6 +281,7 @@
     <script src="js/worldmap.js"></script>
     <script src="js/land.js"></script>
     <script src="js/stats.js"></script>
+    <script src="js/building.js"></script>
+    <script src="js/navigation.js"></script>
     <script src="js/game.js"></script>
-</body>
 </html>

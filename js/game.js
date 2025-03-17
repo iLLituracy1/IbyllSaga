@@ -221,6 +221,9 @@ const GameEngine = (function() {
             resourceStatus
         );
         
+        // Process buildings and construction
+        BuildingSystem.processTick(gameState, tickSize); 
+        
         // Process population for fame
         RankManager.processPopulation(PopulationManager.getPopulation());
         
@@ -232,8 +235,8 @@ const GameEngine = (function() {
         
         // Process world map (AI settlements, etc.)
         WorldMap.processTick(gameState, tickSize);
-
-         //  Process land management orders
+    
+        // Process land management orders
         LandManager.processTick(gameState, tickSize);
         
         // Update resource production rates based on current worker assignments
@@ -241,9 +244,10 @@ const GameEngine = (function() {
             PopulationManager.getWorkerAssignments()
         );
         
-            // Update World Map UI
-            updateWorldMapUI();
-        //  Update statistics panel if needed
+        // Update World Map UI
+        updateWorldMapUI();
+        
+        // Update statistics panel if needed
         if (typeof StatisticsPanel !== 'undefined' && typeof StatisticsPanel.update === 'function') {
             StatisticsPanel.update();
         }
@@ -284,43 +288,10 @@ const GameEngine = (function() {
         safeAddEventListener('btn-pause', 'click', function() {
             GameEngine.togglePause();
         });
+
+     
         
-        // Building buttons
-        safeAddEventListener('btn-build-house', 'click', function() {
-            if (ResourceManager.canAffordBuilding('house')) {
-                if (ResourceManager.payForBuilding('house')) {
-                    PopulationManager.addBuilding('house');
-                    RankManager.processBuildingConstruction('house');
-                    Utils.log("A new house has been built, increasing your settlement's capacity.");
-                }
-            } else {
-                Utils.log("You don't have enough resources to build a house.", "important");
-            }
-        });
-        
-        safeAddEventListener('btn-build-farm', 'click', function() {
-            if (ResourceManager.canAffordBuilding('farm')) {
-                if (ResourceManager.payForBuilding('farm')) {
-                    ResourceManager.applyProductionModifier("food", 1.2);
-                    RankManager.processBuildingConstruction('farm');
-                    Utils.log("A new farm has been built, increasing food production.");
-                }
-            } else {
-                Utils.log("You don't have enough resources to build a farm.", "important");
-            }
-        });
-        
-        safeAddEventListener('btn-build-smith', 'click', function() {
-            if (ResourceManager.canAffordBuilding('smithy')) {
-                if (ResourceManager.payForBuilding('smithy')) {
-                    ResourceManager.applyProductionModifier("metal", 1.5);
-                    RankManager.processBuildingConstruction('smithy');
-                    Utils.log("A new smithy has been built, increasing metal production.");
-                }
-            } else {
-                Utils.log("You don't have enough resources to build a smithy.", "important");
-            }
-        });
+    
         
         // Worker assignment controls
         const incrementButtons = document.querySelectorAll('.increment');
@@ -369,9 +340,20 @@ const GameEngine = (function() {
             RankManager.init();
             WorldMap.init(); // Initialize world map
             LandManager.init();
-
-              // Initialize statistics panel
             StatisticsPanel.init();
+            BuildingSystem.init();
+
+
+            NavigationSystem.init();
+
+               // Register static panels with NavigationSystem
+            if (typeof NavigationSystem !== 'undefined') {
+                NavigationSystem.registerPanel('resources-panel', 'settlement');
+                NavigationSystem.registerPanel('population-panel', 'settlement');
+                NavigationSystem.registerPanel('actions-panel', 'settlement');
+                NavigationSystem.registerPanel('log-panel', 'saga');
+                NavigationSystem.registerPanel('world-panel', 'world');
+            }
             
             // Set up event listeners
             setupEventListeners();
@@ -544,6 +526,7 @@ const GameEngine = (function() {
                 worldOverview: WorldMap.getWorldOverview(),
                 landData: LandManager.getLandData(),
                 activeOrders: LandManager.getActiveOrders(),
+                buildings: BuildingSystem.getBuildingData(),
             };
         },
 

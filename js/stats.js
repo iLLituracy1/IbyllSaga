@@ -156,6 +156,11 @@ const StatisticsPanel = (function() {
             
             // Add CSS to document
             addStyles();
+
+                    // Register with NavigationSystem if it exists
+        if (typeof NavigationSystem !== 'undefined') {
+            NavigationSystem.registerPanel('statistics-panel', 'stats');
+        }
             
             isPanelCreated = true;
         } else {
