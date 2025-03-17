@@ -15,6 +15,15 @@ const EventManager = (function() {
         Winter: []
     };
     
+    // Track events that have been triggered this year/season
+    let triggeredEvents = {
+        seasonal: {}, // Keyed by season and year: "Spring_1", "Summer_1", etc.
+        random: {},   // Keyed by event ID with timestamp
+    };
+    
+    // Track if the game was running before an event was displayed
+    let gameWasRunningBeforeEvent = false;
+    
     // Event template
     const eventTemplate = {
         id: "",
@@ -26,7 +35,11 @@ const EventManager = (function() {
         isPersistent: false,
         duration: 0,  // In days
         timeRemaining: 0,
-        season: null  // Specific season or null for any season
+        season: null,  // Specific season or null for any season
+        cooldown: 30,  // Default cooldown in days between occurrences of the same event
+        weight: 1,     // Default weight for random selection
+        uniquePerSeason: false, // If true, can only trigger once per season
+        uniquePerYear: false,   // If true, can only trigger once per year
     };
     
     // Private methods
@@ -38,14 +51,127 @@ const EventManager = (function() {
      * @returns {boolean} - Whether conditions are met
      */
     function checkEventConditions(event, gameState) {
-        if (!event.conditions) return true;
+        // Check if event is on cooldown
+        if (isEventOnCooldown(event.id, gameState.date)) {
+            return false;
+        }
+        
+        // Check if unique-per-season event has already triggered this season
+        if (event.uniquePerSeason && 
+            hasEventTriggeredThisSeason(event.id, gameState.date)) {
+            return false;
+        }
+        
+        // Check if unique-per-year event has already triggered this year
+        if (event.uniquePerYear && 
+            hasEventTriggeredThisYear(event.id, gameState.date)) {
+            return false;
+        }
         
         // Season-specific check
         if (event.season && event.season !== gameState.date.season) {
             return false;
         }
         
+        // Custom conditions if defined
+        if (!event.conditions) return true;
         return event.conditions(gameState);
+    }
+    
+    /**
+     * Check if an event is on cooldown
+     * @param {string} eventId - Event ID
+     * @param {Object} currentDate - Current game date
+     * @returns {boolean} - Whether the event is on cooldown
+     */
+    function isEventOnCooldown(eventId, currentDate) {
+        const lastTriggered = triggeredEvents.random[eventId];
+        if (!lastTriggered) return false;
+        
+        // Find the event object to get its cooldown
+        const event = findEventById(eventId);
+        if (!event) return false;
+        
+        // Calculate days since last trigger
+        const daysSinceLastTrigger = currentDate.day - lastTriggered.day;
+        const yearDifference = currentDate.year - lastTriggered.year;
+        const totalDaysSince = daysSinceLastTrigger + (yearDifference * 360); // Simplified year calculation
+        
+        return totalDaysSince < event.cooldown;
+    }
+    
+    /**
+     * Find an event by ID across all event pools
+     * @param {string} eventId - Event ID to find
+     * @returns {Object|null} - The event object or null if not found
+     */
+    function findEventById(eventId) {
+        // Check main event pool
+        let event = eventPool.find(e => e.id === eventId);
+        if (event) return event;
+        
+        // Check seasonal events
+        for (const season in seasonalEvents) {
+            event = seasonalEvents[season].find(e => e.id === eventId);
+            if (event) return event;
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Check if an event has triggered this season
+     * @param {string} eventId - Event ID
+     * @param {Object} currentDate - Current game date
+     * @returns {boolean} - Whether the event has triggered this season
+     */
+    function hasEventTriggeredThisSeason(eventId, currentDate) {
+        const seasonKey = `${currentDate.season}_${currentDate.year}`;
+        return triggeredEvents.seasonal[seasonKey] && 
+               triggeredEvents.seasonal[seasonKey].includes(eventId);
+    }
+    
+    /**
+     * Check if an event has triggered this year
+     * @param {string} eventId - Event ID
+     * @param {Object} currentDate - Current game date
+     * @returns {boolean} - Whether the event has triggered this year
+     */
+    function hasEventTriggeredThisYear(eventId, currentDate) {
+        // Check all seasons in the current year
+        for (const season of ["Spring", "Summer", "Fall", "Winter"]) {
+            const seasonKey = `${season}_${currentDate.year}`;
+            if (triggeredEvents.seasonal[seasonKey] && 
+                triggeredEvents.seasonal[seasonKey].includes(eventId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Record that an event has triggered
+     * @param {Object} event - The event object
+     * @param {Object} currentDate - Current game date
+     */
+    function recordEventTrigger(event, currentDate) {
+        // Record in random event tracking
+        triggeredEvents.random[event.id] = { 
+            day: currentDate.day,
+            year: currentDate.year,
+            timestamp: Date.now()
+        };
+        
+        // For seasonal tracking
+        const seasonKey = `${currentDate.season}_${currentDate.year}`;
+        if (!triggeredEvents.seasonal[seasonKey]) {
+            triggeredEvents.seasonal[seasonKey] = [];
+        }
+        
+        // Add to seasonal triggers if not already there
+        if (!triggeredEvents.seasonal[seasonKey].includes(event.id)) {
+            triggeredEvents.seasonal[seasonKey].push(event.id);
+        }
     }
     
     /**
@@ -71,9 +197,39 @@ const EventManager = (function() {
         eventHistory.push({
             id: event.id,
             title: event.title,
-            timestamp: gameState.date,
+            timestamp: { ...gameState.date }, // Clone to avoid reference issues
             option: optionIndex !== undefined ? event.options[optionIndex].text : null
         });
+    }
+    
+    /**
+     * Select a random event from eligible events, weighted by their weight property
+     * @param {Array} eligibleEvents - Array of eligible events
+     * @returns {Object} - Selected event
+     */
+    function selectWeightedRandomEvent(eligibleEvents) {
+        // If only one event, return it
+        if (eligibleEvents.length === 1) {
+            return eligibleEvents[0];
+        }
+        
+        // Calculate total weight
+        const totalWeight = eligibleEvents.reduce((sum, event) => sum + (event.weight || 1), 0);
+        
+        // Random value between 0 and total weight
+        let random = Math.random() * totalWeight;
+        
+        // Find the event that corresponds to this random value
+        for (const event of eligibleEvents) {
+            const weight = event.weight || 1; // Default weight of 1
+            if (random < weight) {
+                return event;
+            }
+            random -= weight;
+        }
+        
+        // Fallback - return the last event
+        return eligibleEvents[eligibleEvents.length - 1];
     }
     
     /**
@@ -90,6 +246,32 @@ const EventManager = (function() {
         return Object.assign({}, eventTemplate, eventData, {
             id: eventData.id || `event_${Date.now()}_${Math.floor(Math.random() * 1000)}`
         });
+    }
+    
+    /**
+     * Reset seasonal triggers when a new season begins
+     * @param {string} currentSeason - Current season
+     * @param {number} currentYear - Current year
+     */
+    function resetSeasonalTriggers(currentSeason, currentYear) {
+        // We don't reset previous seasons to maintain uniquePerYear functionality
+        // But we can do cleanup of old years data here
+        
+        // Remove any seasonal data older than current year
+        for (const key in triggeredEvents.seasonal) {
+            const [season, year] = key.split('_');
+            if (parseInt(year) < currentYear - 1) {
+                delete triggeredEvents.seasonal[key];
+            }
+        }
+        
+        // Optional: clear very old random event data
+        const oneYearAgo = Date.now() - (365 * 24 * 60 * 60 * 1000);
+        for (const eventId in triggeredEvents.random) {
+            if (triggeredEvents.random[eventId].timestamp < oneYearAgo) {
+                delete triggeredEvents.random[eventId];
+            }
+        }
     }
     
     // Initialize basic events
@@ -128,7 +310,9 @@ const EventManager = (function() {
                     const pop = PopulationManager.getPopulation();
                     const capacity = PopulationManager.getHousingCapacity();
                     return pop.total < capacity && Utils.chanceOf(3);
-                }
+                },
+                cooldown: 45, // Won't appear again for 45 days
+                weight: 2    // Higher chance of appearing compared to others
             })
         );
         
@@ -152,7 +336,9 @@ const EventManager = (function() {
                     const season = gameState.date.season;
                     const chance = (season === "Summer" || season === "Fall") ? 8 : 3;
                     return Utils.chanceOf(chance);
-                }
+                },
+                cooldown: 20,
+                weight: 1.5
             })
         );
         
@@ -200,7 +386,9 @@ const EventManager = (function() {
                 ],
                 conditions: function(gameState) {
                     return gameState.date.season === "Winter" && Utils.chanceOf(5);
-                }
+                },
+                cooldown: 60, // Illness is rare, long cooldown
+                weight: 1
             })
         );
         
@@ -237,7 +425,9 @@ const EventManager = (function() {
                 season: "Spring",
                 conditions: function(gameState) {
                     return gameState.date.day < 10 && PopulationManager.getWorkerAssignments().farmers > 0;
-                }
+                },
+                uniquePerSeason: true, // Only happens once per spring
+                weight: 5 // High weight to appear early in spring
             })
         );
         
@@ -272,7 +462,9 @@ const EventManager = (function() {
                 season: "Summer",
                 conditions: function(gameState) {
                     return Utils.chanceOf(20);
-                }
+                },
+                uniquePerSeason: true,
+                weight: 3
             })
         );
         
@@ -303,7 +495,9 @@ const EventManager = (function() {
                 season: "Fall",
                 conditions: function(gameState) {
                     return gameState.date.day > 15 && PopulationManager.getWorkerAssignments().farmers > 0;
-                }
+                },
+                uniquePerSeason: true,
+                weight: 5
             })
         );
         
@@ -342,7 +536,9 @@ const EventManager = (function() {
                 season: "Winter",
                 conditions: function(gameState) {
                     return Utils.chanceOf(25);
-                }
+                },
+                cooldown: 15, // Multiple storms can happen per winter
+                weight: 2
             })
         );
     }
@@ -384,30 +580,61 @@ const EventManager = (function() {
                 }
             }
             
-            // Check for seasonal events
+            // When new season starts, reset seasonal triggers
             const currentSeason = gameState.date.season;
+            const currentYear = gameState.date.year;
+            const seasonKey = `${currentSeason}_${currentYear}`;
+            
+            // Initialize season tracking if needed
+            if (!triggeredEvents.seasonal[seasonKey]) {
+                triggeredEvents.seasonal[seasonKey] = [];
+                resetSeasonalTriggers(currentSeason, currentYear);
+            }
+            
+            // Determine if we should check for an event this tick
+            // Use a probability based on tickSize to avoid too many events
+            const shouldCheckForEvent = Utils.chanceOf(5 * tickSize);
+            
+            if (!shouldCheckForEvent) return;
+            
+            // First check for seasonal events
             const seasonEvents = seasonalEvents[currentSeason];
             
             if (seasonEvents && seasonEvents.length > 0) {
-                for (const event of seasonEvents) {
-                    if (checkEventConditions(event, gameState)) {
-                        this.triggerEvent(event, gameState);
-                        break; // Only trigger one event per tick
-                    }
-                }
-            }
-            
-            // Check for random events
-            if (eventPool.length > 0 && Utils.chanceOf(5 * tickSize)) {
                 // Filter events by conditions
-                const eligibleEvents = eventPool.filter(event => 
+                const eligibleSeasonalEvents = seasonEvents.filter(event => 
                     checkEventConditions(event, gameState)
                 );
                 
-                if (eligibleEvents.length > 0) {
-                    // Select random event from eligible events
-                    const randomIndex = Utils.randomBetween(0, eligibleEvents.length - 1);
-                    this.triggerEvent(eligibleEvents[randomIndex], gameState);
+                if (eligibleSeasonalEvents.length > 0) {
+                    // Select weighted random event
+                    const selectedEvent = selectWeightedRandomEvent(eligibleSeasonalEvents);
+                    
+                    // Record the event trigger
+                    recordEventTrigger(selectedEvent, gameState.date);
+                    
+                    // Trigger the event
+                    this.triggerEvent(selectedEvent, gameState);
+                    return; // Only trigger one event per tick
+                }
+            }
+            
+            // If no seasonal event, check for random events
+            if (eventPool.length > 0) {
+                // Filter events by conditions
+                const eligibleRandomEvents = eventPool.filter(event => 
+                    checkEventConditions(event, gameState)
+                );
+                
+                if (eligibleRandomEvents.length > 0) {
+                    // Select weighted random event
+                    const selectedEvent = selectWeightedRandomEvent(eligibleRandomEvents);
+                    
+                    // Record the event trigger
+                    recordEventTrigger(selectedEvent, gameState.date);
+                    
+                    // Trigger the event
+                    this.triggerEvent(selectedEvent, gameState);
                 }
             }
         },
@@ -441,6 +668,14 @@ const EventManager = (function() {
          * @param {Object} event - Event to display
          */
         displayEvent: function(event) {
+            // Store whether the game is running before pausing
+            gameWasRunningBeforeEvent = GameEngine.isGameRunning();
+            
+            // Pause the game when showing an event
+            if (gameWasRunningBeforeEvent) {
+                GameEngine.pauseGame();
+            }
+            
             // Log the event in the game log
             Utils.log(`[EVENT] ${event.title}: ${event.description}`, "important");
             
@@ -492,6 +727,11 @@ const EventManager = (function() {
                     if (event.effects) {
                         event.effects(GameEngine.getGameState());
                     }
+                    
+                    // Resume game if it was running before
+                    if (gameWasRunningBeforeEvent) {
+                        GameEngine.startGame();
+                    }
                 });
                 
                 optionsContainer.appendChild(continueButton);
@@ -537,6 +777,11 @@ const EventManager = (function() {
                     activeEvents.splice(index, 1);
                 }
             }
+            
+            // Resume game if it was running before
+            if (gameWasRunningBeforeEvent) {
+                GameEngine.startGame();
+            }
         },
         
         /**
@@ -568,6 +813,16 @@ const EventManager = (function() {
          */
         getEventHistory: function() {
             return [...eventHistory];
+        },
+        
+        /**
+         * DEBUG: Clear event cooldowns
+         * For testing, resets all event tracking
+         */
+        debugResetAllCooldowns: function() {
+            triggeredEvents.random = {};
+            triggeredEvents.seasonal = {};
+            console.log("All event cooldowns have been reset");
         }
     };
 })();
