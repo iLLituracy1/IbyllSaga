@@ -3,538 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Soldier of Ibyll - A roguelite game set in the Paanic Empire">
-    <title>Soldier of Ibyll</title>
-    
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
-    
-    <!-- Base Styles -->
-    <style>
-        :root {
-            --paanic-gold: #c9a959;
-            --paanic-accent: #b02e26;
-            --bg-primary: #1e293b;
-            --bg-secondary: #334155;
-            --bg-panel: #1e293b;
-            --text-primary: #e2e8f0;
-            --text-secondary: #94a3b8;
-            --border-primary: #3a2e40;
-        }
-        
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        
-        html, body {
-            font-family: 'Crimson Text', serif;
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            line-height: 1.6;
-            height: 100%;
-            overflow: hidden;
-        }
-        
-        .loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: var(--bg-primary);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            transition: opacity 0.5s ease-in-out;
-        }
-        
-        .loading-title {
-            font-size: 2.5rem;
-            color: var(--paanic-gold);
-            margin-bottom: 2rem;
-            text-align: center;
-        }
-        
-        .loading-bar-container {
-            width: 300px;
-            height: 20px;
-            background-color: var(--bg-secondary);
-            border-radius: 10px;
-            overflow: hidden;
-            margin-bottom: 1rem;
-        }
-        
-        .loading-bar {
-            height: 100%;
-            width: 0%;
-            background-color: var(--paanic-gold);
-            transition: width 0.3s ease-in-out;
-        }
-        
-        .loading-status {
-            font-size: 1rem;
-            color: var(--text-secondary);
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-        
-        .fade-out {
-            opacity: 0;
-            pointer-events: none;
-        }
-    </style>
+    <title>Viking Legacy</title>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <!-- Global click debugging -->
-    <script>
-        // Add global click listener to diagnose event capturing issues
-        document.addEventListener('click', function(e) {
-            console.log('Global click detected on:', e.target.tagName, e.target.id || '(no id)', 
-                        'Class:', e.target.className || '(no class)');
-            
-            // Check if click was on or inside a button
-            let element = e.target;
-            while (element && element !== document.body) {
-                if (element.tagName === 'BUTTON') {
-                    console.log('Button click captured at global level:', element.id);
-                    break;
-                }
-                element = element.parentElement;
-            }
-        }, true); // Use capture phase to detect events before they reach target
-    </script>
-    
-    <!-- Game title -->
-    <h1 id="game-title">Create Your Soldier</h1>
-    
-    <!-- Loading Screen -->
-    <div id="loadingScreen" class="loading-screen">
-        <h1 class="loading-title">Soldier of Ibyll</h1>
-        <div class="loading-bar-container">
-            <div id="loadingBar" class="loading-bar"></div>
-        </div>
-        <p id="loadingStatus" class="loading-status">Loading game...</p>
-    </div>
-    
-    <!-- Character Creator -->
-    <div id="creator" class="hidden">
-        <div class="creator-header">
-            <h1>Create Your Soldier</h1>
-        </div>
-        
-        <!-- Introduction Section -->
-        <div id="intro" class="creator-section">
-            <div class="creator-content">
-                <h2>Choose Your Heritage</h2>
-                <p>Your origins shape your destiny in the Paanic Empire. Where do you hail from?</p>
-                
-                <div class="heritage-options">
-                    <button id="paanic-button" class="menu-button">Paanic</button>
-                    <button id="nesian-button" class="menu-button">Nesian</button>
-                    <button id="lunarine-button" class="menu-button">Lunarine</button>
-                    <button id="wyrdman-button" class="menu-button">Wyrdman</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Origin Section -->
-        <div id="originSection" class="creator-section hidden">
-            <div class="creator-content">
-                <h2>Your Heritage</h2>
-                <div id="originDescription" class="description-box"></div>
-                
-                <h2>Choose Your Career</h2>
-                <div id="careerOptions" class="career-options"></div>
-                
-                <button id="back-to-intro-button" class="back-button">Back</button>
-            </div>
-        </div>
-        
-        <!-- Name Section -->
-        <div id="nameSection" class="creator-section hidden">
-            <div class="creator-content">
-                <h2>What is Your Name?</h2>
-                <p>How will you be known in the annals of the Empire?</p>
-                
-                <div class="input-group">
-                    <input type="text" id="nameInput" placeholder="Enter your name">
-                </div>
-                
-                <div class="button-group">
-                    <button id="back-to-origin-button" class="back-button">Back</button>
-                    <button id="confirm-name-button" class="confirm-button">Continue</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Final Character Output -->
-        <div id="finalOutput" class="creator-section hidden">
-            <div class="creator-content">
-                <h2>Review Your Soldier</h2>
-                <div id="characterSummary" class="character-summary-box"></div>
-                
-                <div class="button-group">
-                    <button id="back-to-name-button" class="back-button">Back</button>
-                    <button id="confirm-character-button" class="confirm-button">Confirm</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Prologue Section -->
-        <div id="prologueSection" class="creator-section hidden">
-            <div class="creator-content prologue-content">
-                <h2>Prologue</h2>
-                <div id="prologueText" class="prologue-text"></div>
-                
-                <button id="continue-to-empire-button" class="continue-button">Continue</button>
-            </div>
-        </div>
-        
-        <!-- Empire Update Section -->
-        <div id="empireSection" class="creator-section hidden">
-            <div class="creator-content empire-content">
-                <h2>The Paanic Empire</h2>
-                <div id="empireText" class="empire-text"></div>
-                
-                <button id="start-adventure-button" class="start-button">Begin Your Journey</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Main Game Container -->
-    <div id="gameContainer" class="hidden">
+    <div class="game-container">
         <header>
-            <h1>Kasvaari Camp</h1>
-            <div id="location">Location: Kasvaari Camp, Western Hierarchate</div>
-            <div class="time-display-container">
-                <div id="dayNightIndicator" class="day-night-indicator"></div>
-                <div class="time-info">
-                    <div id="timeDisplay">Time: 8:00 AM</div>
-                    <div id="dayDisplay">Day 1</div>
+            <h1>Viking Legacy</h1>
+            <div id="date-container">
+                <div id="game-date">Year 1, Day 1 (Spring)</div>
+                <div id="day-progress">
+                    <div id="day-progress-bar"></div>
+                </div>
+            </div>
+            <div id="rank-display">
+                <div class="rank-info">
+                    <span class="rank-label">Rank:</span>
+                    <span id="player-rank">Lowly Karl</span>
+                </div>
+                <div class="fame-info">
+                    <span class="fame-label">Fame:</span>
+                    <span id="player-fame">0</span>
+                </div>
+                <div id="next-rank-container" class="next-rank-info">
+                    <span class="next-rank-label">Next Rank:</span>
+                    <span id="next-rank">Humble Bondi</span>
+                    (<span id="fame-needed">100</span> fame needed)
                 </div>
             </div>
         </header>
-        
-        <!-- Content will be dynamically generated by the UI system -->
+
+        <div class="game-content">
+            <div class="resources-panel">
+                <h2>Resources</h2>
+                <div class="resource-grid">
+                    <div class="resource">
+                        <div class="resource-label">Food:</div>
+                        <div id="food-value">50</div>
+                        <div class="resource-rate">(+<span id="food-rate">0</span>/day)</div>
+                    </div>
+                    <div class="resource">
+                        <div class="resource-label">Wood:</div>
+                        <div id="wood-value">30</div>
+                        <div class="resource-rate">(+<span id="wood-rate">0</span>/day)</div>
+                    </div>
+                    <div class="resource">
+                        <div class="resource-label">Stone:</div>
+                        <div id="stone-value">10</div>
+                        <div class="resource-rate">(+<span id="stone-rate">0</span>/day)</div>
+                    </div>
+                    <div class="resource">
+                        <div class="resource-label">Metal:</div>
+                        <div id="metal-value">5</div>
+                        <div class="resource-rate">(+<span id="metal-rate">0</span>/day)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="population-panel">
+                <h2>Population</h2>
+                <div class="population-stats">
+                    <div class="population-stat">
+                        <div class="population-label">Total:</div>
+                        <div id="population-total">5</div>
+                    </div>
+                    <div class="population-stat">
+                        <div class="population-label">Workers:</div>
+                        <div id="population-workers">3</div>
+                    </div>
+                    <div class="population-stat">
+                        <div class="population-label">Warriors:</div>
+                        <div id="population-warriors">1</div>
+                    </div>
+                    <div class="population-stat">
+                        <div class="population-label">Children:</div>
+                        <div id="population-children">1</div>
+                    </div>
+                </div>
+                <div id="dynasty-info">
+                    <h3>Dynasty</h3>
+                    <div id="leader-info">Leader: <span id="leader-name">Ragnar</span></div>
+                </div>
+            </div>
+
+            <div class="actions-panel">
+                <h2>Actions</h2>
+                <div class="action-buttons">
+                    <button id="btn-hunt">Hunt</button>
+                    <button id="btn-gather">Gather Wood</button>
+                    <button id="btn-mine">Mine Stone</button>
+                    <button id="btn-raid">Raid (Disabled)</button>
+                </div>
+                <div class="build-actions">
+                    <h3>Build</h3>
+                    <button id="btn-build-house">Build House</button>
+                    <button id="btn-build-farm">Build Farm</button>
+                    <button id="btn-build-smith">Build Smithy</button>
+                </div>
+                <div class="assign-actions">
+                    <h3>Assign Workers</h3>
+                    <div class="assign-control">
+                        <label for="farmers">Farmers:</label>
+                        <button class="decrement" data-target="farmers">-</button>
+                        <span id="farmers-count">1</span>
+                        <button class="increment" data-target="farmers">+</button>
+                    </div>
+                    <div class="assign-control">
+                        <label for="woodcutters">Woodcutters:</label>
+                        <button class="decrement" data-target="woodcutters">-</button>
+                        <span id="woodcutters-count">1</span>
+                        <button class="increment" data-target="woodcutters">+</button>
+                    </div>
+                    <div class="assign-control">
+                        <label for="miners">Miners:</label>
+                        <button class="decrement" data-target="miners">-</button>
+                        <span id="miners-count">1</span>
+                        <button class="increment" data-target="miners">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="log-panel">
+                <h2>Saga</h2>
+                <div id="game-log">
+                    <p>Your saga begins. As a new jarl, you establish a small homestead with your family and loyal followers.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-controls">
+            <button id="btn-speed-slow">Slow</button>
+            <button id="btn-speed-normal" class="active">Normal</button>
+            <button id="btn-speed-fast">Fast</button>
+            <button id="btn-pause">Pause</button>
+        </div>
     </div>
 
-    <!-- Core UI Framework -->
-    <script src="js/core/EventBus.js"></script>
-    <script src="js/core/Component.js"></script>
-    <script src="js/core/UISystem.js"></script>
-
-    <!-- UI Utilities -->
-    <script src="js/UIEvents.js"></script>
-    <script src="js/UIUtils.js"></script>
-    <script src="js/UIStyles.js"></script>
-
-    <!-- Game Data -->
-    <script src="js/origins.js"></script>
-    <script src="js/careers.js"></script>
-    <script src="js/narrative.js"></script>
-    <script src="js/items.js"></script>
-    
-    <!-- Game Systems -->
-    <script src="js/inventory.js"></script>
-    <script src="js/characterCreation.js"></script>
-
-    <!-- UI Components -->
-    <script src="js/components/StatusDisplayComponent.js"></script>
-    <script src="js/components/TimeSystemComponent.js"></script>
-    <script src="js/components/NarrativeComponent.js"></script>
-    <script src="js/components/ActionSystemComponent.js"></script>
-    <script src="js/components/PanelSystemComponent.js"></script>
-    <script src="js/components/SidebarLayoutComponent.js"></script>
-    <script src="js/components/TransitionSystem.js"></script>
-
-    <!-- Music System (Optional) -->
-    <script src="js/music-system.js"></script>
-
-    <!-- Test Framework (Development Only) -->
-    <script src="js/tests/UITestFramework.js"></script>
-
-    <!-- Initialize UI Framework -->
-    <script src="js/Initialize.js"></script>
-
-    <!-- Game Initialization Script -->
-    <script>
-        // Initialize the game when everything is loaded
-        window.addEventListener('DOMContentLoaded', function() {
-            // Show loading screen
-            const loadingBar = document.getElementById('loadingBar');
-            const loadingStatus = document.getElementById('loadingStatus');
-            const loadingScreen = document.getElementById('loadingScreen');
-            
-            // Simulate loading progress
-            let progress = 0;
-            const loadingInterval = setInterval(function() {
-                progress += Math.random() * 10;
-                if (progress >= 100) {
-                    progress = 100;
-                    clearInterval(loadingInterval);
-                    
-                    // Initialize player object if it doesn't exist
-                    if (!window.player) {
-                        window.player = {
-                            name: "",
-                            origin: "",
-                            career: { title: "", description: "" },
-                            phy: 0,
-                            men: 0,
-                            skills: {
-                                melee: 0,
-                                marksmanship: 0,
-                                survival: 0,
-                                command: 0,
-                                discipline: 0,
-                                tactics: 0,
-                                organization: 0,
-                                arcana: 0
-                            }
-                        };
-                    }
-                    
-                    // Show character creator
-                    loadingStatus.textContent = 'Ready!';
-                    
-                    // Hide loading screen with a fade out
-                    setTimeout(() => {
-                        loadingScreen.classList.add('fade-out');
-                        setTimeout(() => {
-                            loadingScreen.classList.add('hidden');
-                            document.getElementById('creator').classList.remove('hidden');
-                        }, 500);
-                    }, 500);
-                }
-                
-                loadingBar.style.width = `${progress}%`;
-                loadingStatus.textContent = `Loading game... ${Math.floor(progress)}%`;
-            }, 100);
-            
-            // Listen for UI system initialization
-            document.addEventListener('uiSystemReady', function(e) {
-                console.log('UI System Ready:', e.detail);
-            });
-        });
-    </script>
-    
-    <!-- CSS for Character Creator and Game -->
-    <style>
-        /* Character Creator Styles */
-        #creator {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem;
-            height: 100vh;
-            overflow-y: auto;
-        }
-        
-        .creator-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        
-        .creator-header h1 {
-            color: var(--paanic-gold);
-            font-size: 2.5rem;
-        }
-        
-        .creator-section {
-            background-color: var(--bg-panel);
-            border-radius: 8px;
-            border: 1px solid var(--border-primary);
-            padding: 2rem;
-            margin-bottom: 2rem;
-        }
-        
-        .creator-content {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        
-        .creator-content h2 {
-            color: var(--paanic-gold);
-            margin-bottom: 1rem;
-        }
-        
-        .creator-content p {
-            margin-bottom: 1.5rem;
-        }
-        
-        .description-box {
-            background-color: var(--bg-secondary);
-            padding: 1.5rem;
-            border-radius: 8px;
-            margin-bottom: 2rem;
-        }
-        
-        .heritage-options, .career-options {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            width: 100%;
-        }
-        
-        /* Special styles for heritage buttons */
-        .heritage-options .menu-button {
-            padding: 0.75rem 1.5rem;
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            border: 2px solid var(--paanic-gold);
-            border-radius: 4px;
-            font-family: inherit;
-            font-size: 1rem;
-            cursor: pointer !important;
-            transition: all 0.2s;
-            position: relative;
-            z-index: 10;
-            pointer-events: auto;
-            min-height: 50px;
-            min-width: 200px;
-            width: 100%;
-            display: block;
-        }
-        
-        .heritage-options .menu-button:hover {
-            background-color: var(--paanic-gold);
-            color: var(--bg-primary);
-            transform: translateY(-2px);
-        }
-        
-        .heritage-options .menu-button:active {
-            background-color: #ff9900;
-            transform: translateY(1px);
-        }
-        
-        .input-group {
-            margin-bottom: 2rem;
-        }
-        
-        #nameInput {
-            width: 100%;
-            padding: 0.75rem;
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-primary);
-            border-radius: 4px;
-            font-family: inherit;
-            font-size: 1rem;
-        }
-        
-        .button-group {
-            display: flex;
-            justify-content: space-between;
-        }
-        
-        .back-button, .confirm-button, .continue-button, .start-button {
-            padding: 0.75rem 1.5rem;
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            border: none;
-            border-radius: 4px;
-            font-family: inherit;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .back-button:hover {
-            background-color: var(--text-secondary);
-        }
-        
-        .confirm-button, .continue-button, .start-button {
-            background-color: var(--paanic-gold);
-            color: var(--bg-primary);
-        }
-        
-        .confirm-button:hover, .continue-button:hover, .start-button:hover {
-            background-color: #d4b86e;
-        }
-        
-        .character-summary-box {
-            background-color: var(--bg-secondary);
-            padding: 1.5rem;
-            border-radius: 8px;
-            margin-bottom: 2rem;
-        }
-        
-        .prologue-text, .empire-text {
-            background-color: var(--bg-secondary);
-            padding: 1.5rem;
-            border-radius: 8px;
-            margin-bottom: 2rem;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        
-        /* Game Container Styles */
-        #gameContainer {
-            height: 100vh;
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            grid-template-rows: auto 1fr;
-            grid-template-areas:
-                "header header"
-                "sidebar main";
-            gap: 20px;
-            padding: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        header {
-            grid-area: header;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 20px;
-            background: var(--bg-panel);
-            border-bottom: 2px solid var(--paanic-gold);
-            border-radius: 8px;
-        }
-        
-        /* Responsive Styles */
-        @media (max-width: 768px) {
-            #gameContainer {
-                grid-template-columns: 1fr;
-                grid-template-areas:
-                    "header"
-                    "main";
-                padding: 10px;
-            }
-            
-            #creator {
-                padding: 1rem;
-            }
-            
-            .creator-section {
-                padding: 1rem;
-            }
-            
-            .button-group {
-                flex-direction: column;
-                gap: 0.5rem;
-            }
-        }
-    </style>
-
-    <!-- Main game container -->
-    <div id="game-container" class="hidden">
-        <!-- Game content will be dynamically loaded here -->
-    </div>
-    
-    <!-- Character creation container -->
-    <div id="character-creator">
-        <!-- Character creation content already defined above -->
-    </div>
+    <!-- JavaScript Modules -->
+    <script src="js/utils.js"></script>
+    <script src="js/resources.js"></script>
+    <script src="js/population.js"></script>
+    <script src="js/events.js"></script>
+    <script src="js/rank.js"></script>
+    <script src="js/game.js"></script>
 </body>
 </html>
