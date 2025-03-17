@@ -175,39 +175,97 @@ const ResourceManager = (function() {
             };
         },
         
-        /**
+            /**
          * Add resources manually (from events, actions, etc.)
          * @param {Object} amounts - Object containing resource amounts to add
+         * @returns {boolean} - Whether the resources were successfully added
          */
         addResources: function(amounts) {
-            for (const resource in amounts) {
-                if (resources.hasOwnProperty(resource)) {
-                    resources[resource] += amounts[resource];
+            try {
+                if (!amounts || typeof amounts !== 'object') {
+                    console.error("Invalid resource amounts:", amounts);
+                    return false;
                 }
+                
+                for (const resource in amounts) {
+                    if (resources.hasOwnProperty(resource)) {
+                        // Validate resource amount is a number
+                        if (typeof amounts[resource] !== 'number' || isNaN(amounts[resource])) {
+                            console.warn(`Invalid amount for ${resource}:`, amounts[resource]);
+                            continue;
+                        }
+                        
+                        // Add resource with debug info
+                        const prevAmount = resources[resource];
+                        resources[resource] += amounts[resource];
+                        
+                        // Log for debugging
+                        console.debug(`${resource}: ${prevAmount} → ${resources[resource]} (+${amounts[resource]})`);
+                    } else {
+                        console.warn(`Unknown resource type: ${resource}`);
+                    }
+                }
+                
+                updateResourceValuesUI();
+                return true;
+            } catch (error) {
+                console.error("Error adding resources:", error);
+                return false;
             }
-            updateResourceValuesUI();
         },
         
-        /**
+            /**
          * Subtract resources manually (from events, actions, etc.)
          * @param {Object} amounts - Object containing resource amounts to subtract
          * @returns {boolean} - Whether the resources were successfully subtracted
          */
         subtractResources: function(amounts) {
-            // Check if we have enough resources
-            if (!canAfford(amounts)) {
+            try {
+                // Validate input
+                if (!amounts || typeof amounts !== 'object') {
+                    console.error("Invalid resource amounts:", amounts);
+                    return false;
+                }
+                
+                // Check if we have enough resources
+                if (!canAfford(amounts)) {
+                    console.log("Cannot afford:", amounts);
+                    console.log("Current resources:", {...resources});
+                    return false;
+                }
+                
+                // Subtract resources
+                for (const resource in amounts) {
+                    if (resources.hasOwnProperty(resource)) {
+                        // Validate resource amount is a number
+                        if (typeof amounts[resource] !== 'number' || isNaN(amounts[resource])) {
+                            console.warn(`Invalid amount for ${resource}:`, amounts[resource]);
+                            continue;
+                        }
+                        
+                        // Subtract resource with debug info
+                        const prevAmount = resources[resource];
+                        resources[resource] -= amounts[resource];
+                        
+                        // Ensure we don't go below zero (shouldn't happen due to canAfford check)
+                        if (resources[resource] < 0) {
+                            console.warn(`${resource} went below 0, setting to 0`);
+                            resources[resource] = 0;
+                        }
+                        
+                        // Log for debugging
+                        console.debug(`${resource}: ${prevAmount} → ${resources[resource]} (-${amounts[resource]})`);
+                    } else {
+                        console.warn(`Unknown resource type: ${resource}`);
+                    }
+                }
+                
+                updateResourceValuesUI();
+                return true;
+            } catch (error) {
+                console.error("Error subtracting resources:", error);
                 return false;
             }
-            
-            // Subtract resources
-            for (const resource in amounts) {
-                if (resources.hasOwnProperty(resource)) {
-                    resources[resource] -= amounts[resource];
-                }
-            }
-            
-            updateResourceValuesUI();
-            return true;
         },
         
         /**

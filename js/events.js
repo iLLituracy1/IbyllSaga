@@ -437,25 +437,77 @@ const EventManager = (function() {
         },
         
         /**
-         * Display event in the UI
+         * Display event in the UI with interactive choices
          * @param {Object} event - Event to display
          */
         displayEvent: function(event) {
-            // In a more complete implementation, this would create an event dialog
-            // For now, we'll just log it
+            // Log the event in the game log
             Utils.log(`[EVENT] ${event.title}: ${event.description}`, "important");
             
+            // Create a modal dialog for the event
+            const eventModal = document.createElement('div');
+            eventModal.className = 'event-modal';
+            eventModal.innerHTML = `
+                <div class="event-content">
+                    <h2>${event.title}</h2>
+                    <p>${event.description}</p>
+                    <div class="event-options"></div>
+                </div>
+            `;
+            
+            // Add options if available
             if (event.options && event.options.length > 0) {
+                const optionsContainer = eventModal.querySelector('.event-options');
+                
                 event.options.forEach((option, index) => {
-                    console.log(`Option ${index + 1}: ${option.text}`);
+                    const optionButton = document.createElement('button');
+                    optionButton.textContent = option.text;
+                    optionButton.className = 'event-option';
+                    optionButton.dataset.optionIndex = index;
+                    
+                    // Add event listener
+                    optionButton.addEventListener('click', () => {
+                        // Close modal
+                        document.body.removeChild(eventModal);
+                        
+                        // Handle option selection
+                        this.handleEventOption(event, index, GameEngine.getGameState());
+                    });
+                    
+                    optionsContainer.appendChild(optionButton);
+                });
+            } else {
+                // If no options, add a "Continue" button
+                const optionsContainer = eventModal.querySelector('.event-options');
+                const continueButton = document.createElement('button');
+                continueButton.textContent = "Continue";
+                continueButton.className = 'event-option';
+                
+                // Add event listener
+                continueButton.addEventListener('click', () => {
+                    // Close modal
+                    document.body.removeChild(eventModal);
+                    
+                    // Apply effects
+                    if (event.effects) {
+                        event.effects(GameEngine.getGameState());
+                    }
                 });
                 
-                // In a real implementation, you'd create buttons for each option
-                // For simplicity, we'll simulate choosing the first option after a delay
-                setTimeout(() => {
-                    this.handleEventOption(event, 0, GameEngine.getGameState());
-                }, 1000);
+                optionsContainer.appendChild(continueButton);
             }
+            
+            // Add modal to the DOM
+            document.body.appendChild(eventModal);
+            
+            // Debug info - can be removed in production
+            console.group("Event Details");
+            console.log("Title:", event.title);
+            console.log("Description:", event.description);
+            console.log("Options:", event.options);
+            console.log("Is Persistent:", event.isPersistent);
+            console.log("Duration:", event.duration);
+            console.groupEnd();
         },
         
         /**

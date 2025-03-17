@@ -1,32 +1,34 @@
-    // Game speed settings (days per tick)
+/**
+ * Viking Legacy - Main Game Engine
+ * Handles game initialization, the simulation loop, and coordinates between modules
+ */
+
+const GameEngine = (function() {
+    // Constants
+    const DAYS_PER_SEASON = 90;
+    const DAYS_PER_MONTH = 30;
+    const SEASONS = ["Spring", "Summer", "Fall", "Winter"];
+    
+    // Game speed settings (days per tick) - Moved inside IIFE
     const gameSpeeds = {
         slow: 1,
         normal: 1,
         fast: 1
     };
     
-    // Game tick interval (in milliseconds)
+    // Game tick interval (in milliseconds) - Moved inside IIFE
     const tickIntervals = {
         slow: 3000,
         normal: 2000,
         fast: 1000
     };
     
-    // Day progress update intervals (ms) - how frequently to update progress bar
+    // Day progress update intervals (ms) - Moved inside IIFE
     const dayProgressIntervals = {
         slow: 300,
         normal: 200,
         fast: 100
-    };/**
- * Viking Legacy - Main Game Engine
- * Handles game initialization, the simulation loop, and coordinates between modules
- */
-
-const GameEngine = (function() {
-    // Constants - Defined FIRST, before they're used
-    const DAYS_PER_SEASON = 90;
-    const DAYS_PER_MONTH = 30;
-    const SEASONS = ["Spring", "Summer", "Fall", "Winter"];
+    };
     
     // Viking month names
     const MONTH_NAMES = [

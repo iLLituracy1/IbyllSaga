@@ -313,41 +313,49 @@ const RankManager = (function() {
     
     // Public API
     return {
-        /**
-         * Initialize the rank manager
-         */
-        init: function() {
-            // Add HTML elements for rank display if they don't exist
-            const headerDiv = document.querySelector('header');
+  /**
+ * Initialize the rank manager
+ */
+init: function() {
+    // Check if rank display already exists
+    const existingRankDisplay = document.getElementById('rank-display');
+    
+    // Only create the rank display if it doesn't exist
+    if (!existingRankDisplay) {
+        console.log("Creating rank display elements");
+        const headerDiv = document.querySelector('header');
+        
+        if (headerDiv) {
+            // Create rank display elements
+            const rankDisplayDiv = document.createElement('div');
+            rankDisplayDiv.id = 'rank-display';
+            rankDisplayDiv.innerHTML = `
+                <div class="rank-info">
+                    <span class="rank-label">Rank:</span>
+                    <span id="player-rank">${ranks[currentRankIndex].title}</span>
+                </div>
+                <div class="fame-info">
+                    <span class="fame-label">Fame:</span>
+                    <span id="player-fame">0</span>
+                </div>
+                <div id="next-rank-container" class="next-rank-info">
+                    <span class="next-rank-label">Next Rank:</span>
+                    <span id="next-rank">${ranks[currentRankIndex+1].title}</span>
+                    (<span id="fame-needed">${ranks[currentRankIndex+1].fameRequired}</span> fame needed)
+                </div>
+            `;
             
-            if (headerDiv) {
-                // Create rank display elements
-                const rankDisplayDiv = document.createElement('div');
-                rankDisplayDiv.id = 'rank-display';
-                rankDisplayDiv.innerHTML = `
-                    <div class="rank-info">
-                        <span class="rank-label">Rank:</span>
-                        <span id="player-rank">${ranks[currentRankIndex].title}</span>
-                    </div>
-                    <div class="fame-info">
-                        <span class="fame-label">Fame:</span>
-                        <span id="player-fame">0</span>
-                    </div>
-                    <div id="next-rank-container" class="next-rank-info">
-                        <span class="next-rank-label">Next Rank:</span>
-                        <span id="next-rank">${ranks[currentRankIndex+1].title}</span>
-                        (<span id="fame-needed">${ranks[currentRankIndex+1].fameRequired}</span> fame needed)
-                    </div>
-                `;
-                
-                headerDiv.appendChild(rankDisplayDiv);
-            }
-            
-            // Update UI
-            updateRankUI();
-            
-            console.log("Rank Manager initialized");
-        },
+            headerDiv.appendChild(rankDisplayDiv);
+        }
+    } else {
+        console.log("Rank display already exists, skipping creation");
+    }
+    
+    // Update UI
+    updateRankUI();
+    
+    console.log("Rank Manager initialized");
+},
         
         /**
          * Get current rank information
