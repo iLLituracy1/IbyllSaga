@@ -61,10 +61,7 @@ const GameEngine = (function() {
         gameSpeed: 'normal', // 'slow', 'normal', 'fast'
         tickInterval: null,
         dayProgressTimer: null,
-        dayProgressValue: 0,
-        worldData: null, // Will hold the generated world data
-        playerRegionId: null, // Current player region
-        playerShipId: null // Currently used ship (if any)
+        dayProgressValue: 0
     };
     
     // Private methods
@@ -183,19 +180,6 @@ const GameEngine = (function() {
         ResourceManager.updateProductionRates(
             PopulationManager.getWorkerAssignments()
         );
-
-                // Process land and buildings
-        LandManager.processTick(tickSize);
-        BuildingManager.processTick(gameState, tickSize);
-
-        // Process factions and politics
-        FactionManager.processTick(tickSize, gameState.worldData);
-
-        // Process trade and markets
-        TradeManager.processTick(tickSize, gameState.date.season);
-
-        // Process naval activities
-        NavalManager.processTick(tickSize);
     }
     
     /**
@@ -307,30 +291,6 @@ const GameEngine = (function() {
             PopulationManager.init();
             EventManager.init();
             RankManager.init();
-            // Initialize new modules
-            WorldGenerator.init();
-            LandManager.init();
-            BuildingManager.init();
-            FactionManager.init();
-            TradeManager.init();
-            NavalManager.init();
-            WarfareManager.init();
-
-            // Generate world data
-            const worldData = WorldGenerator.generateWorld();
-
-            // Store world data in game state
-            gameState.worldData = worldData;
-
-            // Generate factions
-            FactionManager.generateFactions(worldData);
-
-            // Generate markets and trade routes
-            TradeManager.generateWorldTrade(worldData);
-
-            // Create player's starting location
-            const startingRegion = WorldGenerator.getPlayerStartingRegion();
-            gameState.playerRegionId = startingRegion.id;
             
             // Set up event listeners
             setupEventListeners();
@@ -343,7 +303,6 @@ const GameEngine = (function() {
             
             console.log("Game initialized successfully");
         },
-        
         
         /**
          * Start the game simulation
@@ -413,16 +372,6 @@ const GameEngine = (function() {
                 this.startGame();
             }
         },
-
-        /**
-         */
-        /**
-         * Check if the game is currently running
-         * @returns {boolean} - Whether the game is running
-         */
-        isGameRunning: function() {
-            return gameState.isRunning;
-        },
         
         /**
          * Set game speed
@@ -489,32 +438,9 @@ const GameEngine = (function() {
                 productionRates: ResourceManager.getProductionRates(),
                 characters: PopulationManager.getCharacters(),
                 leader: PopulationManager.getDynastyLeader(),
-                activeEvents: EventManager.getActiveEvents(),
-                worldData: gameState.worldData,
-                playerRegionId: gameState.playerRegionId,
-                currentRegion: WorldGenerator.getRegionById(gameState.playerRegionId)
+                activeEvents: EventManager.getActiveEvents()
             };
         },
-
-                    /**
-             * Set player's current region
-             * @param {string} regionId - Region ID to set as current
-             */
-            setPlayerRegion: function(regionId) {
-                gameState.playerRegionId = regionId;
-                
-                // Update UI to reflect new region
-                // This would be implemented with a proper UI update function
-                console.log(`Player moved to region: ${regionId}`);
-            },
-
-            /**
-             * Get player's current region
-             * @returns {string} - Current region ID
-             */
-            getPlayerRegion: function() {
-                return gameState.playerRegionId;
-            },
         
         /**
          * Manual tick for debugging
