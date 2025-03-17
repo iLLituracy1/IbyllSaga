@@ -728,3 +728,514 @@ button:disabled {
         grid-row: 5;
     }
 }
+
+/* Land Management System CSS */
+
+/* Land Panel */
+.land-panel {
+    background-color: #e6d8c3;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    border: 1px solid #c9ba9b;
+    grid-column: 1 / 3;
+    margin-top: 20px;
+}
+
+.land-panel h2 {
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    color: #5d4037;
+    border-bottom: 2px solid #a99275;
+    padding-bottom: 8px;
+    margin-bottom: 15px;
+    letter-spacing: 1px;
+    font-weight: 700;
+}
+
+.land-panel h3 {
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    color: #5d4037;
+    margin-top: 20px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #c9ba9b;
+    padding-bottom: 5px;
+    letter-spacing: 1px;
+    font-weight: 700;
+}
+
+/* Land Overview Section */
+.land-overview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.land-total {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #5d4037;
+    flex-basis: 100%;
+}
+
+.land-distribution {
+    flex-basis: 50%;
+    flex-grow: 1;
+}
+
+.land-chart-container {
+    flex-basis: 40%;
+    min-width: 250px;
+    max-width: 300px;
+    flex-grow: 1;
+}
+
+.land-type {
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    background-color: #f7f0e3;
+    border-radius: 4px;
+    border-left: 4px solid #8b5d33;
+}
+
+.land-type .label {
+    font-weight: bold;
+    margin-right: 5px;
+    color: #5d4037;
+}
+
+/* Orders Section */
+.land-orders {
+    margin-top: 20px;
+}
+
+.orders-controls {
+    margin-bottom: 15px;
+}
+
+.order-selector {
+    background-color: #f7f0e3;
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 10px;
+    border: 1px solid #d7cbb9;
+}
+
+.order-selector h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #5d4037;
+}
+
+.order-type-btn {
+    margin-right: 8px;
+    margin-bottom: 8px;
+}
+
+.order-item {
+    background-color: #f7f0e3;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    border-left: 4px solid #8b5d33;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.order-header h4 {
+    margin: 0;
+    color: #5d4037;
+    font-weight: 600;
+}
+
+.order-progress {
+    margin: 10px 0;
+}
+
+.progress-bar-container {
+    height: 10px;
+    background-color: #d7cbb9;
+    border-radius: 5px;
+    margin-top: 5px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(to right, #8b5d33, #a97c50);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.order-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #5d4037;
+}
+
+.btn-cancel-order {
+    padding: 5px 10px;
+    font-size: 0.9rem;
+}
+
+/* Order Configuration Modal */
+.order-config-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.order-config-content {
+    background-color: #f7f0e3;
+    border-radius: 8px;
+    padding: 25px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
+    border: 2px solid #8b5d33;
+}
+
+.order-config-content h3 {
+    margin-top: 0;
+    border-bottom: 2px solid #8b5d33;
+    padding-bottom: 10px;
+}
+
+.config-field {
+    margin-bottom: 15px;
+}
+
+.config-field label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #5d4037;
+}
+
+.config-field input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #c9ba9b;
+    border-radius: 4px;
+    background-color: #fff;
+    color: #3a2e21;
+}
+
+.config-field input[type="range"] {
+    width: 100%;
+}
+
+.config-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+/* Land type specific colors */
+.land-type:nth-child(1) {
+    border-left-color: #8eb056; /* Farmland - Green */
+}
+
+.land-type:nth-child(2) {
+    border-left-color: #6d4c2a; /* Woodland - Brown */
+}
+
+.land-type:nth-child(3) {
+    border-left-color: #8b5d33; /* Settlement - Light Brown */
+}
+
+.land-type:nth-child(4) {
+    border-left-color: #5d4037; /* Mining - Dark Brown */
+}
+
+.land-type:nth-child(5) {
+    border-left-color: #a99c8a; /* Wilderness - Gray */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .land-overview {
+        flex-direction: column;
+    }
+    
+    .land-chart-container {
+        max-width: 100%;
+    }
+}
+/* Statistics Panel Styles */
+
+.statistics-panel {
+    background-color: #e6d8c3;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    border: 1px solid #c9ba9b;
+    margin-top: 20px;
+    grid-column: 1 / 3;
+}
+
+.toggle-panel-button {
+    width: 100%;
+    text-align: left;
+    margin-bottom: 15px;
+    display: none; /* Hidden on desktop */
+}
+
+.toggle-icon {
+    float: right;
+}
+
+.stats-panel-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.stats-section {
+    background-color: #f7f0e3;
+    padding: 15px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.stats-section h3 {
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    color: #5d4037;
+    margin-top: 0;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #c9ba9b;
+    padding-bottom: 5px;
+    letter-spacing: 1px;
+    font-weight: 700;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding: 3px 0;
+}
+
+.stat-label {
+    font-weight: 500;
+    color: #5d4037;
+}
+
+.stat-value {
+    font-weight: 600;
+    color: #8b5d33;
+}
+
+.stat-progress {
+    margin-top: 10px;
+}
+
+.progress-label {
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #5d4037;
+}
+
+.progress-bar-container {
+    height: 20px;
+    background-color: #d7cbb9;
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #c9ba9b;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(to right, #8b5d33, #a97c50);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 600;
+    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+#buildings-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.building-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 8px;
+    margin-bottom: 5px;
+    background-color: #fbf7f0;
+    border-radius: 4px;
+    border-left: 3px solid #8b5d33;
+}
+
+.building-name {
+    font-weight: 500;
+}
+
+.building-count {
+    font-weight: 600;
+    color: #8b5d33;
+}
+
+.character-filter {
+    display: flex;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.character-filter-btn {
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    background-color: #d7cbb9;
+    border: 1px solid #c9ba9b;
+    color: #5d4037;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.character-filter-btn:hover {
+    background-color: #c9ba9b;
+}
+
+.character-filter-btn.active {
+    background-color: #8b5d33;
+    color: #fff;
+    border: 1px solid #5d4037;
+}
+
+.characters-list {
+    max-height: 400px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 10px;
+}
+
+.character-card {
+    background-color: #fbf7f0;
+    border-radius: 4px;
+    padding: 10px;
+    border-left: 3px solid #8b5d33;
+    transition: transform 0.2s;
+}
+
+.character-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.character-card h4 {
+    margin-top: 0;
+    margin-bottom: 5px;
+    color: #5d4037;
+    display: flex;
+    justify-content: space-between;
+}
+
+.character-card p {
+    margin: 3px 0;
+    font-size: 0.9rem;
+}
+
+.character-gender {
+    font-weight: bold;
+}
+
+.male {
+    color: #1565c0;
+}
+
+.female {
+    color: #c62828;
+}
+
+.character-traits {
+    margin-top: 5px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.character-trait {
+    font-size: 0.8rem;
+    padding: 2px 5px;
+    border-radius: 3px;
+    background-color: #e6d8c3;
+}
+
+.trait-positive {
+    background-color: #c8e6c9;
+    color: #2e7d32;
+}
+
+.trait-negative {
+    background-color: #ffcdd2;
+    color: #c62828;
+}
+
+/* Colors for different roles */
+.role-worker {
+    border-left-color: #1565c0;
+}
+
+.role-child {
+    border-left-color: #2e7d32;
+}
+
+.role-elder {
+    border-left-color: #8b5d33;
+}
+
+.role-leader {
+    border-left-color: #c62828;
+    background-color: #fff5e6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .toggle-panel-button {
+        display: block;
+    }
+    
+    .stats-panel-content.collapsed {
+        display: none;
+    }
+    
+    .stats-panel-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .characters-list {
+        grid-template-columns: 1fr;
+    }
+}

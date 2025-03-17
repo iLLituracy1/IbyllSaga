@@ -8,10 +8,10 @@ const PopulationManager = (function() {
     
     // Population data
     let population = {
-        total: 5,         // Total population count
-        workers: 3,       // Available adult workers
-        warriors: 1,      // Warriors (specialized workers)
-        children: 1,      // Children who will grow into workers
+        total: 15,         // Total population count
+        workers: 10,       // Available adult workers
+        warriors: 0,      // Warriors (specialized workers)
+        children: 5,      // Children who will grow into workers
         elders: 0         // Elders (non-working)
     };
     
@@ -217,6 +217,8 @@ const PopulationManager = (function() {
             updatePopulationUI();
             
             console.log("Population Manager initialized");
+
+            this.reconcilePopulation();
         },
         
         /**
@@ -587,6 +589,95 @@ const PopulationManager = (function() {
          */
         getCharacterById: function(id) {
             return characters.find(char => char.id === id) || null;
-        }
+        },
+
+        reconcilePopulation: function() {
+            console.log("Reconciling population counts with character objects...");
+            
+            // Get current character counts by role
+            const characterCounts = {
+                child: 0,
+                worker: 0,
+                warrior: 0,
+                elder: 0,
+                total: characters.length
+            };
+            
+            // Count characters by role
+            characters.forEach(char => {
+                if (char.role in characterCounts) {
+                    characterCounts[char.role]++;
+                }
+            });
+            
+            console.log("Actual character counts:", characterCounts);
+            console.log("Current population counts:", {...population});
+            
+            // If there's a mismatch, either create missing characters or adjust counts
+            if (population.total !== characterCounts.total) {
+                console.log("Population mismatch detected!");
+                
+                // Option 1: Adjust population counts to match actual characters
+                if (characterCounts.total < 20) { // Only do this for reasonably small populations
+                    // Create missing characters
+                    const missingTotal = population.total - characterCounts.total;
+                    console.log(`Creating ${missingTotal} missing characters...`);
+                    
+                    // Determine role distribution for missing characters
+                    let missingWorkers = Math.max(0, population.workers - characterCounts.worker);
+                    let missingWarriors = Math.max(0, population.warriors - characterCounts.warrior);
+                    let missingChildren = Math.max(0, population.children - characterCounts.child);
+                    let missingElders = Math.max(0, population.elders - characterCounts.elder);
+                    
+                    // Create missing workers
+                    for (let i = 0; i < missingWorkers; i++) {
+                        createCharacter({
+                            age: Utils.randomBetween(18, 40),
+                            role: 'worker'
+                        });
+                    }
+                    
+                    // Create missing warriors
+                    for (let i = 0; i < missingWarriors; i++) {
+                        createCharacter({
+                            age: Utils.randomBetween(18, 40),
+                            role: 'warrior'
+                        });
+                    }
+                    
+                    // Create missing children
+                    for (let i = 0; i < missingChildren; i++) {
+                        createCharacter({
+                            age: Utils.randomBetween(5, 14),
+                            role: 'child'
+                        });
+                    }
+                    
+                    // Create missing elders
+                    for (let i = 0; i < missingElders; i++) {
+                        createCharacter({
+                            age: Utils.randomBetween(46, 60),
+                            role: 'elder'
+                        });
+                    }
+                    
+                    console.log("Population reconciliation complete.");
+                    console.log("New character count:", characters.length);
+                } else {
+                    // Option 2: For large populations, adjust the counters to match reality
+                    console.log("Adjusting population counts to match character objects...");
+                    population.workers = characterCounts.worker;
+                    population.warriors = characterCounts.warrior;
+                    population.children = characterCounts.child;
+                    population.elders = characterCounts.elder;
+                    population.total = characterCounts.total;
+                }
+            } else {
+                console.log("Population counts match character objects. No action needed.");
+            }
+            
+            // Update UI
+            updatePopulationUI();
+        },
     };
 })();

@@ -232,14 +232,21 @@ const GameEngine = (function() {
         
         // Process world map (AI settlements, etc.)
         WorldMap.processTick(gameState, tickSize);
+
+         //  Process land management orders
+        LandManager.processTick(gameState, tickSize);
         
         // Update resource production rates based on current worker assignments
         ResourceManager.updateProductionRates(
             PopulationManager.getWorkerAssignments()
         );
         
-        // Update World Map UI
-        updateWorldMapUI();
+            // Update World Map UI
+            updateWorldMapUI();
+        //  Update statistics panel if needed
+        if (typeof StatisticsPanel !== 'undefined' && typeof StatisticsPanel.update === 'function') {
+            StatisticsPanel.update();
+        }
     }
     
     /**
@@ -361,6 +368,10 @@ const GameEngine = (function() {
             EventManager.init();
             RankManager.init();
             WorldMap.init(); // Initialize world map
+            LandManager.init();
+
+              // Initialize statistics panel
+            StatisticsPanel.init();
             
             // Set up event listeners
             setupEventListeners();
@@ -437,6 +448,14 @@ const GameEngine = (function() {
                 
                 console.log("Game paused");
             }
+        },
+
+                /**
+         * Check if the game is currently running
+         * @returns {boolean} - Whether the game is running or paused
+         */
+        isGameRunning: function() {
+            return gameState.isRunning;
         },
         
         /**
@@ -522,10 +541,12 @@ const GameEngine = (function() {
                 activeEvents: EventManager.getActiveEvents(),
                 playerRegion: WorldMap.getPlayerRegion(),
                 playerSettlement: WorldMap.getPlayerSettlement(),
-                worldOverview: WorldMap.getWorldOverview()
+                worldOverview: WorldMap.getWorldOverview(),
+                landData: LandManager.getLandData(),
+                activeOrders: LandManager.getActiveOrders(),
             };
         },
-        
+
         /**
          * Manual tick for debugging
          */
