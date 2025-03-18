@@ -1,14 +1,14 @@
 /**
  * Viking Legacy - Building-Based Worker System Integration
- * Replaces manual worker assignment with automatic building-based allocation
+ * Provides job capacities from buildings without automatic assignment
  */
 
 (function() {
     /**
-     * Update the worker assignment UI
+     * Update the worker UI to show building job capacities
      */
-    function updateWorkerAssignmentUI() {
-        // Get the actions panel where worker controls currently exist
+    function updateWorkerCapacityUI() {
+        // Get the actions panel where old worker controls exist
         const actionsPanel = document.querySelector('.actions-panel');
         if (!actionsPanel) return;
         
@@ -17,39 +17,49 @@
         if (!assignActions) return;
         
         // Get current worker assignments and capacity
-        const assignments = BuildingSystem.getWorkerAssignments();
+        const assignments = PopulationManager.getWorkerAssignments();
         const capacity = BuildingSystem.getAvailableCapacity();
         const unassigned = PopulationManager.getUnassignedWorkers();
         
-        // Replace content with new building-based assignment display
+        // Update content with building capacity display (but not sliders - those are in worker-utilization.js)
         assignActions.innerHTML = `
-            <h3>Workers (Building-Based)</h3>
+            <h3>Workers (Building Jobs)</h3>
+            <div class="worker-info">
+                <p>Buildings provide jobs that need workers to function. Assign workers in the Workers tab.</p>
+            </div>
             <div class="worker-stats">
                 <div class="worker-stat">
-                    <span class="worker-label">Farmers:</span>
-                    <span id="farmers-count">${assignments.farmers}</span>
-                    <span class="capacity-text">/ ${capacity.farmers} capacity</span>
+                    <span class="worker-label">Farmer Jobs:</span>
+                    <span id="farmers-capacity">${capacity.farmers || 0}</span>
+                    <span class="employment-text">(${assignments.farmers || 0} filled)</span>
                 </div>
                 <div class="worker-stat">
-                    <span class="worker-label">Woodcutters:</span>
-                    <span id="woodcutters-count">${assignments.woodcutters}</span>
-                    <span class="capacity-text">/ ${capacity.woodcutters} capacity</span>
+                    <span class="worker-label">Woodcutter Jobs:</span>
+                    <span id="woodcutters-capacity">${capacity.woodcutters || 0}</span>
+                    <span class="employment-text">(${assignments.woodcutters || 0} filled)</span>
                 </div>
                 <div class="worker-stat">
-                    <span class="worker-label">Miners:</span>
-                    <span id="miners-count">${assignments.miners}</span>
-                    <span class="capacity-text">/ ${capacity.miners} capacity</span>
+                    <span class="worker-label">Miner Jobs:</span>
+                    <span id="miners-capacity">${capacity.miners || 0}</span>
+                    <span class="employment-text">(${assignments.miners || 0} filled)</span>
                 </div>
                 <div class="worker-stat unassigned">
                     <span class="worker-label">Unassigned Workers:</span>
                     <span id="unassigned-count">${unassigned}</span>
                 </div>
             </div>
-            <div class="worker-info">
-                <p>Workers automatically fill jobs from buildings you construct.</p>
-                <p>Build more production buildings to put your people to work!</p>
+            <div class="open-workers-tab">
+                <button id="go-to-workers-tab" class="worker-tab-btn">Go to Workers Tab</button>
             </div>
         `;
+        
+        // Add event listener for the go to workers tab button
+        const goToWorkersTabBtn = document.getElementById('go-to-workers-tab');
+        if (goToWorkersTabBtn && typeof NavigationSystem !== 'undefined') {
+            goToWorkersTabBtn.addEventListener('click', function() {
+                NavigationSystem.switchToTab('workers');
+            });
+        }
     }
 
     /**
@@ -98,8 +108,11 @@
             
             workerInfo.innerHTML = `
                 <div class="worker-capacity">
-                    <span class="capacity-label">Employs:</span>
+                    <span class="capacity-label">Provides jobs for:</span>
                     <span class="capacity-value">${building.workerCapacity} ${workerType}</span>
+                </div>
+                <div class="worker-note">
+                    <span class="note-text">Assign workers in the Workers tab</span>
                 </div>
             `;
         });
@@ -133,12 +146,12 @@
             }
             
             .worker-label {
-                width: 120px;
+                width: 140px;
                 font-weight: 500;
                 color: #5d4037;
             }
             
-            .capacity-text {
+            .employment-text {
                 margin-left: 10px;
                 color: #8b7355;
                 font-size: 0.9rem;
@@ -150,7 +163,7 @@
             }
             
             .worker-info {
-                margin-top: 15px;
+                margin-top: 5px;
                 font-size: 0.9rem;
                 color: #5d4037;
                 font-style: italic;
@@ -164,9 +177,40 @@
                 font-size: 0.9rem;
             }
             
+            .worker-note {
+                margin-top: 4px;
+                font-style: italic;
+                font-size: 0.85rem;
+                color: #8b7355;
+            }
+            
             .capacity-label {
                 font-weight: 500;
                 margin-right: 5px;
+            }
+            
+            .open-workers-tab {
+                margin-top: 15px;
+                text-align: center;
+            }
+            
+            .worker-tab-btn {
+                background: linear-gradient(to bottom, #8b5d33, #6d4c2a);
+                color: #f7f0e3;
+                border: none;
+                padding: 8px 15px;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: all 0.3s;
+                font-weight: 500;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                border: 1px solid #5d4027;
+            }
+            
+            .worker-tab-btn:hover {
+                background: linear-gradient(to bottom, #a97c50, #8b5d33);
+                transform: translateY(-1px);
+                box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
             }
         `;
         document.head.appendChild(styleEl);
@@ -176,13 +220,13 @@
      * Initialize the worker system
      */
     function initWorkerSystem() {
-        console.log("Initializing building-based worker system...");
+        console.log("Initializing building-based worker system with manual allocation...");
         
         // Add CSS styles
         addWorkerSystemStyles();
         
         // Initial UI update
-        updateWorkerAssignmentUI();
+        updateWorkerCapacityUI();
         
         // Hook into BuildingSystem to update worker info
         if (typeof BuildingSystem !== 'undefined') {
@@ -198,30 +242,14 @@
         // Hook into game tick to update worker UI
         if (typeof GameEngine !== 'undefined') {
             // Setup a timer to update the UI periodically
-            setInterval(updateWorkerAssignmentUI, 2000);
+            setInterval(updateWorkerCapacityUI, 2000);
         }
-        
-        // Disable old worker control buttons
-        const incrementButtons = document.querySelectorAll('.increment');
-        const decrementButtons = document.querySelectorAll('.decrement');
-        
-        [...incrementButtons, ...decrementButtons].forEach(button => {
-            button.disabled = true;
-            button.style.opacity = 0.5;
-            button.style.cursor = 'not-allowed';
-            
-            // Remove event listeners by cloning
-            const clone = button.cloneNode(true);
-            if (button.parentNode) {
-                button.parentNode.replaceChild(clone, button);
-            }
-        });
         
         // Update initial production rates
         if (typeof ResourceManager !== 'undefined' && typeof ResourceManager.updateProductionRates === 'function') {
-            const workerAssignments = typeof BuildingSystem !== 'undefined' && 
-                                     typeof BuildingSystem.getWorkerAssignments === 'function' ?
-                                     BuildingSystem.getWorkerAssignments() : 
+            const workerAssignments = typeof PopulationManager !== 'undefined' && 
+                                     typeof PopulationManager.getWorkerAssignments === 'function' ?
+                                     PopulationManager.getWorkerAssignments() : 
                                      null;
                                      
             if (workerAssignments) {
@@ -229,7 +257,7 @@
             }
         }
         
-        console.log("Building-based worker system initialized successfully!");
+        console.log("Building-based worker system initialized with manual allocation!");
     }
 
     // Initialize when DOM is fully loaded

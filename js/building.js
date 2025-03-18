@@ -1,6 +1,7 @@
 /**
  * Viking Legacy - Building System
  * Handles building construction, management, and integration with land/resources
+ * Updated to provide job capacities without automatic worker assignment
  */
 
 const BuildingSystem = (function() {
@@ -94,7 +95,7 @@ const BuildingSystem = (function() {
             upgradesTo: "large_farm",
             effects: {
                 resourceProduction: {
-                    food: 25 // Base food production per day
+                    food: 25 // Base food production per farmer-day
                 }
             }
         },
@@ -113,7 +114,7 @@ const BuildingSystem = (function() {
                 stone: 115
             },
             constructionTime: 12,
-            workerCapacity: 15, // Employs 5 farmers
+            workerCapacity: 5, // Employs 5 farmers
             workersRequired: 3,
             maintenanceCost: {
                 wood: 2
@@ -516,9 +517,6 @@ const BuildingSystem = (function() {
         estimatedCompletion: null // Estimated completion date
     };
     
-    // Tracks workers assigned to each building
-    let buildingWorkers = {};
-    
     // Private methods
     
     /**
@@ -617,20 +615,19 @@ const BuildingSystem = (function() {
             }
         }
         
-        // Check available workers
+        // Check available workers for construction
         const population = PopulationManager.getPopulation();
+        const unassignedWorkers = PopulationManager.getUnassignedWorkers();
         
         // Calculate workers already assigned to construction
         const workersInConstruction = buildings.construction.reduce(
             (total, project) => total + project.workersAssigned, 0
         );
         
-        const availableWorkers = population.workers - workersInConstruction;
-        
-        if (availableWorkers < building.workersRequired) {
+        if (unassignedWorkers - workersInConstruction < building.workersRequired) {
             return { 
                 success: false, 
-                reason: `Not enough workers (need ${building.workersRequired} available)` 
+                reason: `Not enough unassigned workers for construction (need ${building.workersRequired})` 
             };
         }
         
@@ -816,11 +813,11 @@ const BuildingSystem = (function() {
     }
     
     /**
-     * Update resource production based on production buildings
+     * Update resource production based on buildings and assigned workers
      * @param {Object} gameState - Current game state
      */
     function updateResourceProduction(gameState) {
-        // Reset base production
+        // Reset base production (from buildings, not including workers)
         const baseProduction = {
             food: 0,
             wood: 0,
@@ -828,19 +825,7 @@ const BuildingSystem = (function() {
             metal: 0
         };
         
-        // Calculate production from buildings
-        for (const buildingId in buildings.built) {
-            const count = buildings.built[buildingId];
-            const building = Object.values(buildingTypes).find(b => b.id === buildingId);
-            
-            if (!building || !building.effects || !building.effects.resourceProduction) continue;
-            
-            for (const resource in building.effects.resourceProduction) {
-                baseProduction[resource] += building.effects.resourceProduction[resource] * count;
-            }
-        }
-        
-        // Update production rates in ResourceManager
+        // Update production rates in ResourceManager if available
         if (ResourceManager && typeof ResourceManager.updateBaseProductionRates === 'function') {
             // Apply base production from buildings to ResourceManager
             ResourceManager.updateBaseProductionRates(baseProduction);
@@ -965,7 +950,7 @@ const BuildingSystem = (function() {
                     </div>
                     ${building.workerCapacity > 0 ? 
                     `<div class="building-workers">
-                        <span class="worker-capacity-label">Workers:</span>
+                        <span class="worker-capacity-label">Job capacity:</span>
                         <span class="worker-capacity-value">${building.workerCapacity} per building</span>
                     </div>` : ''}
                 </div>
@@ -1102,7 +1087,7 @@ const BuildingSystem = (function() {
                     ${building.workerCapacity > 0 ? 
                     `<div class="building-workers-info">
                         <div class="worker-capacity">
-                            <span class="capacity-label">Employs:</span>
+                            <span class="capacity-label">Provides jobs for:</span>
                             <span class="capacity-value">${building.workerCapacity} workers</span>
                         </div>
                     </div>` : ''}
@@ -1220,18 +1205,9 @@ const BuildingSystem = (function() {
         }
         
         // Check if we have available workers
-        const population = PopulationManager.getPopulation();
-        const workersInConstruction = buildings.construction.reduce(
-            (total, p) => total + p.workersAssigned, 0
-        );
-        
-        // Also account for workers assigned to other tasks
-        const assignedToTasks = getTotalAssignedWorkers();
-        
-        const availableWorkers = population.workers - workersInConstruction - assignedToTasks;
-        
-        if (availableWorkers <= 0) {
-            Utils.log("No workers available to assign.", "important");
+        const unassignedWorkers = PopulationManager.getUnassignedWorkers();
+        if (unassignedWorkers <= 0) {
+            Utils.log("No unassigned workers available to assign to construction. Assign workers in the Workers tab.", "important");
             return;
         }
         
@@ -1287,80 +1263,21 @@ const BuildingSystem = (function() {
         // Update UI
         updateConstructionList();
     }
-
-    /**
-     * Get the total number of workers assigned to all buildings of a specific type
-     * @param {string} workerType - Type of worker (farmers, woodcutters, miners)
-     * @returns {number} - Total workers of that type
-     */
-    function getWorkersOfType(workerType) {
-        let total = 0;
-        
-        // Map building types to worker types
-        const buildingToWorkerType = {
-            farm: "farmers",
-            large_farm: "farmers",
-            fishing_hut: "farmers",
-            hunting_lodge: "farmers",
-            woodcutter_lodge: "woodcutters",
-            sawmill: "woodcutters",
-            quarry: "miners",
-            mine: "miners",
-            smithy: "miners",
-            forge: "miners",
-            storehouse: "unassigned",
-            marketplace: "unassigned",
-            mead_hall: "unassigned"
-        };
-        
-        // Count workers in all relevant buildings
-        for (const buildingId in buildings.built) {
-            if (buildingToWorkerType[buildingId] === workerType) {
-                const count = buildings.built[buildingId] || 0;
-                const buildingType = Object.values(buildingTypes).find(b => b.id === buildingId);
-                
-                if (buildingType) {
-                    // Calculate workers per building based on building worker capacity
-                    const workersPerBuilding = buildingType.workerCapacity || 0;
-                    total += count * workersPerBuilding;
-                }
-            }
-        }
-        
-        return total;
-    }
     
     /**
-     * Get all worker assignments from buildings
-     * @returns {Object} - Worker assignments by type
-     */
-    function getWorkerAssignments() {
-        return {
-            farmers: getWorkersOfType("farmers"),
-            woodcutters: getWorkersOfType("woodcutters"),
-            miners: getWorkersOfType("miners")
-        };
-    }
-    
-    /**
-     * Get the total number of workers assigned to buildings
-     * @returns {number} - Total assigned workers
-     */
-    function getTotalAssignedWorkers() {
-        const assignments = getWorkerAssignments();
-        return assignments.farmers + assignments.woodcutters + assignments.miners;
-    }
-    
-    /**
-     * Get available worker capacity for all buildings
-     * @returns {Object} - Available capacity by worker type
+     * Get the worker capacity for each job type based on built buildings
+     * @returns {Object} - Object with worker capacities by type
      */
     function getAvailableCapacity() {
         const builtBuildings = buildings.built;
         const capacity = {
             farmers: 0,
             woodcutters: 0,
-            miners: 0
+            miners: 0,
+            hunters: 0,
+            crafters: 0,
+            gatherers: 0,
+            thralls: 0
         };
         
         // Building types that provide jobs
@@ -1375,12 +1292,19 @@ const BuildingSystem = (function() {
             
             if (!building) continue;
             
+            // Determine job type based on building
             if (farmBuildings.includes(buildingId)) {
                 capacity.farmers += count * building.workerCapacity;
             } else if (woodcutterBuildings.includes(buildingId)) {
                 capacity.woodcutters += count * building.workerCapacity;
             } else if (minerBuildings.includes(buildingId)) {
                 capacity.miners += count * building.workerCapacity;
+            } else if (buildingId === 'hunter_lodge') {
+                capacity.hunters += count * building.workerCapacity;
+            } else if (buildingId === 'weaver') {
+                capacity.crafters += count * building.workerCapacity;
+            } else if (buildingId === 'gatherer_hut') {
+                capacity.gatherers += count * building.workerCapacity;
             }
         }
         
@@ -1489,26 +1413,6 @@ const BuildingSystem = (function() {
             return buildings.built[buildingType] || 0;
         },
 
-        // Building-based worker system methods
-        /**
-         * Get the total number of workers assigned to all buildings of a specific type
-         * @param {string} workerType - Type of worker (farmers, woodcutters, miners)
-         * @returns {number} - Total workers of that type
-         */
-        getWorkersOfType: getWorkersOfType,
-        
-        /**
-         * Get all worker assignments from buildings
-         * @returns {Object} - Worker assignments by type
-         */
-        getWorkerAssignments: getWorkerAssignments,
-        
-        /**
-         * Get the total number of workers assigned to buildings
-         * @returns {number} - Total assigned workers
-         */
-        getTotalAssignedWorkers: getTotalAssignedWorkers,
-        
         /**
          * Get available worker capacity for all buildings
          * @returns {Object} - Available capacity by worker type

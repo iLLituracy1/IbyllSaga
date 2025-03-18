@@ -237,11 +237,35 @@ const ResourceManager = (function() {
             }
         }
         
+        // Get production rates from buildings
+        const buildingCapacity = typeof BuildingSystem !== 'undefined' && 
+                                typeof BuildingSystem.getAvailableCapacity === 'function' ?
+                                BuildingSystem.getAvailableCapacity() : 
+                                { farmers: 0, woodcutters: 0, miners: 0, hunters: 0, crafters: 0, gatherers: 0 };
+        
+        // Calculate the worker efficiency based on building capacity
+        // Workers are only effective if they have jobs (buildings to work in)
+        const farmerEfficiency = buildingCapacity.farmers > 0 ? 
+            Math.min(1.0, workers.farmers / buildingCapacity.farmers) : 0;
+        
+        const woodcutterEfficiency = buildingCapacity.woodcutters > 0 ? 
+            Math.min(1.0, workers.woodcutters / buildingCapacity.woodcutters) : 0;
+        
+        const minerEfficiency = buildingCapacity.miners > 0 ? 
+            Math.min(1.0, workers.miners / buildingCapacity.miners) : 0;
+        
         // Apply both regular modifiers and region modifiers for worker-based production
-        productionRates.food = workers.farmers * baseProductionRates.food * productionModifiers.food * regionModifiers.food;
-        productionRates.wood = workers.woodcutters * baseProductionRates.wood * productionModifiers.wood * regionModifiers.wood;
-        productionRates.stone = workers.miners * baseProductionRates.stone * productionModifiers.stone * regionModifiers.stone;
-        productionRates.metal = workers.miners * baseProductionRates.metal * productionModifiers.metal * regionModifiers.metal;
+        productionRates.food = buildingCapacity.farmers * farmerEfficiency * baseProductionRates.food * 
+                               productionModifiers.food * regionModifiers.food;
+        
+        productionRates.wood = buildingCapacity.woodcutters * woodcutterEfficiency * baseProductionRates.wood * 
+                               productionModifiers.wood * regionModifiers.wood;
+        
+        productionRates.stone = buildingCapacity.miners * minerEfficiency * baseProductionRates.stone * 
+                                productionModifiers.stone * regionModifiers.stone;
+        
+        productionRates.metal = buildingCapacity.miners * minerEfficiency * baseProductionRates.metal * 
+                                productionModifiers.metal * regionModifiers.metal;
         
         // Add building-based production
         for (const resource in buildingProduction) {
@@ -253,29 +277,36 @@ const ResourceManager = (function() {
         }
         
         // Special case: hunters can produce leather and fur
-        if (workers.hunters) {
-            productionRates.leather = workers.hunters * baseProductionRates.leather * productionModifiers.leather;
-            productionRates.fur = workers.hunters * baseProductionRates.fur * productionModifiers.fur;
+        if (workers.hunters && buildingCapacity.hunters > 0) {
+            const hunterEfficiency = Math.min(1.0, workers.hunters / buildingCapacity.hunters);
+            productionRates.leather = buildingCapacity.hunters * hunterEfficiency * baseProductionRates.leather * productionModifiers.leather;
+            productionRates.fur = buildingCapacity.hunters * hunterEfficiency * baseProductionRates.fur * productionModifiers.fur;
         }
         
         // Special case: crafters can produce cloth
-        if (workers.crafters) {
-            productionRates.cloth = workers.crafters * baseProductionRates.cloth * productionModifiers.cloth;
+        if (workers.crafters && buildingCapacity.crafters > 0) {
+            const crafterEfficiency = Math.min(1.0, workers.crafters / buildingCapacity.crafters);
+            productionRates.cloth = buildingCapacity.crafters * crafterEfficiency * baseProductionRates.cloth * productionModifiers.cloth;
         }
         
         // Special case: gatherers can produce herbs and clay
-        if (workers.gatherers) {
-            productionRates.herbs = workers.gatherers * baseProductionRates.herbs * productionModifiers.herbs;
-            productionRates.clay = workers.gatherers * baseProductionRates.clay * productionModifiers.clay;
+        if (workers.gatherers && buildingCapacity.gatherers > 0) {
+            const gathererEfficiency = Math.min(1.0, workers.gatherers / buildingCapacity.gatherers);
+            productionRates.herbs = buildingCapacity.gatherers * gathererEfficiency * baseProductionRates.herbs * productionModifiers.herbs;
+            productionRates.clay = buildingCapacity.gatherers * gathererEfficiency * baseProductionRates.clay * productionModifiers.clay;
         }
         
         // Environmental resources depend on region
-        if (regionModifiers.peat) {
-            productionRates.peat = workers.gatherers * baseProductionRates.peat * productionModifiers.peat * regionModifiers.peat;
+        if (regionModifiers.peat && workers.gatherers && buildingCapacity.gatherers > 0) {
+            const gathererEfficiency = Math.min(1.0, workers.gatherers / buildingCapacity.gatherers);
+            productionRates.peat = buildingCapacity.gatherers * gathererEfficiency * 
+                                   baseProductionRates.peat * productionModifiers.peat * regionModifiers.peat;
         }
         
-        if (regionModifiers.whale_oil) {
-            productionRates.whale_oil = workers.hunters * baseProductionRates.whale_oil * productionModifiers.whale_oil * regionModifiers.whale_oil;
+        if (regionModifiers.whale_oil && workers.hunters && buildingCapacity.hunters > 0) {
+            const hunterEfficiency = Math.min(1.0, workers.hunters / buildingCapacity.hunters);
+            productionRates.whale_oil = buildingCapacity.hunters * hunterEfficiency * 
+                                       baseProductionRates.whale_oil * productionModifiers.whale_oil * regionModifiers.whale_oil;
         }
         
         // Update UI

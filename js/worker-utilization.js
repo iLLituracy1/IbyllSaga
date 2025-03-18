@@ -1,6 +1,7 @@
 /**
  * Viking Legacy - Worker Utilization Panel
  * Visualizes population allocation across different buildings and jobs
+ * Now with manual worker allocation via sliders
  */
 
 const WorkerUtilizationPanel = (function() {
@@ -31,6 +32,9 @@ const WorkerUtilizationPanel = (function() {
     
     // Max history entries to keep (for trends)
     const MAX_HISTORY = 20;
+    
+    // Track current worker assignments for slider initialization
+    let currentAssignments = {};
     
     // Private methods
     
@@ -85,8 +89,8 @@ const WorkerUtilizationPanel = (function() {
                     <div class="stat-value" id="wu-employed-workers">0</div>
                 </div>
                 <div class="stat-row">
-                    <div class="stat-label">Unemployment Rate:</div>
-                    <div class="stat-value" id="wu-unemployment-rate">0%</div>
+                    <div class="stat-label">Unemployed Workers:</div>
+                    <div class="stat-value" id="wu-unemployed-workers">0</div>
                 </div>
                 <div class="stat-row">
                     <div class="stat-label">Children (Future Workers):</div>
@@ -102,8 +106,21 @@ const WorkerUtilizationPanel = (function() {
             </div>
             
             <div class="stats-section">
-                <h3>Worker Distribution</h3>
-                <div id="worker-distribution"></div>
+                <h3>Manual Worker Assignment</h3>
+                <div class="worker-assignment-info">
+                    <p>Drag the sliders to allocate workers to different jobs.</p>
+                    <div class="stat-row highlight-row">
+                        <div class="stat-label">Unassigned Workers:</div>
+                        <div class="stat-value" id="slider-unassigned-workers">0</div>
+                    </div>
+                </div>
+                <div id="worker-sliders">
+                    <!-- Worker sliders will be added here -->
+                </div>
+                <div class="worker-buttons">
+                    <button id="reset-workers-btn" class="worker-control-btn">Reset Assignments</button>
+                    <button id="optimize-workers-btn" class="worker-control-btn">Auto-Optimize</button>
+                </div>
             </div>
             
             <div class="stats-section">
@@ -153,6 +170,9 @@ const WorkerUtilizationPanel = (function() {
                 NavigationSystem.registerPanel('worker-panel', 'workers');
             }
             
+            // Setup worker control buttons
+            setupWorkerControlButtons();
+            
             isPanelCreated = true;
         } else {
             console.error("Could not find .game-content to add worker utilization panel");
@@ -177,6 +197,119 @@ const WorkerUtilizationPanel = (function() {
                 updateTrendChart(viewType);
             });
         });
+    }
+    
+    /**
+     * Setup worker control buttons
+     */
+    function setupWorkerControlButtons() {
+        const resetButton = document.getElementById('reset-workers-btn');
+        if (resetButton) {
+            resetButton.addEventListener('click', resetWorkerAssignments);
+        }
+        
+        const optimizeButton = document.getElementById('optimize-workers-btn');
+        if (optimizeButton) {
+            optimizeButton.addEventListener('click', optimizeWorkerAssignments);
+        }
+    }
+    
+    /**
+     * Reset all worker assignments to zero
+     */
+    function resetWorkerAssignments() {
+        // Get all worker sliders
+        const sliders = document.querySelectorAll('.worker-slider');
+        
+        // Reset each slider to zero
+        sliders.forEach(slider => {
+            slider.value = 0;
+            
+            // Trigger change event to update assignments
+            const event = new Event('input');
+            slider.dispatchEvent(event);
+        });
+        
+        Utils.log("All workers have been unassigned.", "important");
+    }
+    
+    /**
+     * Auto-optimize worker assignments based on available jobs and priorities
+     */
+    function optimizeWorkerAssignments() {
+        // Get building capacities for each worker type
+        const capacity = BuildingSystem.getAvailableCapacity();
+        
+        // Get total available workers
+        const population = PopulationManager.getPopulation();
+        const totalWorkers = population.workers;
+        
+        // Simple priority: Farmers > Woodcutters > Miners > Others
+        // This is a basic algorithm and can be improved
+        
+        // Reset all assignments first
+        resetWorkerAssignments();
+        
+        // Calculate optimal assignments
+        let remainingWorkers = totalWorkers;
+        const assignments = {};
+        
+        // Assign farmers first (for food)
+        const farmerSlider = document.getElementById('slider-farmers');
+        if (farmerSlider && capacity.farmers > 0) {
+            const optimalFarmers = Math.min(capacity.farmers, Math.ceil(remainingWorkers * 0.4)); // 40% of workforce
+            assignments.farmers = optimalFarmers;
+            remainingWorkers -= optimalFarmers;
+            farmerSlider.value = optimalFarmers;
+            
+            // Trigger change event
+            const event = new Event('input');
+            farmerSlider.dispatchEvent(event);
+        }
+        
+        // Assign woodcutters next
+        const woodcutterSlider = document.getElementById('slider-woodcutters');
+        if (woodcutterSlider && capacity.woodcutters > 0 && remainingWorkers > 0) {
+            const optimalWoodcutters = Math.min(capacity.woodcutters, Math.ceil(remainingWorkers * 0.4)); // 40% of remaining
+            assignments.woodcutters = optimalWoodcutters;
+            remainingWorkers -= optimalWoodcutters;
+            woodcutterSlider.value = optimalWoodcutters;
+            
+            // Trigger change event
+            const event = new Event('input');
+            woodcutterSlider.dispatchEvent(event);
+        }
+        
+        // Assign miners next
+        const minerSlider = document.getElementById('slider-miners');
+        if (minerSlider && capacity.miners > 0 && remainingWorkers > 0) {
+            const optimalMiners = Math.min(capacity.miners, remainingWorkers);
+            assignments.miners = optimalMiners;
+            remainingWorkers -= optimalMiners;
+            minerSlider.value = optimalMiners;
+            
+            // Trigger change event
+            const event = new Event('input');
+            minerSlider.dispatchEvent(event);
+        }
+        
+        // Assign specialized workers if there are any left
+        const specializedTypes = ['hunters', 'crafters', 'gatherers'];
+        for (const type of specializedTypes) {
+            const slider = document.getElementById(`slider-${type}`);
+            if (slider && capacity[type] > 0 && remainingWorkers > 0) {
+                const optimalWorkers = Math.min(capacity[type], Math.floor(remainingWorkers / specializedTypes.length));
+                assignments[type] = optimalWorkers;
+                remainingWorkers -= optimalWorkers;
+                slider.value = optimalWorkers;
+                
+                // Trigger change event
+                const event = new Event('input');
+                slider.dispatchEvent(event);
+            }
+        }
+        
+        Utils.log("Workers have been automatically assigned based on priorities.", "success");
     }
     
     /**
@@ -211,6 +344,174 @@ const WorkerUtilizationPanel = (function() {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
                 gap: 20px;
+            }
+            
+            /* Worker Assignment Sliders */
+            .worker-assignment-info {
+                margin-bottom: 15px;
+            }
+            
+            .highlight-row {
+                background-color: #f7f0e3;
+                padding: 8px;
+                border-radius: 4px;
+                border-left: 4px solid #ffc107;
+            }
+            
+            .worker-slider-container {
+                margin-bottom: 15px;
+                padding: 10px;
+                background-color: #f7f0e3;
+                border-radius: 6px;
+                border-left: 4px solid #8b5d33;
+            }
+            
+            .worker-slider-container.farmers {
+                border-left-color: #c62828; /* Red for farmers */
+            }
+            
+            .worker-slider-container.woodcutters {
+                border-left-color: #2e7d32; /* Green for woodcutters */
+            }
+            
+            .worker-slider-container.miners {
+                border-left-color: #5d4037; /* Brown for miners */
+            }
+            
+            .worker-slider-container.hunters {
+                border-left-color: #795548; /* Brown for hunters */
+            }
+            
+            .worker-slider-container.crafters {
+                border-left-color: #6a1b9a; /* Purple for crafters */
+            }
+            
+            .worker-slider-container.gatherers {
+                border-left-color: #00695c; /* Teal for gatherers */
+            }
+            
+            .worker-slider-container.thralls {
+                border-left-color: #c62828; /* Red for thralls */
+            }
+            
+            .worker-slider-header {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 8px;
+            }
+            
+            .worker-type-label {
+                font-weight: 600;
+                color: #5d4037;
+            }
+            
+            .worker-count-display {
+                color: #8b5d33;
+                font-weight: 500;
+            }
+            
+            .worker-slider {
+                width: 100%;
+                margin: 10px 0;
+                height: 10px;
+                -webkit-appearance: none;
+                appearance: none;
+                background: #d7cbb9;
+                border-radius: 5px;
+                outline: none;
+            }
+            
+            .worker-slider::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                background: #8b5d33;
+                cursor: pointer;
+                transition: background 0.2s;
+            }
+            
+            .worker-slider::-moz-range-thumb {
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                background: #8b5d33;
+                cursor: pointer;
+                transition: background 0.2s;
+            }
+            
+            .worker-slider::-webkit-slider-thumb:hover {
+                background: #a97c50;
+            }
+            
+            .worker-slider.farmers::-webkit-slider-thumb {
+                background: #c62828;
+            }
+            
+            .worker-slider.woodcutters::-webkit-slider-thumb {
+                background: #2e7d32;
+            }
+            
+            .worker-slider.miners::-webkit-slider-thumb {
+                background: #5d4037;
+            }
+            
+            .worker-slider.hunters::-webkit-slider-thumb {
+                background: #795548;
+            }
+            
+            .worker-slider.crafters::-webkit-slider-thumb {
+                background: #6a1b9a;
+            }
+            
+            .worker-slider.gatherers::-webkit-slider-thumb {
+                background: #00695c;
+            }
+            
+            .worker-slider.thralls::-webkit-slider-thumb {
+                background: #c62828;
+            }
+            
+            .worker-slider-labels {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 5px;
+                font-size: 0.8rem;
+                color: #8b7355;
+            }
+            
+            .capacity-label {
+                display: block;
+                margin-top: 5px;
+                font-size: 0.85rem;
+                color: #8b7355;
+            }
+            
+            .worker-buttons {
+                display: flex;
+                gap: 10px;
+                margin-top: 20px;
+            }
+            
+            .worker-control-btn {
+                flex: 1;
+                padding: 8px 12px;
+                background: linear-gradient(to bottom, #8b5d33, #6d4c2a);
+                color: #f7f0e3;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: all 0.3s;
+                font-weight: 500;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                border: 1px solid #5d4027;
+            }
+            
+            .worker-control-btn:hover {
+                background: linear-gradient(to bottom, #a97c50, #8b5d33);
+                transform: translateY(-1px);
+                box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
             }
             
             .worker-distribution-item {
@@ -466,6 +767,132 @@ const WorkerUtilizationPanel = (function() {
     }
     
     /**
+     * Create worker assignment sliders for each job type
+     */
+    function createWorkerSliders() {
+        const slidersContainer = document.getElementById('worker-sliders');
+        if (!slidersContainer) return;
+        
+        // Clear existing sliders
+        slidersContainer.innerHTML = '';
+        
+        // Get capacity for each worker type
+        const capacity = BuildingSystem.getAvailableCapacity();
+        
+        // Get current assignments
+        const assignments = PopulationManager.getWorkerAssignments();
+        
+        // Get total available workers
+        const population = PopulationManager.getPopulation();
+        const totalWorkers = population.workers;
+        
+        // Track currently assigned workers for slider limits
+        currentAssignments = {...assignments};
+        let totalAssigned = 0;
+        for (const type in currentAssignments) {
+            if (type !== 'unassigned') {
+                totalAssigned += currentAssignments[type] || 0;
+            }
+        }
+        currentAssignments.unassigned = totalWorkers - totalAssigned;
+        
+        // Update unassigned count display
+        Utils.updateElement('slider-unassigned-workers', currentAssignments.unassigned);
+        
+        // Worker types to create sliders for
+        const workerTypes = [
+            { key: 'farmers', label: 'Farmers', description: 'Work farms to produce food' },
+            { key: 'woodcutters', label: 'Woodcutters', description: 'Harvest wood from forests' },
+            { key: 'miners', label: 'Miners', description: 'Extract stone and metal from mines' },
+            { key: 'hunters', label: 'Hunters', description: 'Hunt for food and animal products' },
+            { key: 'crafters', label: 'Crafters', description: 'Create goods and tools' },
+            { key: 'gatherers', label: 'Gatherers', description: 'Collect herbs and resources' },
+            { key: 'thralls', label: 'Thralls', description: 'Forced laborers (captured in raids)' }
+        ];
+        
+        // Create slider for each worker type (if capacity exists)
+        workerTypes.forEach(type => {
+            // Skip types with no capacity
+            if ((capacity[type.key] || 0) === 0) return;
+            
+            // Create slider container
+            const sliderContainer = document.createElement('div');
+            sliderContainer.className = `worker-slider-container ${type.key}`;
+            
+            // Create slider header with label and count
+            const sliderHeader = document.createElement('div');
+            sliderHeader.className = 'worker-slider-header';
+            sliderHeader.innerHTML = `
+                <div class="worker-type-label">${type.label}</div>
+                <div class="worker-count-display">
+                    <span id="slider-${type.key}-count">${assignments[type.key] || 0}</span>
+                    <span class="count-sep">/</span>
+                    <span id="slider-${type.key}-capacity">${capacity[type.key] || 0}</span>
+                </div>
+            `;
+            
+            // Create slider element
+            const slider = document.createElement('input');
+            slider.type = 'range';
+            slider.className = `worker-slider ${type.key}`;
+            slider.id = `slider-${type.key}`;
+            slider.min = 0;
+            slider.max = Math.min(capacity[type.key] || 0, totalWorkers);
+            slider.value = assignments[type.key] || 0;
+            
+            // Create slider labels
+            const sliderLabels = document.createElement('div');
+            sliderLabels.className = 'worker-slider-labels';
+            sliderLabels.innerHTML = `
+                <span>0</span>
+                <span>${slider.max}</span>
+            `;
+            
+            // Create capacity label
+            const capacityLabel = document.createElement('div');
+            capacityLabel.className = 'capacity-label';
+            capacityLabel.innerHTML = `${type.description}`;
+            
+            // Add event listener to update worker assignments
+            slider.addEventListener('input', function() {
+                const newValue = parseInt(this.value);
+                const oldValue = currentAssignments[type.key] || 0;
+                const change = newValue - oldValue;
+                
+                // Check if we have enough unassigned workers
+                if (change > 0 && currentAssignments.unassigned < change) {
+                    // Not enough unassigned workers, revert to previous value
+                    this.value = oldValue;
+                    return;
+                }
+                
+                // Update current assignments
+                currentAssignments[type.key] = newValue;
+                currentAssignments.unassigned -= change;
+                
+                // Update displays
+                Utils.updateElement(`slider-${type.key}-count`, newValue);
+                Utils.updateElement('slider-unassigned-workers', currentAssignments.unassigned);
+                
+                // Update worker assignments in game
+                PopulationManager.assignWorkers(type.key, change);
+                
+                // Update resource production rates
+                ResourceManager.updateProductionRates(PopulationManager.getWorkerAssignments());
+            });
+            
+            // Assemble slider container
+            sliderContainer.appendChild(sliderHeader);
+            sliderContainer.appendChild(slider);
+            sliderContainer.appendChild(sliderLabels);
+            sliderContainer.appendChild(capacityLabel);
+            
+            // Add to sliders container
+            slidersContainer.appendChild(sliderContainer);
+        });
+    }
+    
+    /**
      * Update the panel with current worker data
      */
     function updatePanel() {
@@ -474,7 +901,7 @@ const WorkerUtilizationPanel = (function() {
         try {
             // Get current data
             const population = PopulationManager.getPopulation();
-            const assignments = BuildingSystem.getWorkerAssignments();
+            const assignments = PopulationManager.getWorkerAssignments();
             const capacity = BuildingSystem.getAvailableCapacity();
             const unassigned = PopulationManager.getUnassignedWorkers();
             const productionRates = ResourceManager.getProductionRates();
@@ -486,8 +913,8 @@ const WorkerUtilizationPanel = (function() {
             // Update population overview
             updatePopulationOverview(population, employedWorkers, unassigned);
             
-            // Update worker distribution
-            updateWorkerDistribution(assignments, capacity, unassigned);
+            // Update or create worker sliders if needed
+            createWorkerSliders();
             
             // Update building capacity
             updateBuildingCapacity(assignments, capacity);
@@ -538,12 +965,8 @@ const WorkerUtilizationPanel = (function() {
         Utils.updateElement('wu-population-total', population.total);
         Utils.updateElement('wu-population-workers', population.workers);
         Utils.updateElement('wu-employed-workers', employedWorkers);
+        Utils.updateElement('wu-unemployed-workers', unassigned);
         Utils.updateElement('wu-population-children', population.children);
-        
-        // Calculate unemployment rate
-        const unemploymentRate = population.workers > 0 ? 
-            (unassigned / population.workers * 100).toFixed(1) + '%' : '0.0%';
-        Utils.updateElement('wu-unemployment-rate', unemploymentRate);
         
         // Update worker utilization bar
         const utilizationRate = population.workers > 0 ? 
@@ -564,54 +987,6 @@ const WorkerUtilizationPanel = (function() {
         }
         
         Utils.updateElement('wu-utilization-percentage', `${Math.round(utilizationRate)}%`);
-    }
-    
-    /**
-     * Update worker distribution section
-     * @param {Object} assignments - Worker assignments by type
-     * @param {Object} capacity - Building capacity by worker type
-     * @param {number} unassigned - Number of unassigned workers
-     */
-    function updateWorkerDistribution(assignments, capacity, unassigned) {
-        const distributionElement = document.getElementById('worker-distribution');
-        if (!distributionElement) return;
-        
-        // Create worker distribution table
-        let distributionHTML = '';
-        
-        // Add each worker type
-        const workerTypes = [
-            { key: 'farmers', label: 'Farmers' },
-            { key: 'woodcutters', label: 'Woodcutters' },
-            { key: 'miners', label: 'Miners' },
-            { key: 'hunters', label: 'Hunters' },
-            { key: 'crafters', label: 'Crafters' },
-            { key: 'gatherers', label: 'Gatherers' },
-            { key: 'thralls', label: 'Thralls' }
-        ];
-        
-        workerTypes.forEach(type => {
-            // Skip types with no workers or capacity
-            if ((assignments[type.key] || 0) === 0 && (capacity[type.key] || 0) === 0) return;
-            
-            distributionHTML += `
-                <div class="worker-distribution-item ${type.key}">
-                    <div class="worker-type">${type.label}:</div>
-                    <div class="worker-count">${assignments[type.key] || 0}</div>
-                    <div class="worker-capacity">/ ${capacity[type.key] || 0} capacity</div>
-                </div>
-            `;
-        });
-        
-        // Add unassigned workers
-        distributionHTML += `
-            <div class="worker-distribution-item unassigned">
-                <div class="worker-type">Unassigned:</div>
-                <div class="worker-count">${unassigned}</div>
-            </div>
-        `;
-        
-        distributionElement.innerHTML = distributionHTML;
     }
     
     /**
@@ -1107,7 +1482,7 @@ const WorkerUtilizationPanel = (function() {
                 breakdownHTML += `
                     <div class="building-item">
                         <div class="building-name">${building.name} x${building.count}</div>
-                        <div class="building-worker-count">${building.workers} workers</div>
+                        <div class="building-worker-count">${building.workers} capacity</div>
                     </div>
                 `;
             });
@@ -1142,7 +1517,7 @@ const WorkerUtilizationPanel = (function() {
             // Do first update
             updatePanel();
             
-            console.log("Worker Utilization Panel initialized");
+            console.log("Worker Utilization Panel initialized with manual assignment controls");
         },
         
         /**
@@ -1157,7 +1532,7 @@ const WorkerUtilizationPanel = (function() {
          * @returns {Object} - Worker distribution data
          */
         getWorkerDistribution: function() {
-            const assignments = BuildingSystem.getWorkerAssignments();
+            const assignments = PopulationManager.getWorkerAssignments();
             const unassigned = PopulationManager.getUnassignedWorkers();
             
             return {
