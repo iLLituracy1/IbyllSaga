@@ -755,8 +755,8 @@ const BuildingSystem = (function() {
         
         // Apply resource storage increases
         if (building.effects.storageCapacity) {
-            // This would require adding storage capacity to ResourceManager
-            // Left as a TODO for implementation
+            ResourceManager.addStorageCapacity(building.effects.storageCapacity);
+            console.log(`Applied storage capacity from ${building.name}:`, building.effects.storageCapacity);
         }
         
         // Apply fame effects

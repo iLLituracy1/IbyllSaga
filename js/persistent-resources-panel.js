@@ -205,6 +205,7 @@
                 margin: 2px 0;
                 padding: 0 5px;
                 border-radius: 3px;
+                position: relative;
             }
             
             .viking-resources-persistent-panel .resource-name {
@@ -217,6 +218,25 @@
             .viking-resources-persistent-panel .resource-value {
                 font-weight: bold;
                 margin-left: 5px;
+            }
+            
+            /* Capacity indicator - shows as thin line under each resource */
+            .viking-resources-persistent-panel .capacity-indicator {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                height: 2px;
+                background-color: rgba(255, 255, 255, 0.3);
+                transition: width 0.3s ease;
+            }
+            
+            /* Colors for when storage is getting full */
+            .viking-resources-persistent-panel .capacity-high {
+                background-color: rgba(255, 165, 0, 0.7); /* Orange when >75% */
+            }
+            
+            .viking-resources-persistent-panel .capacity-critical {
+                background-color: rgba(255, 0, 0, 0.7); /* Red when >90% */
             }
             
             /* Resource category colors */
@@ -324,8 +344,14 @@
                 resourceValue.textContent = '0';
                 resourceValue.id = `persistent-${resource}-value`;
                 
+                // Add capacity indicator (thin line under the resource)
+                const capacityIndicator = document.createElement('div');
+                capacityIndicator.className = 'capacity-indicator';
+                capacityIndicator.id = `persistent-${resource}-capacity`;
+                
                 resourceItem.appendChild(resourceName);
                 resourceItem.appendChild(resourceValue);
+                resourceItem.appendChild(capacityIndicator);
                 categorySection.appendChild(resourceItem);
             });
             
@@ -341,9 +367,17 @@
         
         // Get current resources
         let resources = {};
+        let storageCapacity = {};
         
-        if (typeof ResourceManager !== 'undefined' && ResourceManager.getResources) {
-            resources = ResourceManager.getResources();
+        if (typeof ResourceManager !== 'undefined') {
+            if (ResourceManager.getResources) {
+                resources = ResourceManager.getResources();
+            }
+            
+            // Get storage capacity if available
+            if (ResourceManager.getStorageCapacity) {
+                storageCapacity = ResourceManager.getStorageCapacity();
+            }
         }
         
         // Update each resource value
@@ -359,6 +393,26 @@
                 }
                 
                 element.textContent = displayValue;
+                
+                // Update capacity indicator if we have capacity information
+                const capacityElement = document.getElementById(`persistent-${resource}-capacity`);
+                if (capacityElement && storageCapacity[resource]) {
+                    const capacity = storageCapacity[resource];
+                    const percentage = Math.min(100, Math.floor((value / capacity) * 100));
+                    
+                    // Set width based on fill percentage
+                    capacityElement.style.width = `${percentage}%`;
+                    
+                    // Reset classes
+                    capacityElement.classList.remove('capacity-high', 'capacity-critical');
+                    
+                    // Add appropriate class based on how full it is
+                    if (percentage > 90) {
+                        capacityElement.classList.add('capacity-critical');
+                    } else if (percentage > 75) {
+                        capacityElement.classList.add('capacity-high');
+                    }
+                }
             }
         }
     }

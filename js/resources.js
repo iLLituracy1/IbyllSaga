@@ -36,6 +36,38 @@ const ResourceManager = (function() {
         exotic: 0   // Exotic goods like spices, silk
     };
     
+    // Storage capacity for resources
+    let storageCapacity = {
+        // Basic resources - larger starting capacity
+        food: 300,
+        wood: 200,
+        stone: 150,
+        metal: 100,
+        
+        // Advanced resources - medium capacity
+        leather: 50,
+        fur: 50,
+        cloth: 50,
+        clay: 50,
+        pitch: 25,
+        salt: 25,
+        honey: 25,
+        herbs: 25,
+        
+        // Wealth resources - small capacity (valuable items)
+        silver: 25,
+        gold: 10,
+        amber: 10,
+        ivory: 10,
+        jewels: 10,
+        
+        // Environmental resources - medium capacity
+        peat: 50,
+        whale_oil: 25,
+        ice: 25,
+        exotic: 25
+    };
+    
     // Resource categories for UI organization
     const resourceCategories = {
         basic: ["food", "wood", "stone", "metal"],
@@ -255,23 +287,41 @@ const ResourceManager = (function() {
     /**
      * Update resource values in the UI
      */
-    function updateResourceValuesUI() {
-        // Update basic resources first (these have dedicated UI elements)
-        Utils.updateElement('food-value', Math.floor(resources.food));
-        Utils.updateElement('wood-value', Math.floor(resources.wood));
-        Utils.updateElement('stone-value', Math.floor(resources.stone));
-        Utils.updateElement('metal-value', Math.floor(resources.metal));
+    // 2. Modify the updateResourceValues function:
+function updateResourceValues() {
+    if (!panelInstance) return;
+    
+    // Get current resources
+    let resources = {};
+    let storageCapacity = {};
+    
+    if (typeof ResourceManager !== 'undefined') {
+        if (ResourceManager.getResources) {
+            resources = ResourceManager.getResources();
+        }
         
-        // Update any other resource values that have UI elements
-        for (const resource in resources) {
-            if (resource !== 'food' && resource !== 'wood' && resource !== 'stone' && resource !== 'metal') {
-                const valueElement = document.getElementById(`${resource}-value`);
-                if (valueElement) {
-                    valueElement.textContent = Math.floor(resources[resource]);
-                }
+        // Get storage capacity if available
+        if (ResourceManager.getStorageCapacity) {
+            storageCapacity = ResourceManager.getStorageCapacity();
+        }
+    }
+    
+    // Update each resource value
+    for (const resource in resources) {
+        const element = document.getElementById(`persistent-${resource}-value`);
+        if (element) {
+            const value = Math.floor(resources[resource]);
+            
+            // If capacity exists for this resource, show value/capacity format
+            if (storageCapacity[resource]) {
+                element.textContent = `${value}/${storageCapacity[resource]}`;
+            } else {
+                // Otherwise just show the value
+                element.textContent = value;
             }
         }
     }
+}
     
     /**
      * Create or update the expanded resource UI
@@ -452,7 +502,8 @@ const ResourceManager = (function() {
             console.log("Resource Manager initialized with extended resources");
             // Create or update the expanded resource UI
             createExpandedResourceUI();
-            updateResourceValuesUI();
+            // Fix: directly update values (don't call updateResourceValuesUI)
+            this.refreshResourceUI();
         },
         
         /**
@@ -511,26 +562,48 @@ const ResourceManager = (function() {
             // Calculate consumption
             const foodConsumed = population.total * consumptionRates.food * tickSize;
             
-            // Update basic resources
-            resources.food += foodProduced - foodConsumed;
-            resources.wood += woodProduced;
-            resources.stone += stoneProduced;
-            resources.metal += metalProduced;
+            // Initialize resourcesGained object for tracking production
+            const resourcesGained = {
+                food: foodProduced,
+                wood: woodProduced,
+                stone: stoneProduced,
+                metal: metalProduced,
+                leather: leatherProduced,
+                fur: furProduced,
+                cloth: clothProduced,
+                clay: clayProduced,
+                pitch: pitchProduced,
+                salt: saltProduced,
+                honey: honeyProduced,
+                herbs: herbsProduced,
+                peat: peatProduced,
+                whale_oil: whaleOilProduced,
+                ice: iceProduced
+            };
             
-            // Update advanced resources
-            resources.leather += leatherProduced;
-            resources.fur += furProduced;
-            resources.cloth += clothProduced;
-            resources.clay += clayProduced;
-            resources.pitch += pitchProduced;
-            resources.salt += saltProduced;
-            resources.honey += honeyProduced;
-            resources.herbs += herbsProduced;
+            // Process each resource respecting storage capacity
+            let hitCapacity = false;
+            for (const resource in resourcesGained) {
+                const produced = resourcesGained[resource];
+                if (produced > 0) {
+                    // Check capacity limit
+                    const capacity = storageCapacity[resource];
+                    const currentAmount = resources[resource];
+                    const newAmount = currentAmount + produced;
+                    
+                    if (capacity && newAmount > capacity) {
+                        // Cap at maximum storage
+                        resources[resource] = capacity;
+                        hitCapacity = true;
+                    } else {
+                        // Normal addition
+                        resources[resource] = newAmount;
+                    }
+                }
+            }
             
-            // Update environmental resources
-            resources.peat += peatProduced;
-            resources.whale_oil += whaleOilProduced;
-            resources.ice += iceProduced;
+            // Deduct consumed food
+            resources.food -= foodConsumed;
             
             // Ensure resources don't go below 0
             for (const resource in resources) {
@@ -539,6 +612,11 @@ const ResourceManager = (function() {
             
             // Update UI
             updateResourceValuesUI();
+            
+            // Notify player if storage is full
+            if (hitCapacity) {
+                Utils.log("Some of your storage is full! Consider building more storehouses.", "important");
+            }
             
             // Check if UI needs to be refreshed for newly discovered resources
             const hasNewAdvancedResources = resourceCategories.advanced.some(
@@ -562,23 +640,7 @@ const ResourceManager = (function() {
                 foodProduced,
                 foodConsumed,
                 foodDeficit: foodConsumed > resources.food,
-                resourcesGained: {
-                    food: foodProduced,
-                    wood: woodProduced,
-                    stone: stoneProduced,
-                    metal: metalProduced,
-                    leather: leatherProduced,
-                    fur: furProduced,
-                    cloth: clothProduced,
-                    clay: clayProduced,
-                    pitch: pitchProduced,
-                    salt: saltProduced,
-                    honey: honeyProduced,
-                    herbs: herbsProduced,
-                    peat: peatProduced,
-                    whale_oil: whaleOilProduced,
-                    ice: iceProduced
-                }
+                resourcesGained
             };
         },
         
@@ -594,6 +656,8 @@ const ResourceManager = (function() {
                     return false;
                 }
                 
+                let hitCapacity = false;
+                
                 for (const resource in amounts) {
                     if (resources.hasOwnProperty(resource)) {
                         // Validate resource amount is a number
@@ -604,7 +668,17 @@ const ResourceManager = (function() {
                         
                         // Add resource with debug info
                         const prevAmount = resources[resource];
-                        resources[resource] += amounts[resource];
+                        const capacity = storageCapacity[resource];
+                        
+                        // Check capacity limit
+                        if (capacity && prevAmount + amounts[resource] > capacity) {
+                            // Cap at maximum storage
+                            resources[resource] = capacity;
+                            hitCapacity = true;
+                        } else {
+                            // Normal addition
+                            resources[resource] += amounts[resource];
+                        }
                         
                         // Log for debugging
                         console.debug(`${resource}: ${prevAmount} → ${resources[resource]} (+${amounts[resource]})`);
@@ -617,6 +691,11 @@ const ResourceManager = (function() {
                     } else {
                         console.warn(`Unknown resource type: ${resource}`);
                     }
+                }
+                
+                // Notify player if storage is full
+                if (hitCapacity) {
+                    Utils.log("Some of your storage is full! Consider building more storehouses.", "important");
                 }
                 
                 // Refresh UI if needed for newly discovered resources
@@ -774,6 +853,7 @@ const ResourceManager = (function() {
             baseProductionRates[resourceName] = baseProductionRate;
             productionModifiers[resourceName] = 1.0;
             productionRates[resourceName] = 0;
+            storageCapacity[resourceName] = 25; // Default storage capacity
             
             // Add to category
             if (resourceCategories[category]) {
@@ -819,12 +899,51 @@ const ResourceManager = (function() {
         },
         
         /**
-         * Add storage capacity (for storehouse buildings)
-         * @param {Object} capacities - Storage capacities to add
+         * Get storage capacity
+         * @param {string} [resource] - Resource to get capacity for
+         * @returns {Object|number} - Storage capacity object or capacity for specific resource
+         */
+        getStorageCapacity: function(resource) {
+            if (resource) {
+                return storageCapacity[resource] || Infinity;
+            }
+            return { ...storageCapacity };
+        },
+        
+        /**
+         * Get available storage space
+         * @param {string} resource - Resource to check
+         * @returns {number} - Available storage space
+         */
+        getAvailableStorage: function(resource) {
+            if (!storageCapacity[resource]) return Infinity;
+            return Math.max(0, storageCapacity[resource] - resources[resource]);
+        },
+        
+        /**
+         * Add storage capacity from buildings
+         * @param {Object} capacities - Object with capacity increases by resource
+         * @returns {boolean} - Whether capacity was added successfully
          */
         addStorageCapacity: function(capacities) {
-            // TODO: Implement resource storage limits
-            console.log("Storage capacity increased:", capacities);
+            let capacityAdded = false;
+            
+            for (const resource in capacities) {
+                if (storageCapacity.hasOwnProperty(resource)) {
+                    storageCapacity[resource] += capacities[resource];
+                    capacityAdded = true;
+                    
+                    // Log for debugging
+                    console.log(`Storage capacity for ${resource} increased by ${capacities[resource]} to ${storageCapacity[resource]}`);
+                }
+            }
+            
+            // If any capacity was added, log to player
+            if (capacityAdded) {
+                Utils.log("Your settlement's storage capacity has increased!", "success");
+            }
+            
+            return capacityAdded;
         },
         
         /**

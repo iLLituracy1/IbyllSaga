@@ -19,7 +19,7 @@ const GameEngine = (function() {
     // Game tick interval (in milliseconds)
     const tickIntervals = {
         slow: 5000,
-        normal: 1000,
+        normal: 2600,
         fast: 100
     };
     

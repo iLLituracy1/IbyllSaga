@@ -8,11 +8,11 @@ const PopulationManager = (function() {
     
     // Population data
     let population = {
-        total: 15,         // Total population count
-        workers: 10,       // Available adult workers
+        total: 9,         // Total population count
+        workers: 5,       // Available adult workers
         warriors: 0,      // Warriors (specialized workers)
-        children: 5,      // Children who will grow into workers
-        elders: 0         // Elders (non-working)
+        children: 3,      // Children who will grow into workers
+        elders: 1         // Elders (non-working)
     };
 
     const populationExtension = {
