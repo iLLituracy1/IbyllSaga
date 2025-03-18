@@ -1729,4 +1729,437 @@ const RaidManager = (function() {
         
         // Set the innerHTML
         document.getElementById('raid-details-content').innerHTML = html;
-    }})
+    
+
+    // Public API
+    return {
+    /**
+     * Initialize the raiding system
+     */
+    init: function() {
+        console.log("Initializing Raid Manager...");
+        
+        // Create UI
+        createRaidingUI();
+        
+        // Register world action button
+        const raidButton = document.getElementById('btn-raid');
+        if (raidButton) {
+            raidButton.disabled = false;
+            raidButton.addEventListener('click', function() {
+                // Make sure panel exists before switching
+                if (!document.getElementById('raid-panel')) {
+                    createRaidingUI();
+                }
+                NavigationSystem.switchToPanel('raid-panel');
+            });
+        }
+        
+        console.log("Raid Manager initialized");
+    },
+    
+    /**
+     * Process a game tick for active raids
+     * @param {Object} gameState - Current game state
+     * @param {number} tickSize - Size of the game tick in days
+     */
+    processTick: function(gameState, tickSize) {
+        // Process each active raid
+        for (let i = activeRaids.length - 1; i >= 0; i--) {
+            const raid = activeRaids[i];
+            
+            // Skip completed/failed raids
+            if (raid.status === "completed" || raid.status === "failed") {
+                continue;
+            }
+            
+            // Decrement days remaining
+            raid.daysRemaining -= tickSize;
+            
+            // Process based on current status
+            if (raid.status === "preparing" && raid.daysRemaining <= 0) {
+                // Preparation complete, start journey to target
+                raid.status = "traveling";
+                
+                // Calculate travel time
+                const playerSettlement = WorldMap.getPlayerSettlement();
+                const targetSettlement = WorldMap.getSettlement(raid.targetSettlement);
+                const raidType = raidTypes[raid.raidType];
+                
+                if (playerSettlement && targetSettlement && raidType) {
+                    const travelTime = calculateTravelTime(playerSettlement, targetSettlement, raidType);
+                    raid.daysRemaining = travelTime;
+                } else {
+                    raid.daysRemaining = 5; // Fallback
+                }
+                
+                Utils.log(`The ${raid.name} has departed for ${targetSettlement ? targetSettlement.name : "their target"}.`, "important");
+            } 
+            else if (raid.status === "traveling" && raid.daysRemaining <= 0) {
+                // Travel complete, start raiding
+                raid.status = "raiding";
+                raid.daysRemaining = 1; // Raiding takes 1 day
+                
+                const targetSettlement = WorldMap.getSettlement(raid.targetSettlement);
+                if (targetSettlement) {
+                    Utils.log(`The ${raid.name} has reached ${targetSettlement.name} and begun the assault!`, "important");
+                }
+            } 
+            else if (raid.status === "raiding" && raid.daysRemaining <= 0) {
+                // Raiding complete, resolve combat and start journey home
+                const targetSettlement = WorldMap.getSettlement(raid.targetSettlement);
+                
+                if (targetSettlement) {
+                    // Resolve combat
+                    const combatResult = resolveCombat(raid, targetSettlement);
+                    
+                    // Update casualties
+                    raid.casualties = combatResult.raiderCasualties;
+                    
+                    // Adjust target settlement
+                    if (targetSettlement.military) {
+                        targetSettlement.military.warriors = Math.max(0, 
+                            targetSettlement.military.warriors - combatResult.defenderCasualties);
+                    }
+                    
+                    if (combatResult.defensesWeakened && targetSettlement.military) {
+                        targetSettlement.military.defenses = Math.max(0, 
+                            targetSettlement.military.defenses - 1);
+                        raid.targetWeakened = true;
+                    }
+                    
+                    // Log combat result
+                    if (combatResult.success) {
+                        Utils.log(`The ${raid.name} was successful! Your warriors defeated the defenders with ${raid.casualties} casualties.`, "success");
+                        raid.events.push({
+                            title: "Victory",
+                            description: `Your warriors overwhelmed the defenses with ${raid.casualties} casualties, killing ${combatResult.defenderCasualties} enemy warriors.`
+                        });
+                        
+                        // Determine loot
+                        raid.loot = determineLoot(raid, targetSettlement, combatResult);
+                        
+                        // Log loot gained
+                        let lootMessage = "Your raiders seized ";
+                        const lootItems = [];
+                        
+                        for (const resource in raid.loot) {
+                            if (resource !== 'special' && raid.loot[resource] > 0) {
+                                lootItems.push(`${raid.loot[resource]} ${resource}`);
+                            }
+                        }
+                        
+                        if (raid.loot.special && raid.loot.special.length > 0) {
+                            raid.loot.special.forEach(item => {
+                                lootItems.push(item.name);
+                            });
+                        }
+                        
+                        if (lootItems.length > 0) {
+                            lootMessage += lootItems.join(", ") + ".";
+                            Utils.log(lootMessage, "success");
+                            
+                            // Add loot event
+                            raid.events.push({
+                                title: "Plunder",
+                                description: lootMessage
+                            });
+                        } else {
+                            Utils.log("Your raiders found little of value.", "important");
+                            
+                            raid.events.push({
+                                title: "Meager Plunder",
+                                description: "Despite the victory, your warriors found little of value to bring back."
+                            });
+                        }
+                        
+                        // Adjust target settlement resources
+                        for (const resource in raid.loot) {
+                            if (resource !== 'special' && resource !== 'thralls' && 
+                                targetSettlement.resources && targetSettlement.resources[resource]) {
+                                targetSettlement.resources[resource] = Math.max(0, 
+                                    targetSettlement.resources[resource] - raid.loot[resource]);
+                            }
+                        }
+                        
+                        // Calculate relationship changes
+                        raid.relationshipChanges = calculateRelationshipChanges(raid, targetSettlement, combatResult);
+                        
+                        // Apply relationship changes
+                        for (const settlementId in raid.relationshipChanges) {
+                            const settlement = WorldMap.getSettlement(settlementId);
+                            const playerSettlement = WorldMap.getPlayerSettlement();
+                            
+                            if (settlement && playerSettlement) {
+                                const change = raid.relationshipChanges[settlementId];
+                                
+                                // Update relation value
+                                if (!settlement.relations) settlement.relations = {};
+                                if (!settlement.relations[playerSettlement.id]) {
+                                    settlement.relations[playerSettlement.id] = 50; // Default neutral
+                                }
+                                
+                                settlement.relations[playerSettlement.id] = Math.max(0, 
+                                    Math.min(100, settlement.relations[playerSettlement.id] + change));
+                                
+                                // Add relation change event if significant
+                                if (Math.abs(change) >= 10 && settlement.id === targetSettlement.id) {
+                                    raid.events.push({
+                                        title: "Relations Damaged",
+                                        description: `Your raid has severely damaged relations with ${settlement.name}.`
+                                    });
+                                }
+                            }
+                        }
+                    } else {
+                        Utils.log(`The ${raid.name} was defeated! Your warriors fled with ${raid.casualties} casualties.`, "danger");
+                        raid.events.push({
+                            title: "Defeat",
+                            description: `Your warriors were routed by the defenders, suffering ${raid.casualties} casualties.`
+                        });
+                    }
+                    
+                    // Calculate fame gain if RankManager exists
+                    if (typeof RankManager !== 'undefined' && typeof RankManager.processRaid === 'function') {
+                        RankManager.processRaid(raid, combatResult);
+                    }
+                    
+                    // Start journey home
+                    raid.status = "returning";
+                    
+                    // Calculate travel time (same as outbound journey)
+                    const playerSettlement = WorldMap.getPlayerSettlement();
+                    const raidType = raidTypes[raid.raidType];
+                    
+                    if (playerSettlement && targetSettlement && raidType) {
+                        const travelTime = calculateTravelTime(playerSettlement, targetSettlement, raidType);
+                        raid.daysRemaining = travelTime;
+                    } else {
+                        raid.daysRemaining = 5; // Fallback
+                    }
+                    
+                    Utils.log(`The ${raid.name} is returning home.`, "important");
+                } else {
+                    // Target settlement no longer exists?
+                    Utils.log(`The ${raid.name} found no target and is returning home.`, "important");
+                    raid.status = "returning";
+                    raid.daysRemaining = 5; // Arbitrary return time
+                }
+            } 
+            else if (raid.status === "returning" && raid.daysRemaining <= 0) {
+                // Return complete, finalize raid
+                raid.status = "completed";
+                
+                // Add resources to player settlement
+                if (typeof ResourceManager !== 'undefined') {
+                    const lootResources = {};
+                    
+                    for (const resource in raid.loot) {
+                        if (resource !== 'special' && resource !== 'thralls' && raid.loot[resource] > 0) {
+                            lootResources[resource] = raid.loot[resource];
+                        }
+                    }
+                    
+                    // Add thralls as population if there are any
+                    if (raid.loot.thralls > 0 && typeof PopulationManager !== 'undefined') {
+                        if (typeof PopulationManager.addThralls === 'function') {
+                            PopulationManager.addThralls(raid.loot.thralls);
+                        } else if (typeof PopulationManager.addPopulation === 'function') {
+                            PopulationManager.addPopulation(raid.loot.thralls);
+                        }
+                    }
+                    
+                    // Add resources from raid
+                    if (Object.keys(lootResources).length > 0) {
+                        ResourceManager.addResources(lootResources);
+                    }
+                }
+                
+                // Return surviving warriors to the available pool
+                const survivingWarriors = raid.size - raid.casualties;
+                if (survivingWarriors > 0 && typeof BuildingSystem !== 'undefined' && 
+                    typeof BuildingSystem.returnWarriors === 'function') {
+                    BuildingSystem.returnWarriors(survivingWarriors);
+                }
+                
+                Utils.log(`The ${raid.name} has returned home with ${survivingWarriors} survivors.`, "important");
+                
+                // If any special items were found, add them to inventory or trigger effects
+                if (raid.loot.special && raid.loot.special.length > 0) {
+                    raid.loot.special.forEach(item => {
+                        Utils.log(`Your raiders brought back ${item.name}: ${item.description}`, "success");
+                    });
+                }
+            }
+            
+            // Calculate morale changes
+            if (raid.status !== "completed" && raid.status !== "failed") {
+                // Small random morale fluctuations
+                const moraleDelta = Utils.randomBetween(-3, 2);
+                raid.morale = Math.max(20, Math.min(100, raid.morale + moraleDelta));
+                
+                // Deduct supplies if applicable
+                if (raid.status !== "preparing") {
+                    const dailyConsumption = raid.size * 0.8; // Less than 1 food per day per warrior
+                    raid.supplies -= dailyConsumption * tickSize;
+                    
+                    // If supplies run out, morale drops sharply
+                    if (raid.supplies <= 0) {
+                        raid.morale -= 10 * tickSize;
+                        
+                        // Add starvation event if it hasn't happened yet
+                        if (!raid.events.some(e => e.title === "Supplies Depleted")) {
+                            raid.events.push({
+                                title: "Supplies Depleted",
+                                description: "Your warriors have run out of supplies and are starving."
+                            });
+                        }
+                        
+                        // If morale gets too low, raid might fail
+                        if (raid.morale <= 0) {
+                            raid.status = "failed";
+                            Utils.log(`The ${raid.name} has failed! Your starving warriors have deserted.`, "danger");
+                            
+                            raid.events.push({
+                                title: "Raid Failed",
+                                description: "With no food and broken spirits, your warriors have abandoned the raid and scattered."
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Update UI if raid panel is visible
+        updateRaidsList();
+    },
+    
+    /**
+     * Process the completion of a raid (called when a raid is dismissed)
+     * @param {Object} raid - The completed raid
+     */
+    processRaidCompletion: function(raid) {
+        // Remove from active raids
+        const index = activeRaids.findIndex(r => r.id === raid.id);
+        if (index !== -1) {
+            activeRaids.splice(index, 1);
+        }
+        
+        // Update UI
+        updateRaidsList();
+    },
+    
+    /**
+     * Get all active raids
+     * @returns {Array} - Array of active raids
+     */
+    getActiveRaids: function() {
+        return [...activeRaids];
+    },
+    
+    /**
+     * Get raid types information
+     * @returns {Object} - Raid types definitions
+     */
+    getRaidTypes: function() {
+        return { ...raidTypes };
+    },
+    
+    /**
+     * Evaluate potential raid targets
+     * Public wrapper for the private evaluateRaidTargets function
+     * @param {Array} settlements - Array of potential target settlements
+     * @param {Object} playerSettlement - Player's settlement
+     * @param {string} raidTypeId - Type of raid
+     * @returns {Array} - Sorted array of targets with scores
+     */
+    evaluateRaidTargets: evaluateRaidTargets,
+    
+    /**
+     * Update the raid UI
+     */
+    updateUI: function() {
+        updateRaidsList();
+    },
+    
+    /**
+     * Get a specific raid by ID
+     * @param {string} raidId - ID of the raid to get
+     * @returns {Object|undefined} - The raid object if found
+     */
+    getRaid: function(raidId) {
+        return activeRaids.find(r => r.id === raidId);
+    },
+    
+    /**
+     * Dismiss a completed or failed raid
+     * @param {string} raidId - ID of the raid to dismiss
+     * @returns {boolean} - Whether the raid was successfully dismissed
+     */
+    dismissRaid: function(raidId) {
+        const raidIndex = activeRaids.findIndex(r => r.id === raidId);
+        
+        if (raidIndex === -1) {
+            return false;
+        }
+        
+        const raid = activeRaids[raidIndex];
+        
+        // Only completed or failed raids can be dismissed
+        if (raid.status !== "completed" && raid.status !== "failed") {
+            return false;
+        }
+        
+        // Process any special items from the raid
+        if (raid.loot && raid.loot.special && raid.loot.special.length > 0) {
+            // In a real implementation, this would add items to an inventory system
+            console.log("Processing special items:", raid.loot.special);
+        }
+        
+        // Remove the raid
+        activeRaids.splice(raidIndex, 1);
+        
+        // Update UI
+        updateRaidsList();
+        
+        return true;
+    },
+    
+    /**
+     * Start a raid
+     * @param {Object} raidParams - Raid parameters
+     * @returns {Object|null} - Created raid or null if creation failed
+     */
+    startRaid: function(raidParams) {
+        // This is a public wrapper around the private startRaid function
+        // We could expose it directly, but wrapping allows for validation
+        
+        if (!raidParams || !raidParams.raidTypeId || !raidParams.size || !raidParams.targetId) {
+            console.warn("Invalid raid parameters:", raidParams);
+            return null;
+        }
+        
+        // The private startRaid function is called here
+        startRaid();
+        
+        // Return the created raid
+        return activeRaids[activeRaids.length - 1];
+    },
+    
+    /**
+     * Get available raid targets for a player
+     * @param {string} raidTypeId - Type of raid
+     * @returns {Array} - Array of available targets with evaluation scores
+     */
+    getAvailableRaidTargets: function(raidTypeId) {
+        const playerSettlement = WorldMap.getPlayerSettlement();
+        if (!playerSettlement) return [];
+        
+        const allSettlements = WorldMap.getWorldMap().settlements;
+        const otherSettlements = allSettlements.filter(s => !s.isPlayer);
+        
+        return evaluateRaidTargets(otherSettlements, playerSettlement, raidTypeId);
+    }
+};
+
+}})
