@@ -6,23 +6,105 @@
 const ResourceManager = (function() {
     // Private variables
     let resources = {
-        food: 150,
-        wood: 130,
-        stone: 100,
-        metal: 50
+        // Basic resources
+        food: 50,
+        wood: 30,
+        stone: 10,
+        metal: 5,
+        
+        // Advanced resources
+        leather: 0,
+        fur: 0,
+        cloth: 0,
+        clay: 0,
+        pitch: 0,  // Tar/Pitch
+        salt: 0,
+        honey: 0,
+        herbs: 0,  // Medicinal herbs
+        
+        // Wealth & Trade resources
+        silver: 0,
+        gold: 0,
+        amber: 0,
+        ivory: 0,
+        jewels: 0,
+        
+        // Environmental resources
+        peat: 0,
+        whale_oil: 0,
+        ice: 0,
+        exotic: 0   // Exotic goods like spices, silk
+    };
+    
+    // Resource categories for UI organization
+    const resourceCategories = {
+        basic: ["food", "wood", "stone", "metal"],
+        advanced: ["leather", "fur", "cloth", "clay", "pitch", "salt", "honey", "herbs"],
+        wealth: ["silver", "gold", "amber", "ivory", "jewels"],
+        environmental: ["peat", "whale_oil", "ice", "exotic"]
+    };
+    
+    // Display names for resources
+    const resourceDisplayNames = {
+        food: "Food",
+        wood: "Wood",
+        stone: "Stone",
+        metal: "Metal",
+        leather: "Leather",
+        fur: "Fur",
+        cloth: "Cloth",
+        clay: "Clay",
+        pitch: "Tar/Pitch",
+        salt: "Salt",
+        honey: "Honey",
+        herbs: "Herbs",
+        silver: "Silver",
+        gold: "Gold",
+        amber: "Amber",
+        ivory: "Ivory",
+        jewels: "Jewels",
+        peat: "Peat",
+        whale_oil: "Whale Oil",
+        ice: "Ice",
+        exotic: "Exotic Goods"
     };
     
     // Production rates per worker per day
     const baseProductionRates = {
-        food: 2,  // Food per farmer per day
+        // Basic resources
+        food: 2,    // Food per farmer per day
         wood: 1.5,  // Wood per woodcutter per day
-        stone: 1,  // Stone per miner per day
-        metal: 0.5  // Metal per miner per day
+        stone: 1,   // Stone per miner per day
+        metal: 0.5, // Metal per miner per day
+        
+        // Advanced resources - will be enabled by buildings/upgrades later
+        leather: 0,
+        fur: 0,
+        cloth: 0,
+        clay: 0,
+        pitch: 0,
+        salt: 0,
+        honey: 0,
+        herbs: 0,
+        
+        // Wealth resources - mostly gained through events/trade
+        silver: 0,
+        gold: 0,
+        amber: 0,
+        ivory: 0,
+        jewels: 0,
+        
+        // Environmental resources - region-specific
+        peat: 0,
+        whale_oil: 0,
+        ice: 0,
+        exotic: 0
     };
     
     // Consumption rates per person per day
     const consumptionRates = {
-        food: 1  // Food consumed per person per day
+        food: 1,  // Food consumed per person per day
+        // Other resources aren't automatically consumed
     };
     
     // Building costs
@@ -34,18 +116,66 @@ const ResourceManager = (function() {
     
     // Current production modifiers (affected by buildings, events, etc.)
     let productionModifiers = {
+        // Basic resources
         food: 1.0,
         wood: 1.0,
         stone: 1.0,
-        metal: 1.0
+        metal: 1.0,
+        
+        // Advanced resources
+        leather: 1.0,
+        fur: 1.0,
+        cloth: 1.0,
+        clay: 1.0,
+        pitch: 1.0,
+        salt: 1.0,
+        honey: 1.0,
+        herbs: 1.0,
+        
+        // Wealth resources
+        silver: 1.0,
+        gold: 1.0,
+        amber: 1.0,
+        ivory: 1.0,
+        jewels: 1.0,
+        
+        // Environmental resources
+        peat: 1.0,
+        whale_oil: 1.0,
+        ice: 1.0,
+        exotic: 1.0
     };
     
     // Resource production rates based on assigned workers
     let productionRates = {
+        // Basic resources
         food: 0,
         wood: 0,
         stone: 0,
-        metal: 0
+        metal: 0,
+        
+        // Advanced resources
+        leather: 0,
+        fur: 0,
+        cloth: 0,
+        clay: 0,
+        pitch: 0,
+        salt: 0,
+        honey: 0,
+        herbs: 0,
+        
+        // Wealth resources
+        silver: 0,
+        gold: 0,
+        amber: 0,
+        ivory: 0,
+        jewels: 0,
+        
+        // Environmental resources
+        peat: 0,
+        whale_oil: 0,
+        ice: 0,
+        exotic: 0
     };
     
     // Private methods
@@ -54,45 +184,50 @@ const ResourceManager = (function() {
      * @param {Object} workers - Object containing worker assignments
      */
     function calculateProductionRates(workers) {
-        // Region and production modifiers
+        // Get region modifiers if available
         let regionModifiers = { food: 1.0, wood: 1.0, stone: 1.0, metal: 1.0 };
+        
+        // Check if WorldMap exists and has a player region
         if (typeof WorldMap !== 'undefined' && WorldMap.getPlayerRegion) {
             const playerRegion = WorldMap.getPlayerRegion();
             if (playerRegion && playerRegion.resourceModifiers) {
                 regionModifiers = playerRegion.resourceModifiers;
             }
         }
-    
-        // Worker-based production
-        const workerFoodProduction = workers.farmers * baseProductionRates.food;
-    
-        // Building-based production
-        let buildingFoodProduction = 0;
-        if (typeof BuildingSystem !== 'undefined') {
-            const buildingData = BuildingSystem.getBuildingData();
-            
-            for (const buildingType in buildingData.built) {
-                const building = BuildingSystem.getBuildingType(buildingType);
-                const buildingCount = buildingData.built[buildingType];
-                
-                if (building && building.effects && building.effects.resourceProduction && building.effects.resourceProduction.food) {
-                    buildingFoodProduction += building.effects.resourceProduction.food * buildingCount;
-                }
-            }
-        }
-    
-        // Total production with modifiers
-        // KEY CHANGE: Don't add worker and building production before modifiers
-        productionRates.food = (
-            workerFoodProduction * productionModifiers.food * regionModifiers.food +
-            buildingFoodProduction * productionModifiers.food * regionModifiers.food
-        );
-    
-        // Rest of the method remains the same
+        
+        // Apply both regular modifiers and region modifiers
+        productionRates.food = workers.farmers * baseProductionRates.food * productionModifiers.food * regionModifiers.food;
         productionRates.wood = workers.woodcutters * baseProductionRates.wood * productionModifiers.wood * regionModifiers.wood;
         productionRates.stone = workers.miners * baseProductionRates.stone * productionModifiers.stone * regionModifiers.stone;
         productionRates.metal = workers.miners * baseProductionRates.metal * productionModifiers.metal * regionModifiers.metal;
-    
+        
+        // Special case: hunters can produce leather and fur
+        if (workers.hunters) {
+            productionRates.leather = workers.hunters * baseProductionRates.leather * productionModifiers.leather;
+            productionRates.fur = workers.hunters * baseProductionRates.fur * productionModifiers.fur;
+        }
+        
+        // Special case: crafters can produce cloth
+        if (workers.crafters) {
+            productionRates.cloth = workers.crafters * baseProductionRates.cloth * productionModifiers.cloth;
+        }
+        
+        // Special case: gatherers can produce herbs and clay
+        if (workers.gatherers) {
+            productionRates.herbs = workers.gatherers * baseProductionRates.herbs * productionModifiers.herbs;
+            productionRates.clay = workers.gatherers * baseProductionRates.clay * productionModifiers.clay;
+        }
+        
+        // Environmental resources depend on region
+        if (regionModifiers.peat) {
+            productionRates.peat = workers.gatherers * baseProductionRates.peat * productionModifiers.peat * regionModifiers.peat;
+        }
+        
+        if (regionModifiers.whale_oil) {
+            productionRates.whale_oil = workers.hunters * baseProductionRates.whale_oil * productionModifiers.whale_oil * regionModifiers.whale_oil;
+        }
+        
+        // Update UI
         updateResourceRatesUI();
     }
     
@@ -100,20 +235,198 @@ const ResourceManager = (function() {
      * Update resource rates in the UI
      */
     function updateResourceRatesUI() {
+        // Update basic resources first (these have dedicated UI elements)
         Utils.updateElement('food-rate', productionRates.food.toFixed(1));
         Utils.updateElement('wood-rate', productionRates.wood.toFixed(1));
         Utils.updateElement('stone-rate', productionRates.stone.toFixed(1));
         Utils.updateElement('metal-rate', productionRates.metal.toFixed(1));
+        
+        // Update any other resource rates that have UI elements
+        for (const resource in productionRates) {
+            if (resource !== 'food' && resource !== 'wood' && resource !== 'stone' && resource !== 'metal') {
+                const rateElement = document.getElementById(`${resource}-rate`);
+                if (rateElement) {
+                    rateElement.textContent = productionRates[resource].toFixed(1);
+                }
+            }
+        }
     }
     
     /**
      * Update resource values in the UI
      */
     function updateResourceValuesUI() {
+        // Update basic resources first (these have dedicated UI elements)
         Utils.updateElement('food-value', Math.floor(resources.food));
         Utils.updateElement('wood-value', Math.floor(resources.wood));
         Utils.updateElement('stone-value', Math.floor(resources.stone));
         Utils.updateElement('metal-value', Math.floor(resources.metal));
+        
+        // Update any other resource values that have UI elements
+        for (const resource in resources) {
+            if (resource !== 'food' && resource !== 'wood' && resource !== 'stone' && resource !== 'metal') {
+                const valueElement = document.getElementById(`${resource}-value`);
+                if (valueElement) {
+                    valueElement.textContent = Math.floor(resources[resource]);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Create or update the expanded resource UI
+     */
+    function createExpandedResourceUI() {
+        // Check if resources panel exists
+        const resourcesPanel = document.querySelector('.resources-panel');
+        if (!resourcesPanel) return;
+        
+        // Clear current content and add categories structure
+        resourcesPanel.innerHTML = `
+            <h2>Resources</h2>
+            <div class="resource-categories">
+                <div class="resource-category">
+                    <h3>Basic Resources</h3>
+                    <div class="resource-grid basic-resources"></div>
+                </div>
+                <div class="resource-category advanced-category">
+                    <h3>Advanced Resources</h3>
+                    <div class="resource-grid advanced-resources"></div>
+                </div>
+                <div class="resource-category wealth-category">
+                    <h3>Wealth Resources</h3>
+                    <div class="resource-grid wealth-resources"></div>
+                </div>
+                <div class="resource-category environmental-category">
+                    <h3>Environmental Resources</h3>
+                    <div class="resource-grid environmental-resources"></div>
+                </div>
+            </div>
+        `;
+        
+        // Add CSS for categories
+        const style = document.createElement('style');
+        style.textContent = `
+            .resource-categories {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .resource-category {
+                background-color: #f7f0e3;
+                border-radius: 6px;
+                padding: 15px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            }
+            
+            .resource-category h3 {
+                margin-top: 0;
+                margin-bottom: 10px;
+                color: #5d4037;
+                font-size: 1.1rem;
+                border-bottom: 1px solid #c9ba9b;
+                padding-bottom: 5px;
+            }
+            
+            .advanced-category, .wealth-category, .environmental-category {
+                display: none; /* Hidden by default until resources are discovered */
+            }
+            
+            /* Resource grid styling */
+            .resource-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            
+            @media (max-width: 768px) {
+                .resource-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+            
+            /* Colors for different resource types */
+            .basic-resources .resource:nth-child(1) { border-left-color: #c62828; } /* Food - Red */
+            .basic-resources .resource:nth-child(2) { border-left-color: #2e7d32; } /* Wood - Green */
+            .basic-resources .resource:nth-child(3) { border-left-color: #5d4037; } /* Stone - Brown */
+            .basic-resources .resource:nth-child(4) { border-left-color: #1565c0; } /* Metal - Blue */
+            
+            .advanced-resources .resource { border-left-color: #6a1b9a; } /* Advanced - Purple */
+            .wealth-resources .resource { border-left-color: #ff8f00; } /* Wealth - Gold */
+            .environmental-resources .resource { border-left-color: #00695c; } /* Environmental - Teal */
+        `;
+        document.head.appendChild(style);
+        
+        // Add basic resources
+        const basicGrid = document.querySelector('.basic-resources');
+        resourceCategories.basic.forEach(resource => {
+            const resourceElement = document.createElement('div');
+            resourceElement.className = 'resource';
+            resourceElement.innerHTML = `
+                <div class="resource-label">${resourceDisplayNames[resource]}:</div>
+                <div id="${resource}-value">${Math.floor(resources[resource])}</div>
+                <div class="resource-rate">(+<span id="${resource}-rate">${productionRates[resource].toFixed(1)}</span>/day)</div>
+            `;
+            basicGrid.appendChild(resourceElement);
+        });
+        
+        // Add advanced resources (if any are discovered)
+        const hasAdvancedResources = resourceCategories.advanced.some(resource => resources[resource] > 0);
+        if (hasAdvancedResources) {
+            document.querySelector('.advanced-category').style.display = 'block';
+            const advancedGrid = document.querySelector('.advanced-resources');
+            resourceCategories.advanced.forEach(resource => {
+                if (resources[resource] > 0) {
+                    const resourceElement = document.createElement('div');
+                    resourceElement.className = 'resource';
+                    resourceElement.innerHTML = `
+                        <div class="resource-label">${resourceDisplayNames[resource]}:</div>
+                        <div id="${resource}-value">${Math.floor(resources[resource])}</div>
+                        <div class="resource-rate">(+<span id="${resource}-rate">${productionRates[resource].toFixed(1)}</span>/day)</div>
+                    `;
+                    advancedGrid.appendChild(resourceElement);
+                }
+            });
+        }
+        
+        // Add wealth resources (if any are discovered)
+        const hasWealthResources = resourceCategories.wealth.some(resource => resources[resource] > 0);
+        if (hasWealthResources) {
+            document.querySelector('.wealth-category').style.display = 'block';
+            const wealthGrid = document.querySelector('.wealth-resources');
+            resourceCategories.wealth.forEach(resource => {
+                if (resources[resource] > 0) {
+                    const resourceElement = document.createElement('div');
+                    resourceElement.className = 'resource';
+                    resourceElement.innerHTML = `
+                        <div class="resource-label">${resourceDisplayNames[resource]}:</div>
+                        <div id="${resource}-value">${Math.floor(resources[resource])}</div>
+                        <div class="resource-rate">(+<span id="${resource}-rate">${productionRates[resource].toFixed(1)}</span>/day)</div>
+                    `;
+                    wealthGrid.appendChild(resourceElement);
+                }
+            });
+        }
+        
+        // Add environmental resources (if any are discovered)
+        const hasEnvironmentalResources = resourceCategories.environmental.some(resource => resources[resource] > 0);
+        if (hasEnvironmentalResources) {
+            document.querySelector('.environmental-category').style.display = 'block';
+            const environmentalGrid = document.querySelector('.environmental-resources');
+            resourceCategories.environmental.forEach(resource => {
+                if (resources[resource] > 0) {
+                    const resourceElement = document.createElement('div');
+                    resourceElement.className = 'resource';
+                    resourceElement.innerHTML = `
+                        <div class="resource-label">${resourceDisplayNames[resource]}:</div>
+                        <div id="${resource}-value">${Math.floor(resources[resource])}</div>
+                        <div class="resource-rate">(+<span id="${resource}-rate">${productionRates[resource].toFixed(1)}</span>/day)</div>
+                    `;
+                    environmentalGrid.appendChild(resourceElement);
+                }
+            });
+        }
     }
     
     /**
@@ -136,7 +449,9 @@ const ResourceManager = (function() {
          * Initialize the resource manager
          */
         init: function() {
-            console.log("Resource Manager initialized");
+            console.log("Resource Manager initialized with extended resources");
+            // Create or update the expanded resource UI
+            createExpandedResourceUI();
             updateResourceValuesUI();
         },
         
@@ -158,22 +473,10 @@ const ResourceManager = (function() {
         
         /**
          * Update resource production rates based on worker assignments
-         * Now pulls automatically from BuildingSystem if available
+         * @param {Object} workers - Current worker assignments
          */
         updateProductionRates: function(workers) {
-            // Get workers from BuildingSystem if available, otherwise use provided workers
-            let workerAssignments = workers;
-            
-            if (!workers && typeof BuildingSystem !== 'undefined' && typeof BuildingSystem.getWorkerAssignments === 'function') {
-                workerAssignments = BuildingSystem.getWorkerAssignments();
-            } else if (!workers && typeof PopulationManager !== 'undefined' && typeof PopulationManager.getWorkerAssignments === 'function') {
-                workerAssignments = PopulationManager.getWorkerAssignments(); 
-            }
-            
-            // Calculate production rates
-            if (workerAssignments) {
-                calculateProductionRates(workerAssignments);
-            }
+            calculateProductionRates(workers);
         },
         
         /**
@@ -182,34 +485,77 @@ const ResourceManager = (function() {
          * @param {number} tickSize - Size of the game tick in days
          */
         processTick: function(population, tickSize) {
-            // Update production rates based on current worker assignments from buildings
-            if (typeof BuildingSystem !== 'undefined' && typeof BuildingSystem.getWorkerAssignments === 'function') {
-                this.updateProductionRates(BuildingSystem.getWorkerAssignments());
-            }
-            
-            // Calculate daily production
+            // Calculate daily production for basic resources
             const foodProduced = productionRates.food * tickSize;
             const woodProduced = productionRates.wood * tickSize;
             const stoneProduced = productionRates.stone * tickSize;
             const metalProduced = productionRates.metal * tickSize;
             
+            // Calculate production for advanced resources
+            const leatherProduced = productionRates.leather * tickSize;
+            const furProduced = productionRates.fur * tickSize;
+            const clothProduced = productionRates.cloth * tickSize;
+            const clayProduced = productionRates.clay * tickSize;
+            const pitchProduced = productionRates.pitch * tickSize;
+            const saltProduced = productionRates.salt * tickSize;
+            const honeyProduced = productionRates.honey * tickSize;
+            const herbsProduced = productionRates.herbs * tickSize;
+            
+            // Calculate production for environmental resources
+            const peatProduced = productionRates.peat * tickSize;
+            const whaleOilProduced = productionRates.whale_oil * tickSize;
+            const iceProduced = productionRates.ice * tickSize;
+            
+            // Wealth resources are mostly gained through events/trade, not passive production
+            
             // Calculate consumption
             const foodConsumed = population.total * consumptionRates.food * tickSize;
             
-            // Update resources
+            // Update basic resources
             resources.food += foodProduced - foodConsumed;
             resources.wood += woodProduced;
             resources.stone += stoneProduced;
             resources.metal += metalProduced;
             
+            // Update advanced resources
+            resources.leather += leatherProduced;
+            resources.fur += furProduced;
+            resources.cloth += clothProduced;
+            resources.clay += clayProduced;
+            resources.pitch += pitchProduced;
+            resources.salt += saltProduced;
+            resources.honey += honeyProduced;
+            resources.herbs += herbsProduced;
+            
+            // Update environmental resources
+            resources.peat += peatProduced;
+            resources.whale_oil += whaleOilProduced;
+            resources.ice += iceProduced;
+            
             // Ensure resources don't go below 0
-            resources.food = Math.max(0, resources.food);
-            resources.wood = Math.max(0, resources.wood);
-            resources.stone = Math.max(0, resources.stone);
-            resources.metal = Math.max(0, resources.metal);
+            for (const resource in resources) {
+                resources[resource] = Math.max(0, resources[resource]);
+            }
             
             // Update UI
             updateResourceValuesUI();
+            
+            // Check if UI needs to be refreshed for newly discovered resources
+            const hasNewAdvancedResources = resourceCategories.advanced.some(
+                resource => resources[resource] > 0 && !document.getElementById(`${resource}-value`)
+            );
+            
+            const hasNewWealthResources = resourceCategories.wealth.some(
+                resource => resources[resource] > 0 && !document.getElementById(`${resource}-value`)
+            );
+            
+            const hasNewEnvironmentalResources = resourceCategories.environmental.some(
+                resource => resources[resource] > 0 && !document.getElementById(`${resource}-value`)
+            );
+            
+            if (hasNewAdvancedResources || hasNewWealthResources || hasNewEnvironmentalResources) {
+                createExpandedResourceUI();
+            }
             
             // Return resource status for event processing
             return {
@@ -220,12 +566,23 @@ const ResourceManager = (function() {
                     food: foodProduced,
                     wood: woodProduced,
                     stone: stoneProduced,
-                    metal: metalProduced
+                    metal: metalProduced,
+                    leather: leatherProduced,
+                    fur: furProduced,
+                    cloth: clothProduced,
+                    clay: clayProduced,
+                    pitch: pitchProduced,
+                    salt: saltProduced,
+                    honey: honeyProduced,
+                    herbs: herbsProduced,
+                    peat: peatProduced,
+                    whale_oil: whaleOilProduced,
+                    ice: iceProduced
                 }
             };
         },
         
-            /**
+        /**
          * Add resources manually (from events, actions, etc.)
          * @param {Object} amounts - Object containing resource amounts to add
          * @returns {boolean} - Whether the resources were successfully added
@@ -251,12 +608,36 @@ const ResourceManager = (function() {
                         
                         // Log for debugging
                         console.debug(`${resource}: ${prevAmount} → ${resources[resource]} (+${amounts[resource]})`);
+                        
+                        // Check if this is a newly discovered resource
+                        if (prevAmount === 0 && resources[resource] > 0) {
+                            // Log discovery
+                            Utils.log(`You have discovered ${resourceDisplayNames[resource]}!`, "success");
+                        }
                     } else {
                         console.warn(`Unknown resource type: ${resource}`);
                     }
                 }
                 
-                updateResourceValuesUI();
+                // Refresh UI if needed for newly discovered resources
+                const hasNewAdvancedResources = resourceCategories.advanced.some(
+                    resource => resources[resource] > 0 && !document.getElementById(`${resource}-value`)
+                );
+                
+                const hasNewWealthResources = resourceCategories.wealth.some(
+                    resource => resources[resource] > 0 && !document.getElementById(`${resource}-value`)
+                );
+                
+                const hasNewEnvironmentalResources = resourceCategories.environmental.some(
+                    resource => resources[resource] > 0 && !document.getElementById(`${resource}-value`)
+                );
+                
+                if (hasNewAdvancedResources || hasNewWealthResources || hasNewEnvironmentalResources) {
+                    createExpandedResourceUI();
+                } else {
+                    updateResourceValuesUI();
+                }
+                
                 return true;
             } catch (error) {
                 console.error("Error adding resources:", error);
@@ -264,7 +645,7 @@ const ResourceManager = (function() {
             }
         },
         
-            /**
+        /**
          * Subtract resources manually (from events, actions, etc.)
          * @param {Object} amounts - Object containing resource amounts to subtract
          * @returns {boolean} - Whether the resources were successfully subtracted
@@ -380,8 +761,9 @@ const ResourceManager = (function() {
          * @param {string} resourceName - Name of the new resource
          * @param {number} initialAmount - Initial amount of the resource
          * @param {number} baseProductionRate - Base production rate for the resource
+         * @param {string} category - Resource category (basic, advanced, wealth, environmental)
          */
-        addResourceType: function(resourceName, initialAmount, baseProductionRate) {
+        addResourceType: function(resourceName, initialAmount, baseProductionRate, category = "advanced") {
             if (resources.hasOwnProperty(resourceName)) {
                 console.warn(`Resource ${resourceName} already exists.`);
                 return;
@@ -393,45 +775,105 @@ const ResourceManager = (function() {
             productionModifiers[resourceName] = 1.0;
             productionRates[resourceName] = 0;
             
-            // This would need UI updates for new resources as well
-            console.log(`Added new resource type: ${resourceName}`);
-        },
-
-                    /**
-             * Get base production rates
-             * @returns {Object} - Base production rates
-             */
-            getBaseProductionRates: function() {
-                return { ...baseProductionRates };
-            },
-
-            /**
-             * Set base production rates from buildings
-             * @param {Object} rates - New base rates
-             */
-            updateBaseProductionRates: function(rates) {
-                for (const resource in rates) {
-                    if (baseProductionRates.hasOwnProperty(resource)) {
-                        baseProductionRates[resource] = rates[resource];
-                    }
-                }
-                
-                // Recalculate production rates
-                const workerAssignments = typeof BuildingSystem !== 'undefined' && 
-                                        typeof BuildingSystem.getWorkerAssignments === 'function' ?
-                                        BuildingSystem.getWorkerAssignments() :
-                                        PopulationManager.getWorkerAssignments();
-                                        
-                this.updateProductionRates(workerAssignments);
-            },
-
-            /**
-             * Add storage capacity (for storehouse buildings)
-             * @param {Object} capacities - Storage capacities to add
-             */
-            addStorageCapacity: function(capacities) {
-                // TODO: Implement resource storage limits
-                console.log("Storage capacity increased:", capacities);
+            // Add to category
+            if (resourceCategories[category]) {
+                resourceCategories[category].push(resourceName);
+            } else {
+                console.warn(`Unknown category ${category}, adding to advanced.`);
+                resourceCategories.advanced.push(resourceName);
             }
+            
+            // Add display name
+            resourceDisplayNames[resourceName] = resourceName.charAt(0).toUpperCase() + resourceName.slice(1).replace('_', ' ');
+            
+            console.log(`Added new resource type: ${resourceName}`);
+            
+            // Update UI if needed
+            if (initialAmount > 0) {
+                createExpandedResourceUI();
+            }
+        },
+        
+        /**
+         * Get base production rates
+         * @returns {Object} - Base production rates
+         */
+        getBaseProductionRates: function() {
+            return { ...baseProductionRates };
+        },
+        
+        /**
+         * Set base production rates from buildings
+         * @param {Object} rates - New base rates
+         */
+        updateBaseProductionRates: function(rates) {
+            for (const resource in rates) {
+                if (baseProductionRates.hasOwnProperty(resource)) {
+                    baseProductionRates[resource] = rates[resource];
+                }
+            }
+            
+            // Recalculate production rates
+            const workerAssignments = PopulationManager.getWorkerAssignments();
+            this.updateProductionRates(workerAssignments);
+        },
+        
+        /**
+         * Add storage capacity (for storehouse buildings)
+         * @param {Object} capacities - Storage capacities to add
+         */
+        addStorageCapacity: function(capacities) {
+            // TODO: Implement resource storage limits
+            console.log("Storage capacity increased:", capacities);
+        },
+        
+        /**
+         * Get resource categories
+         * @returns {Object} - Resource categories
+         */
+        getResourceCategories: function() {
+            return { ...resourceCategories };
+        },
+        
+        /**
+         * Get resource display names
+         * @returns {Object} - Resource display names
+         */
+        getResourceDisplayNames: function() {
+            return { ...resourceDisplayNames };
+        },
+        
+        /**
+         * Check if a resource has been discovered
+         * @param {string} resource - Resource to check
+         * @returns {boolean} - Whether the resource has been discovered
+         */
+        isResourceDiscovered: function(resource) {
+            return resources.hasOwnProperty(resource) && resources[resource] > 0;
+        },
+        
+        /**
+         * Apply regional resource modifications based on player's current region
+         * @param {Object} regionModifiers - Resource modifiers from the region
+         */
+        applyRegionalModifiers: function(regionModifiers) {
+            for (const resource in regionModifiers) {
+                if (productionModifiers.hasOwnProperty(resource)) {
+                    // Update the production modifier
+                    productionModifiers[resource] = regionModifiers[resource];
+                }
+            }
+            
+            // Recalculate production rates
+            const workerAssignments = PopulationManager.getWorkerAssignments();
+            this.updateProductionRates(workerAssignments);
+        },
+        
+        /**
+         * Refresh the resource UI display
+         */
+        refreshResourceUI: function() {
+            createExpandedResourceUI();
+        }
     };
 })();
