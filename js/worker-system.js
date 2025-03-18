@@ -43,6 +43,16 @@
                     <span id="miners-capacity">${capacity.miners || 0}</span>
                     <span class="employment-text">(${assignments.miners || 0} filled)</span>
                 </div>
+                 <div class="worker-stat">
+                    <span class="worker-label">Hunter Jobs:</span>
+                    <span id="hunters-capacity">${capacity.hunters || 0}</span>
+                    <span class="employment-text">(${assignments.hunters || 0} filled)</span>
+                </div>
+                 <div class="worker-stat">
+                    <span class="worker-label">Fishing Jobs:</span>
+                    <span id="fishermen-capacity">${capacity.fishermen || 0}</span>
+                    <span class="employment-text">(${assignments.fishermen || 0} filled)</span>
+                </div>
                 <div class="worker-stat unassigned">
                     <span class="worker-label">Unassigned Workers:</span>
                     <span id="unassigned-count">${unassigned}</span>
@@ -97,7 +107,11 @@
             
             // Worker info based on building type
             let workerType = "workers";
-            if (buildingId.includes('farm') || buildingId.includes('fishing') || buildingId.includes('hunting')) {
+            if (buildingId.includes('hunting')) {
+                workerType = "hunters";
+            }  else if (buildingId.includes('fishing')) {
+                workerType = "fishermen";
+            } else if (buildingId.includes('farm')) {
                 workerType = "farmers";
             } else if (buildingId.includes('woodcutter') || buildingId.includes('sawmill')) {
                 workerType = "woodcutters";

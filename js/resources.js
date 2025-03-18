@@ -243,6 +243,48 @@ const ResourceManager = (function() {
                                 BuildingSystem.getAvailableCapacity() : 
                                 { farmers: 0, woodcutters: 0, miners: 0, hunters: 0, crafters: 0, gatherers: 0 };
         
+        // Get building types for production values per worker
+        const buildings = typeof BuildingSystem !== 'undefined' && 
+                         typeof BuildingSystem.getBuildingData === 'function' ?
+                         BuildingSystem.getBuildingData() : 
+                         { built: {} };
+        
+        // Default base production values (fallback)
+        let baseFoodPerFarmer = 10;  // From farm building
+        let baseWoodPerCutter = 4;   // From woodcutter's lodge
+        let baseStonePerMiner = 3;   // From quarry
+        let baseMetalPerMiner = 2;   // From mine
+        
+        // Try to get actual values from building definitions
+        if (typeof BuildingSystem !== 'undefined' && typeof BuildingSystem.getBuildingType === 'function') {
+            const farmType = BuildingSystem.getBuildingType('farm');
+            const woodcutterType = BuildingSystem.getBuildingType('woodcutter_lodge');
+            const quarryType = BuildingSystem.getBuildingType('quarry');
+            const mineType = BuildingSystem.getBuildingType('mine');
+            
+            if (farmType && farmType.effects && farmType.effects.resourceProduction) {
+                baseFoodPerFarmer = farmType.effects.resourceProduction.food || baseFoodPerFarmer;
+            }
+            
+            if (woodcutterType && woodcutterType.effects && woodcutterType.effects.resourceProduction) {
+                baseWoodPerCutter = woodcutterType.effects.resourceProduction.wood || baseWoodPerCutter;
+            }
+            
+            if (quarryType && quarryType.effects && quarryType.effects.resourceProduction) {
+                baseStonePerMiner = quarryType.effects.resourceProduction.stone || baseStonePerMiner;
+            }
+            
+            if (mineType && mineType.effects && mineType.effects.resourceProduction) {
+                baseMetalPerMiner = mineType.effects.resourceProduction.metal || baseMetalPerMiner;
+            }
+        }
+        
+        // Update base production rates with the actual building values
+        baseProductionRates.food = baseFoodPerFarmer;
+        baseProductionRates.wood = baseWoodPerCutter;
+        baseProductionRates.stone = baseStonePerMiner;
+        baseProductionRates.metal = baseMetalPerMiner;
+        
         // Calculate the worker efficiency based on building capacity
         // Workers are only effective if they have jobs (buildings to work in)
         const farmerEfficiency = buildingCapacity.farmers > 0 ? 
@@ -254,59 +296,48 @@ const ResourceManager = (function() {
         const minerEfficiency = buildingCapacity.miners > 0 ? 
             Math.min(1.0, workers.miners / buildingCapacity.miners) : 0;
         
-        // Apply both regular modifiers and region modifiers for worker-based production
-        productionRates.food = buildingCapacity.farmers * farmerEfficiency * baseProductionRates.food * 
+        // Calculate total production
+        productionRates.food = workers.farmers * baseProductionRates.food * 
                                productionModifiers.food * regionModifiers.food;
         
-        productionRates.wood = buildingCapacity.woodcutters * woodcutterEfficiency * baseProductionRates.wood * 
+        productionRates.wood = workers.woodcutters * baseProductionRates.wood * 
                                productionModifiers.wood * regionModifiers.wood;
         
-        productionRates.stone = buildingCapacity.miners * minerEfficiency * baseProductionRates.stone * 
-                                productionModifiers.stone * regionModifiers.stone;
+        productionRates.stone = workers.miners * baseProductionRates.stone * 
+                                productionModifiers.stone * regionModifiers.stone * 0.5; // Split miners between stone and metal
         
-        productionRates.metal = buildingCapacity.miners * minerEfficiency * baseProductionRates.metal * 
-                                productionModifiers.metal * regionModifiers.metal;
-        
-        // Add building-based production
-        for (const resource in buildingProduction) {
-            if (productionRates.hasOwnProperty(resource)) {
-                // Apply modifiers to building production too
-                const regionMod = regionModifiers[resource] || 1.0;
-                productionRates[resource] += buildingProduction[resource] * productionModifiers[resource] * regionMod;
-            }
-        }
+        productionRates.metal = workers.miners * baseProductionRates.metal * 
+                                productionModifiers.metal * regionModifiers.metal * 0.5; // Split miners between stone and metal
         
         // Special case: hunters can produce leather and fur
         if (workers.hunters && buildingCapacity.hunters > 0) {
             const hunterEfficiency = Math.min(1.0, workers.hunters / buildingCapacity.hunters);
-            productionRates.leather = buildingCapacity.hunters * hunterEfficiency * baseProductionRates.leather * productionModifiers.leather;
-            productionRates.fur = buildingCapacity.hunters * hunterEfficiency * baseProductionRates.fur * productionModifiers.fur;
+            productionRates.leather = workers.hunters * baseProductionRates.leather * productionModifiers.leather;
+            productionRates.fur = workers.hunters * baseProductionRates.fur * productionModifiers.fur;
         }
         
         // Special case: crafters can produce cloth
         if (workers.crafters && buildingCapacity.crafters > 0) {
             const crafterEfficiency = Math.min(1.0, workers.crafters / buildingCapacity.crafters);
-            productionRates.cloth = buildingCapacity.crafters * crafterEfficiency * baseProductionRates.cloth * productionModifiers.cloth;
+            productionRates.cloth = workers.crafters * baseProductionRates.cloth * productionModifiers.cloth;
         }
         
         // Special case: gatherers can produce herbs and clay
         if (workers.gatherers && buildingCapacity.gatherers > 0) {
             const gathererEfficiency = Math.min(1.0, workers.gatherers / buildingCapacity.gatherers);
-            productionRates.herbs = buildingCapacity.gatherers * gathererEfficiency * baseProductionRates.herbs * productionModifiers.herbs;
-            productionRates.clay = buildingCapacity.gatherers * gathererEfficiency * baseProductionRates.clay * productionModifiers.clay;
+            productionRates.herbs = workers.gatherers * baseProductionRates.herbs * productionModifiers.herbs;
+            productionRates.clay = workers.gatherers * baseProductionRates.clay * productionModifiers.clay;
         }
         
         // Environmental resources depend on region
         if (regionModifiers.peat && workers.gatherers && buildingCapacity.gatherers > 0) {
-            const gathererEfficiency = Math.min(1.0, workers.gatherers / buildingCapacity.gatherers);
-            productionRates.peat = buildingCapacity.gatherers * gathererEfficiency * 
-                                   baseProductionRates.peat * productionModifiers.peat * regionModifiers.peat;
+            productionRates.peat = workers.gatherers * baseProductionRates.peat * 
+                                   productionModifiers.peat * regionModifiers.peat;
         }
         
         if (regionModifiers.whale_oil && workers.hunters && buildingCapacity.hunters > 0) {
-            const hunterEfficiency = Math.min(1.0, workers.hunters / buildingCapacity.hunters);
-            productionRates.whale_oil = buildingCapacity.hunters * hunterEfficiency * 
-                                       baseProductionRates.whale_oil * productionModifiers.whale_oil * regionModifiers.whale_oil;
+            productionRates.whale_oil = workers.hunters * baseProductionRates.whale_oil * 
+                                       productionModifiers.whale_oil * regionModifiers.whale_oil;
         }
         
         // Update UI
@@ -605,64 +636,107 @@ const ResourceManager = (function() {
                 ice: iceProduced
             };
             
-            // Process each resource respecting storage capacity
-            let hitCapacity = false;
-            for (const resource in resourcesGained) {
-                const produced = resourcesGained[resource];
-                if (produced > 0) {
-                    // Check capacity limit
-                    const capacity = storageCapacity[resource];
-                    const currentAmount = resources[resource];
-                    const newAmount = currentAmount + produced;
-                    
-                    if (capacity && newAmount > capacity) {
-                        // Cap at maximum storage
-                        resources[resource] = capacity;
-                        hitCapacity = true;
-                    } else {
-                        // Normal addition
-                        resources[resource] = newAmount;
-                    }
-                }
+             // Process each resource respecting storage capacity
+    let hitCapacity = false;
+    for (const resource in resourcesGained) {
+        const produced = resourcesGained[resource];
+        if (produced > 0) {
+            // Check capacity limit
+            const capacity = storageCapacity[resource];
+            const currentAmount = resources[resource];
+            const newAmount = currentAmount + produced;
+            
+            if (capacity && newAmount > capacity) {
+                // Cap at maximum storage
+                resources[resource] = capacity;
+                hitCapacity = true;
+            } else {
+                // Normal addition
+                resources[resource] = newAmount;
             }
-            
-            // Deduct consumed food
-            resources.food -= foodConsumed;
-            
-            // Ensure resources don't go below 0
-            for (const resource in resources) {
-                resources[resource] = Math.max(0, resources[resource]);
-            }
-            
-            // Update UI with new resource values
-            updateResourceValuesUI();
-            
-            
-            // Check if UI needs to be refreshed for newly discovered resources
-            const hasNewAdvancedResources = resourceCategories.advanced.some(
-                resource => resources[resource] > 0 && !document.getElementById(`${resource}-value`)
-            );
-            
-            const hasNewWealthResources = resourceCategories.wealth.some(
-                resource => resources[resource] > 0 && !document.getElementById(`${resource}-value`)
-            );
-            
-            const hasNewEnvironmentalResources = resourceCategories.environmental.some(
-                resource => resources[resource] > 0 && !document.getElementById(`${resource}-value`)
-            );
-            
-            if (hasNewAdvancedResources || hasNewWealthResources || hasNewEnvironmentalResources) {
-                createExpandedResourceUI();
-            }
-            
-            // Return resource status for event processing
-            return {
-                foodProduced,
-                foodConsumed,
-                foodDeficit: foodConsumed > resources.food,
-                resourcesGained
-            };
-        },
+        }
+    }
+    
+    // Track previous food amount
+    const previousFood = resources.food;
+    
+    // Deduct consumed food
+    resources.food -= foodConsumed;
+    
+    // Ensure resources don't go below 0
+    for (const resource in resources) {
+        resources[resource] = Math.max(0, resources[resource]);
+    }
+    
+    // Update UI with new resource values
+    updateResourceValuesUI();
+    
+    // Check if UI needs to be refreshed for newly discovered resources
+    const hasNewAdvancedResources = resourceCategories.advanced.some(
+        resource => resources[resource] > 0 && !document.getElementById(`${resource}-value`)
+    );
+    
+    const hasNewWealthResources = resourceCategories.wealth.some(
+        resource => resources[resource] > 0 && !document.getElementById(`${resource}-value`)
+    );
+    
+    const hasNewEnvironmentalResources = resourceCategories.environmental.some(
+        resource => resources[resource] > 0 && !document.getElementById(`${resource}-value`)
+    );
+    
+    if (hasNewAdvancedResources || hasNewWealthResources || hasNewEnvironmentalResources) {
+        createExpandedResourceUI();
+    }
+    
+    // Check for starvation and add warning messages
+    const foodDeficit = foodConsumed > previousFood;
+    if (foodDeficit) {
+        // Log food shortage warning
+        if (resources.food <= 0) {
+            Utils.log("Your people are starving! Deaths will occur if food isn't produced soon.", "danger");
+        } else {
+            Utils.log("Food supplies are running low! Your settlement is eating more than it produces.", "important");
+        }
+    }
+    
+    // Return resource status for event processing
+    return {
+        foodProduced,
+        foodConsumed,
+        foodDeficit,
+        resourcesGained,
+        starvationSeverity: resources.food <= 0 ? calculateStarvationSeverity(previousFood, tickSize) : 0
+    };
+},
+
+/* Calculate the severity of starvation based on how long food has been at zero
+* @param {number} previousFood - Previous food amount
+* @param {number} tickSize - Size of the tick in days
+* @returns {number} - Starvation severity (0-10)
+*/
+calculateStarvationSeverity: function(previousFood, tickSize) {
+   // If we had food before but now we're at zero, this is the first day of starvation
+   // Otherwise we've been starving for a while
+   const starvingDays = window.starvationDays || 0;
+   
+   // Update starvation tracker
+   if (previousFood <= 0) {
+       // Already starving, increment counter
+       window.starvationDays = starvingDays + tickSize;
+   } else {
+       // Just started starving
+       window.starvationDays = tickSize;
+   }
+   
+   // Severity increases with time (0-10 scale)
+   // 1-2: mild (occasional death)
+   // 3-5: moderate (regular deaths)
+   // 6-8: severe (multiple deaths per tick)
+   // 9-10: catastrophic (mass deaths)
+   const severity = Math.min(10, Math.floor(window.starvationDays / 3));
+   
+   return severity;
+},
         
         /**
          * Add resources manually (from events, actions, etc.)

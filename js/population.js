@@ -473,146 +473,256 @@ const PopulationManager = (function() {
          * @param {Object} resources - Current resources status
          * @returns {Object} - Population changes for the tick
          */
-        processTick: function(gameDate, tickSize, resources) {
-            let changes = {
-                births: 0,
-                deaths: 0,
-                childrenGrown: 0,
-                newElders: 0
-            };
+        /**
+ * Process population changes for a game tick
+ * @param {Object} gameDate - Current game date
+ * @param {number} tickSize - Size of the game tick in days
+ * @param {Object} resources - Current resources status
+ * @returns {Object} - Population changes for the tick
+ */
+ processTick: function(gameDate, tickSize, resources) {
+    let changes = {
+        births: 0,
+        deaths: 0,
+        childrenGrown: 0,
+        newElders: 0,
+        starvationDeaths: 0
+    };
+    
+    // Process aging and life events
+    for (let i = characters.length - 1; i >= 0; i--) {
+        const character = characters[i];
+        
+        // Age character (simplified - in a full game, you'd age based on days/seasons)
+        if (gameDate.season === "Winter" && tickSize > 0) {
+            character.age += tickSize / 365; // Rough approximation
             
-            // Process aging and life events
-            for (let i = characters.length - 1; i >= 0; i--) {
-                const character = characters[i];
-                
-                // Age character (simplified - in a full game, you'd age based on days/seasons)
-                if (gameDate.season === "Winter" && tickSize > 0) {
-                    character.age += tickSize / 365; // Rough approximation
-                    
-                    // Check for role changes based on age
-                    if (character.role === 'child' && character.age >= ADULT_AGE) {
-                        character.role = 'worker';
-                        population.children--;
-                        population.workers++;
-                        workerAssignments.unassigned++; // Add to unassigned workers
-                        changes.childrenGrown++;
-                        if (Math.random() < 0.3) { // Only show 30% of such messages
-                            Utils.log(`${character.name} has become an adult and joined the workforce.`);
-                        }
-                    } else if (character.role === 'worker' && character.age >= ELDER_AGE) {
-                        // Check what role they had before becoming an elder
-                        for (const role in workerAssignments) {
-                            if (role !== 'unassigned' && workerAssignments[role] > 0) {
-                                // Remove them from that role (randomly chosen if multiple roles possible)
-                                this.assignWorkers(role, -1);
-                                break;
-                            }
-                        }
-                        
-                        character.role = 'elder';
-                        population.workers--;
-                        population.elders++;
-                        changes.newElders++;
-                        Utils.log(`${character.name} has become an elder.`);
-                    }
-                    
-                    // Check for natural death (simplified)
-                    const deathChance = Math.pow(character.age / MAX_AGE, 2) * 5 * (tickSize / 365);
-                    if (Utils.chanceOf(deathChance)) {
-                        // Character dies
-                        if (character.isLeader) {
-                            this.handleLeaderDeath(character);
-                        } else {
-                            Utils.log(`${character.name} has passed away at the age of ${Math.floor(character.age)}.`, "important");
-                        }
-                        
-                        // Update population counts and remove from worker assignments if needed
-                        switch (character.role) {
-                            case 'child':
-                                population.children--;
-                                break;
-                            case 'worker':
-                                population.workers--;
-                                // Just remove from unassigned for simplicity
-                                workerAssignments.unassigned = Math.max(0, workerAssignments.unassigned - 1);
-                                validateWorkerAssignments();
-                                break;
-                            case 'warrior':
-                                population.warriors--;
-                                break;
-                            case 'elder':
-                                population.elders--;
-                                break;
-                        }
-                        
-                        changes.deaths++;
-                        population.total--;
-                        
-                        // Remove character
-                        characters.splice(i, 1);
+            // Check for role changes based on age
+            if (character.role === 'child' && character.age >= ADULT_AGE) {
+                character.role = 'worker';
+                population.children--;
+                population.workers++;
+                workerAssignments.unassigned++; // Add to unassigned workers
+                changes.childrenGrown++;
+                if (Math.random() < 0.3) { // Only show 30% of such messages
+                    Utils.log(`${character.name} has become an adult and joined the workforce.`);
+                }
+            } else if (character.role === 'worker' && character.age >= ELDER_AGE) {
+                // Check what role they had before becoming an elder
+                for (const role in workerAssignments) {
+                    if (role !== 'unassigned' && workerAssignments[role] > 0) {
+                        // Remove them from that role (randomly chosen if multiple roles possible)
+                        this.assignWorkers(role, -1);
+                        break;
                     }
                 }
+                
+                character.role = 'elder';
+                population.workers--;
+                population.elders++;
+                changes.newElders++;
+                Utils.log(`${character.name} has become an elder.`);
             }
             
-            // Check for births (simplified)
-            if (population.total < this.getHousingCapacity()) {
-                const adultWomen = characters.filter(char => 
-                    char.gender === 'female' && char.age >= ADULT_AGE && char.age <= ELDER_AGE
+            // Check for natural death (simplified)
+            const deathChance = Math.pow(character.age / MAX_AGE, 2) * 5 * (tickSize / 365);
+            if (Utils.chanceOf(deathChance)) {
+                // Character dies
+                if (character.isLeader) {
+                    this.handleLeaderDeath(character);
+                } else {
+                    Utils.log(`${character.name} has passed away at the age of ${Math.floor(character.age)}.`, "important");
+                }
+                
+                // Update population counts
+                switch (character.role) {
+                    case 'child':
+                        population.children--;
+                        break;
+                    case 'worker':
+                        population.workers--;
+                        // Just remove from unassigned for simplicity
+                        workerAssignments.unassigned = Math.max(0, workerAssignments.unassigned - 1);
+                        validateWorkerAssignments();
+                        break;
+                    case 'warrior':
+                        population.warriors--;
+                        break;
+                    case 'elder':
+                        population.elders--;
+                        break;
+                }
+                
+                changes.deaths++;
+                population.total--;
+                
+                // Remove character
+                characters.splice(i, 1);
+            }
+        }
+    }
+    
+    // Check for births (simplified)
+    if (population.total < this.getHousingCapacity()) {
+        const adultWomen = characters.filter(char => 
+            char.gender === 'female' && char.age >= ADULT_AGE && char.age <= ELDER_AGE
+        );
+        
+        for (const woman of adultWomen) {
+            // Only process potential births occasionally to avoid too many births
+            if (Utils.chanceOf(2 * (tickSize / 270))) {
+                // Find potential father (for inheritance, relations)
+                const potentialFathers = characters.filter(char => 
+                    char.gender === 'male' && char.age >= ADULT_AGE && char.relations.includes(woman.id)
                 );
                 
-                for (const woman of adultWomen) {
-                    // Only process potential births occasionally to avoid too many births
-                    if (Utils.chanceOf(2 * (tickSize / 270))) {
-                        // Find potential father (for inheritance, relations)
-                        const potentialFathers = characters.filter(char => 
-                            char.gender === 'male' && char.age >= ADULT_AGE && char.relations.includes(woman.id)
-                        );
-                        
-                        let father = null;
-                        if (potentialFathers.length > 0) {
-                            father = potentialFathers[0];
-                        }
-                        
-                        // Create child
-                        const child = createCharacter({
-                            age: 0,
-                            role: 'child'
-                        });
-                        
-                        // Setup relations
-                        child.relations.push(woman.id);
-                        woman.relations.push(child.id);
-                        
-                        if (father) {
-                            child.relations.push(father.id);
-                            father.relations.push(child.id);
-                        }
-                        
-                        population.children++;
-                        population.total++;
-                        changes.births++;
-                        
-                        Utils.log(`A child named ${child.name} was born to ${woman.name}.`, "success");
-                    }
+                let father = null;
+                if (potentialFathers.length > 0) {
+                    father = potentialFathers[0];
+                }
+                
+                // Create child
+                const child = createCharacter({
+                    age: 0,
+                    role: 'child'
+                });
+                
+                // Setup relations
+                child.relations.push(woman.id);
+                woman.relations.push(child.id);
+                
+                if (father) {
+                    child.relations.push(father.id);
+                    father.relations.push(child.id);
+                }
+                
+                population.children++;
+                population.total++;
+                changes.births++;
+                
+                Utils.log(`A child named ${child.name} was born to ${woman.name}.`, "success");
+            }
+        }
+    }
+    
+    // Handle food shortage - NEW IMPROVED SYSTEM
+    if (resources && resources.foodDeficit) {
+        const starvationSeverity = resources.starvationSeverity || 0;
+        
+        if (starvationSeverity > 0) {
+            // Calculate how many people should die this tick based on severity
+            let deathCount = 0;
+            
+            // Determine death count based on severity
+            if (starvationSeverity >= 9) {
+                // Catastrophic - up to 20% of population can die per tick
+                deathCount = Math.ceil(population.total * (0.1 + (Math.random() * 0.1)) * tickSize);
+                Utils.log("CATASTROPHIC FAMINE! Your people are dying en masse!", "danger");
+            } else if (starvationSeverity >= 6) {
+                // Severe - up to 10% of population can die per tick
+                deathCount = Math.ceil(population.total * (0.05 + (Math.random() * 0.05)) * tickSize);
+                Utils.log("SEVERE FAMINE! Multiple deaths from starvation!", "danger");
+            } else if (starvationSeverity >= 3) {
+                // Moderate - a few deaths per tick
+                deathCount = Math.ceil(Math.random() * 3 * tickSize);
+                Utils.log("Your people continue to starve. More deaths reported.", "danger");
+            } else {
+                // Mild - occasional deaths
+                if (Utils.chanceOf(30 * tickSize)) {
+                    deathCount = 1;
+                    Utils.log("A villager has died from starvation!", "danger");
                 }
             }
+            
+            // Process deaths from starvation
+            for (let i = 0; i < deathCount; i++) {
+                this.handleStarvationDeath();
+                changes.starvationDeaths++;
+            }
+            
+            changes.deaths += changes.starvationDeaths;
+        }
+    } else if (window.starvationDays) {
+        // Reset starvation counter if food deficit is resolved
+        window.starvationDays = 0;
+    }
+    
+    // Update UI
+    updatePopulationUI();
+    
+    return changes;
+},
 
-            
-            
-            // Handle food shortage
-            if (resources && resources.foodDeficit) {
-                // If severe shortage, people might die
-                if (resources.food <= 0 && Utils.chanceOf(5 * (tickSize / 30))) {
-                    this.handleFoodShortage();
-                    changes.deaths++;
-                }
-            }
-            
-            // Update UI
-            updatePopulationUI();
-            
-            return changes;
-        },
+
+/**
+ * Handle a death from starvation
+ * More systematic approach that prioritizes vulnerable characters
+ */
+handleStarvationDeath: function() {
+    if (characters.length === 0) return;
+    
+    // Weight characters by vulnerability to starvation
+    const weightedCharacters = characters.map(char => {
+        let weight = 1.0; // Base weight
+        
+        // Children and elders are more vulnerable
+        if (char.role === 'child') weight *= 2.0;
+        if (char.role === 'elder') weight *= 2.5;
+        
+        // Certain traits increase vulnerability
+        if (char.traits.includes('Weak')) weight *= 1.5;
+        if (char.traits.includes('Sickly')) weight *= 2.0;
+        
+        // Leaders and strong characters have better chances
+        if (char.isLeader) weight *= 0.5;
+        if (char.traits.includes('Strong')) weight *= 0.7;
+        if (char.traits.includes('Healthy')) weight *= 0.6;
+        
+        return { character: char, weight: weight };
+    });
+    
+    // Sort by decreasing weight (most vulnerable first)
+    weightedCharacters.sort((a, b) => b.weight - a.weight);
+    
+    // Add some randomness - use the first 25% of the list with some randomness
+    const candidateCount = Math.max(1, Math.ceil(weightedCharacters.length * 0.25));
+    const selectedIndex = Math.floor(Math.random() * candidateCount);
+    const victim = weightedCharacters[selectedIndex].character;
+    
+    // Remove from population
+    const charIndex = characters.indexOf(victim);
+    if (charIndex !== -1) {
+        characters.splice(charIndex, 1);
+        
+        // Update population counts
+        switch (victim.role) {
+            case 'child':
+                population.children--;
+                break;
+            case 'worker':
+                population.workers--;
+                // Adjust worker assignments
+                workerAssignments.unassigned = Math.max(0, workerAssignments.unassigned - 1);
+                validateWorkerAssignments();
+                break;
+            case 'warrior':
+                population.warriors--;
+                break;
+            case 'elder':
+                population.elders--;
+                break;
+        }
+        
+        population.total--;
+        
+        Utils.log(`${victim.name} has died from starvation.`, "danger");
+        
+        // If leader died, handle succession
+        if (victim.isLeader) {
+            handleLeaderDeath(victim);
+        }
+    }
+},
         
         /**
          * Handle the death of a leader

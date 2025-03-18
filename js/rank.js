@@ -23,7 +23,7 @@ const RankManager = (function() {
             index: 1,
             title: "Humble Bondi",
             subRank: 1,
-            fameRequired: 100,
+            fameRequired: 500,
             maxVassals: 0,
             maxVillages: 1,
             notes: "Unlocks rudimentary farming techniques."
@@ -32,7 +32,7 @@ const RankManager = (function() {
             index: 2,
             title: "Rising Skald",
             subRank: 1,
-            fameRequired: 250,
+            fameRequired: 1250,
             maxVassals: 0,
             maxVillages: 1,
             notes: "Gains local recognition; basic raiding options unlocked."
@@ -41,7 +41,7 @@ const RankManager = (function() {
             index: 3,
             title: "Wary Hirdman",
             subRank: 1,
-            fameRequired: 500,
+            fameRequired: 2500,
             maxVassals: 1,
             maxVillages: 1,
             notes: "Gains access to basic defense and scouting units."
@@ -50,7 +50,7 @@ const RankManager = (function() {
             index: 4,
             title: "Steadfast Berserker",
             subRank: 1,
-            fameRequired: 750,
+            fameRequired: 3750,
             maxVassals: 1,
             maxVillages: 1,
             notes: "Enhanced battle prowess; unlocks minor raiding capabilities."
@@ -59,7 +59,7 @@ const RankManager = (function() {
             index: 5,
             title: "Valiant Raider",
             subRank: 1,
-            fameRequired: 1000,
+            fameRequired: 4000,
             maxVassals: 1,
             maxVillages: 2,
             notes: "Improved raiding options and trade route access."
@@ -68,7 +68,7 @@ const RankManager = (function() {
             index: 6,
             title: "Respected Hirdman",
             subRank: 1,
-            fameRequired: 1500,
+            fameRequired: 6500,
             maxVassals: 1,
             maxVillages: 2,
             notes: "Increased local influence; expanded vassal limit."
@@ -77,7 +77,7 @@ const RankManager = (function() {
             index: 7,
             title: "Notable Hersir",
             subRank: 2,
-            fameRequired: 2000,
+            fameRequired: 8000,
             maxVassals: 2,
             maxVillages: 2,
             notes: "Early noble privileges; can form small warbands."
@@ -86,7 +86,7 @@ const RankManager = (function() {
             index: 8,
             title: "Renowned Skald",
             subRank: 2,
-            fameRequired: 3000,
+            fameRequired: 10000,
             maxVassals: 2,
             maxVillages: 3,
             notes: "Unlocks advanced cultural benefits and morale boosts."
@@ -95,7 +95,7 @@ const RankManager = (function() {
             index: 9,
             title: "Acclaimed Viking",
             subRank: 2,
-            fameRequired: 4000,
+            fameRequired: 14000,
             maxVassals: 2,
             maxVillages: 3,
             notes: "Access to elite research and advanced warrior training."
@@ -104,7 +104,7 @@ const RankManager = (function() {
             index: 10,
             title: "Distinguished Thane",
             subRank: 3,
-            fameRequired: 5500,
+            fameRequired: 17500,
             maxVassals: 3,
             maxVillages: 4,
             notes: "Greater leadership capacity and military tactics."
@@ -113,7 +113,7 @@ const RankManager = (function() {
             index: 11,
             title: "Esteemed Jarlsman",
             subRank: 3,
-            fameRequired: 7000,
+            fameRequired: 27000,
             maxVassals: 3,
             maxVillages: 4,
             notes: "Unlocks fortified defenses and extended raiding options."
@@ -122,7 +122,7 @@ const RankManager = (function() {
             index: 12,
             title: "Noble Hersir",
             subRank: 3,
-            fameRequired: 9000,
+            fameRequired: 39000,
             maxVassals: 4,
             maxVillages: 5,
             notes: "Early noble council access and enhanced resource production."
@@ -131,7 +131,7 @@ const RankManager = (function() {
             index: 13,
             title: "Exalted Chieftain",
             subRank: 4,
-            fameRequired: 11000,
+            fameRequired: 41000,
             maxVassals: 4,
             maxVillages: 5,
             notes: "Manages multiple holdings and gains advanced diplomacy."
@@ -140,7 +140,7 @@ const RankManager = (function() {
             index: 14,
             title: "Grand Hirdman",
             subRank: 4,
-            fameRequired: 13500,
+            fameRequired: 53500,
             maxVassals: 5,
             maxVillages: 6,
             notes: "Unlocks elite raiding strategies and broader regional influence."
@@ -149,7 +149,7 @@ const RankManager = (function() {
             index: 15,
             title: "Mighty Jarl",
             subRank: 5,
-            fameRequired: 16000,
+            fameRequired: 66000,
             maxVassals: 6,
             maxVillages: 7,
             notes: "Major expansion opportunities; access to siege technologies."
@@ -158,7 +158,7 @@ const RankManager = (function() {
             index: 16,
             title: "Venerable Earl",
             subRank: 6,
-            fameRequired: 19000,
+            fameRequired: 89000,
             maxVassals: 7,
             maxVillages: 8,
             notes: "Enhanced regional control and political clout."
@@ -167,7 +167,7 @@ const RankManager = (function() {
             index: 17,
             title: "Imperial Skald",
             subRank: 7,
-            fameRequired: 22000,
+            fameRequired: 122000,
             maxVassals: 8,
             maxVillages: 9,
             notes: "Combines cultural and military leadership; elite units become available."
@@ -176,7 +176,7 @@ const RankManager = (function() {
             index: 18,
             title: "Legendary Viking",
             subRank: 8,
-            fameRequired: 26000,
+            fameRequired: 226000,
             maxVassals: 9,
             maxVillages: 10,
             notes: "Renowned across lands; unlocks legendary raiding and diplomatic dominance."
@@ -185,7 +185,7 @@ const RankManager = (function() {
             index: 19,
             title: "Fabled Allfather",
             subRank: 10,
-            fameRequired: 30000,
+            fameRequired: 330000,
             maxVassals: 10,
             maxVillages: 10,
             notes: "Pinnacle of Viking fame; maximum holdings, advanced research, and elite privileges unlocked."
@@ -195,35 +195,35 @@ const RankManager = (function() {
     // Fame gain rules
     const fameGainRules = {
         // Resource production
-        resourceThresholds: [100, 250, 500, 1000, 2000, 5000],
+        resourceThresholds: [1000, 2500, 5000, 10000, 20000, 50000],
         resourceFameRewards: [5, 10, 25, 50, 100, 200],
         
         // Population growth
-        populationThresholds: [10, 25, 50, 100, 200, 500],
+        populationThresholds: [100, 250, 500, 1000, 2000, 5000],
         populationFameRewards: [10, 25, 50, 100, 250, 500],
         
         // Building construction
         buildingFameRewards: {
-            house: 10,
-            farm: 15,
-            smithy: 25,
-            longhouse: 50,
-            tradingPost: 75,
+            house: 2,
+            farm: 2,
+            smithy: 2,
+            longhouse: 10,
+            tradingPost: 15,
             temple: 100,
             fortress: 250
         },
         
         // Event outcomes
         eventFameRewards: {
-            minor: 5,
-            moderate: 15,
-            major: 30,
-            legendary: 100
+            minor: 1,
+            moderate: 2,
+            major: 3,
+            legendary: 5
         },
         
         // Seasonal achievements
-        seasonalFameBonus: 10,
-        yearlyFameBonus: 50,
+        seasonalFameBonus: 1,
+        yearlyFameBonus: 5,
         
         // Combat and raiding
         raidSuccessFame: 50,

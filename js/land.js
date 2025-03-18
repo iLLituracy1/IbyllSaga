@@ -35,7 +35,7 @@ const LandManager = (function() {
                 food: 5, // Food per acre
                 wood: 3  // Wood per acre
             },
-            manpowerRequired: 5, // Workers required per acre
+            manpowerRequired: 1, // Workers required per acre
             fameReward: .10,
             completionEvent: true // Generate an event when completed
         },
@@ -49,7 +49,7 @@ const LandManager = (function() {
                 food: 2,
                 wood: 2
             },
-            manpowerRequired: 5,
+            manpowerRequired: 1,
             resourceModifier: {
                 food: 0.07 // Each acre increases food production by 5%
             },
@@ -65,7 +65,7 @@ const LandManager = (function() {
                 food: 1,
                 wood: 1
             },
-            manpowerRequired: 5,
+            manpowerRequired: 1,
             resourceModifier: {
                 wood: 0.05 // Each acre increases wood production by 5%
             },
@@ -82,7 +82,7 @@ const LandManager = (function() {
                 wood: 3,
                 stone: 1
             },
-            manpowerRequired: 5, // Requires more workers
+            manpowerRequired: 1, // Requires more workers
             resourceModifier: {
                 stone: 0.04,
                 metal: 0.03
@@ -100,7 +100,7 @@ const LandManager = (function() {
                 wood: 8,
                 stone: 3
             },
-            manpowerRequired: 5,
+            manpowerRequired: 1,
             housingCapacityIncrease: 2, // Each acre increases housing capacity
             completionEvent: true
         }
@@ -1022,36 +1022,12 @@ const LandManager = (function() {
                         RankManager.addFame(orderType.fameReward * progressThisTick, `Expanded homestead by ${progressThisTick.toFixed(2)} acres`);
                     }
                     
-                    // Check if order is complete
-                    if (order.progress >= order.target) {
-                        Utils.log(`${order.name} completed.`, "success");
-                        order.active = false;
-                        order.completed = Date.now();
-                        
-                        // Create completion event if specified
-                        if (orderType.completionEvent && EventManager) {
-                            const eventData = {
-                                id: `land_expansion_complete_${Date.now()}`,
-                                title: "Homestead Expanded",
-                                description: `Your people have successfully claimed an additional ${order.target} acres of land, expanding your homestead to ${landData.totalAcreage.toFixed(1)} acres total.`,
-                                options: [
-                                    {
-                                        text: "Excellent!",
-                                        effects: function(gameState) {
-                                            // Additional fame bonus
-                                            if (RankManager && typeof RankManager.addFame === 'function') {
-                                                RankManager.addFame(10, "Completed land expansion");
-                                            }
-                                        }
-                                    }
-                                ],
-                                importance: "moderate"
-                            };
-                            
-                            EventManager.addEvent(eventData);
-                            EventManager.triggerEvent(eventData, gameState);
-                        }
+                    if (order.progress >= order.target && order.active) {
+                    Utils.log(`${order.name} completed.`, "success");
+                    order.active = false;
+                    order.completed = Date.now();
                     }
+                    
                 } else {
                     // Converting land types
                     const targetLandType = getOrderLandType(order.type);
@@ -1112,33 +1088,10 @@ const LandManager = (function() {
                     // Check if order is complete (target percentage reached)
                     const currentPercentage = (landData.landTypes[targetLandType] / landData.totalAcreage * 100);
                     if (currentPercentage >= targetPercentage) {
-                        Utils.log(`Order complete: ${order.name} - ${targetLandType} now covers ${currentPercentage.toFixed(1)}% of your homestead.`, "success");
+                        Utils.log(`${order.name} completed.`, "success");
                         order.active = false;
                         order.completed = Date.now();
-                        
-                        // Create completion event if specified
-                        if (orderType.completionEvent && EventManager) {
-                            const eventData = {
-                                id: `land_conversion_complete_${Date.now()}`,
-                                title: `${orderType.name} Complete`,
-                                description: `Your people have successfully developed ${targetLandType} to cover ${currentPercentage.toFixed(1)}% of your homestead.`,
-                                options: [
-                                    {
-                                        text: "Excellent!",
-                                        effects: function(gameState) {
-                                            // Additional fame bonus
-                                            if (RankManager && typeof RankManager.addFame === 'function') {
-                                                RankManager.addFame(10, `Completed ${targetLandType} development`);
-                                            }
-                                        }
-                                    }
-                                ],
-                                importance: "moderate"
-                            };
-                            
-                            EventManager.addEvent(eventData);
-                            EventManager.triggerEvent(eventData, gameState);
-                        }
+                    
                     }
                 }
             }

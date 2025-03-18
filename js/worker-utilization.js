@@ -24,7 +24,9 @@ const WorkerUtilizationPanel = (function() {
         crafters: [],
         gatherers: [],
         thralls: [],
+        fishermen: [],
         unassigned: []
+
     };
     
     // Track building counts by type for detailed breakdown
@@ -294,7 +296,7 @@ const WorkerUtilizationPanel = (function() {
         }
         
         // Assign specialized workers if there are any left
-        const specializedTypes = ['hunters', 'crafters', 'gatherers'];
+        const specializedTypes = ['hunters', 'crafters', 'gatherers', "fishermen"];
         for (const type of specializedTypes) {
             const slider = document.getElementById(`slider-${type}`);
             if (slider && capacity[type] > 0 && remainingWorkers > 0) {
@@ -467,6 +469,10 @@ const WorkerUtilizationPanel = (function() {
             
             .worker-slider.gatherers::-webkit-slider-thumb {
                 background: #00695c;
+            }
+
+            .worker-slider.fishermen::-webkit-slider-thumb {
+                background:rgb(22, 0, 150);
             }
             
             .worker-slider.thralls::-webkit-slider-thumb {
@@ -807,6 +813,7 @@ const WorkerUtilizationPanel = (function() {
             { key: 'hunters', label: 'Hunters', description: 'Hunt for food and animal products' },
             { key: 'crafters', label: 'Crafters', description: 'Create goods and tools' },
             { key: 'gatherers', label: 'Gatherers', description: 'Collect herbs and resources' },
+            { key: 'fishermen', label: 'Fishermen', description: 'Fish the local water locations for food.'},
             { key: 'thralls', label: 'Thralls', description: 'Forced laborers (captured in raids)' }
         ];
         
@@ -951,6 +958,7 @@ const WorkerUtilizationPanel = (function() {
             (assignments.hunters || 0) + 
             (assignments.crafters || 0) + 
             (assignments.gatherers || 0) +
+            (assignments.fishermen || 0) +
             (assignments.thralls || 0)
         );
     }
@@ -1009,6 +1017,7 @@ const WorkerUtilizationPanel = (function() {
             { key: 'hunters', label: 'Hunting Capacity' },
             { key: 'crafters', label: 'Crafting Capacity' },
             { key: 'gatherers', label: 'Gathering Capacity' },
+            { key: 'fishermen', label: 'Fishing Capacity' },
             { key: 'thralls', label: 'Thrall Capacity' }
         ];
         
@@ -1120,6 +1129,7 @@ const WorkerUtilizationPanel = (function() {
         workerHistory.crafters.push(assignments.crafters || 0);
         workerHistory.gatherers.push(assignments.gatherers || 0);
         workerHistory.thralls.push(assignments.thralls || 0);
+        workerHistory.fishermen.push(assignments.fishermen || 0);
         workerHistory.unassigned.push(unassigned || 0);
         
         // Trim history if too long
@@ -1131,6 +1141,7 @@ const WorkerUtilizationPanel = (function() {
             workerHistory.hunters.shift();
             workerHistory.crafters.shift();
             workerHistory.gatherers.shift();
+            workerHistory.fishermen.shift();
             workerHistory.thralls.shift();
             workerHistory.unassigned.shift();
         }
@@ -1204,6 +1215,17 @@ const WorkerUtilizationPanel = (function() {
                     fill: true
                 });
             }
+
+            if (Math.max(...workerHistory.fishermen) > 0) {
+                datasets.push({
+                    label: 'Fishermen',
+                    data: workerHistory.fishermen,
+                    borderColor: '#795548',
+                    backgroundColor: 'rgba(27, 7, 206, 0.83)',
+                    tension: 0.1,
+                    fill: true
+                });
+            }
             
             if (Math.max(...workerHistory.crafters) > 0) {
                 datasets.push({
@@ -1247,7 +1269,8 @@ const WorkerUtilizationPanel = (function() {
                     workerHistory.miners[i] + 
                     workerHistory.hunters[i] + 
                     workerHistory.crafters[i] + 
-                    workerHistory.gatherers[i] + 
+                    workerHistory.gatherers[i] +
+                    workerHistory.fishermen[i] + 
                     workerHistory.thralls[i] + 
                     workerHistory.unassigned[i]
                 );
@@ -1270,6 +1293,9 @@ const WorkerUtilizationPanel = (function() {
                 totalWorkers[i] > 0 ? (val / totalWorkers[i] * 100) : 0);
                 
             const gathererPercentages = workerHistory.gatherers.map((val, i) => 
+                totalWorkers[i] > 0 ? (val / totalWorkers[i] * 100) : 0);
+
+            const fishermenPercentages = workerHistory.fishermen.map((val, i) => 
                 totalWorkers[i] > 0 ? (val / totalWorkers[i] * 100) : 0);
                 
             const thrallPercentages = workerHistory.thralls.map((val, i) => 
@@ -1325,6 +1351,18 @@ const WorkerUtilizationPanel = (function() {
                     data: hunterPercentages,
                     borderColor: '#795548',
                     backgroundColor: 'rgba(121, 85, 72, 0.7)',
+                    tension: 0.1,
+                    fill: true,
+                    stack: 'stack1'
+                });
+            }
+
+            if (Math.max(...fishermenPercentages) > 0) {
+                datasets.push({
+                    label: 'Fishermen',
+                    data: fishermenPercentages,
+                    borderColor: '#795548',
+                    backgroundColor: 'rgba(40, 8, 226, 0.7)',
                     tension: 0.1,
                     fill: true,
                     stack: 'stack1'

@@ -43,7 +43,7 @@ const BuildingSystem = (function() {
                 amount: 2
             },
             constructionCost: {
-                wood: 50,
+                wood: 150,
                 stone: 25
             },
             constructionTime: 10,
@@ -95,7 +95,7 @@ const BuildingSystem = (function() {
             upgradesTo: "large_farm",
             effects: {
                 resourceProduction: {
-                    food: 25 // Base food production per farmer-day
+                    food: 10 // Base food production per farmer-day
                 }
             }
         },
@@ -129,7 +129,7 @@ const BuildingSystem = (function() {
             },
             effects: {
                 resourceProduction: {
-                    food: 100
+                    food: 50
                 }
             }
         },
@@ -175,9 +175,9 @@ const BuildingSystem = (function() {
                 amount: 4
             },
             constructionCost: {
-                wood: 40,
-                stone: 20,
-                metal: 10
+                wood: 400,
+                stone: 200,
+                metal: 100
             },
             constructionTime: 10,
             workerCapacity: 4, // Employs 4 woodcutters
@@ -213,8 +213,8 @@ const BuildingSystem = (function() {
                 amount: 2
             },
             constructionCost: {
-                wood: 25,
-                metal: 5
+                wood: 250,
+                metal: 50
             },
             constructionTime: 8,
             workerCapacity: 3, // Employs 3 miners
@@ -244,8 +244,8 @@ const BuildingSystem = (function() {
                 amount: 3
             },
             constructionCost: {
-                wood: 30,
-                stone: 20
+                wood: 300,
+                stone: 200
             },
             constructionTime: 10,
             workerCapacity: 3, // Employs 3 miners
@@ -275,8 +275,8 @@ const BuildingSystem = (function() {
                 amount: 1
             },
             constructionCost: {
-                wood: 25,
-                stone: 15,
+                wood: 125,
+                stone: 115,
                 metal: 5
             },
             constructionTime: 8,
@@ -312,9 +312,9 @@ const BuildingSystem = (function() {
                 amount: 2
             },
             constructionCost: {
-                wood: 40,
-                stone: 30,
-                metal: 15
+                wood: 240,
+                stone: 230,
+                metal: 150
             },
             constructionTime: 15,
             workerCapacity: 3, // Employs 3 workers (currently counted as miners)
@@ -351,8 +351,8 @@ const BuildingSystem = (function() {
                 amount: 1
             },
             constructionCost: {
-                wood: 30,
-                stone: 10
+                wood: 130,
+                stone: 50
             },
             constructionTime: 6,
             workerCapacity: 1, // Employs 1 worker

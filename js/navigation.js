@@ -51,7 +51,13 @@ const NavigationSystem = (function() {
             title: 'Workers',
             icon: '👷',
             panels: ['worker-panel']
-        }
+        },
+        economy: {
+            id: 'economy-tab',
+            title: 'Economy',
+            icon: '📊',
+            panels: ['economy-panel']
+        },
     };
     
     // Map of panel registration status
