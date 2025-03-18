@@ -211,6 +211,7 @@ const ResourceManager = (function() {
     };
     
     // Private methods
+    
     /**
      * Calculate production rates based on workers, modifiers, and region
      * @param {Object} workers - Object containing worker assignments
@@ -285,43 +286,17 @@ const ResourceManager = (function() {
     }
     
     /**
-     * Update resource values in the UI
+     * Update the primary resource display with current values
      */
-    // 2. Modify the updateResourceValues function:
-function updateResourceValues() {
-    if (!panelInstance) return;
-    
-    // Get current resources
-    let resources = {};
-    let storageCapacity = {};
-    
-    if (typeof ResourceManager !== 'undefined') {
-        if (ResourceManager.getResources) {
-            resources = ResourceManager.getResources();
-        }
-        
-        // Get storage capacity if available
-        if (ResourceManager.getStorageCapacity) {
-            storageCapacity = ResourceManager.getStorageCapacity();
-        }
-    }
-    
-    // Update each resource value
-    for (const resource in resources) {
-        const element = document.getElementById(`persistent-${resource}-value`);
-        if (element) {
-            const value = Math.floor(resources[resource]);
-            
-            // If capacity exists for this resource, show value/capacity format
-            if (storageCapacity[resource]) {
-                element.textContent = `${value}/${storageCapacity[resource]}`;
-            } else {
-                // Otherwise just show the value
-                element.textContent = value;
+    function updateResourceValuesUI() {
+        // Update basic resources
+        for (const resource in resources) {
+            const element = document.getElementById(`${resource}-value`);
+            if (element) {
+                element.textContent = Math.floor(resources[resource]);
             }
         }
     }
-}
     
     /**
      * Create or update the expanded resource UI
@@ -502,8 +477,8 @@ function updateResourceValues() {
             console.log("Resource Manager initialized with extended resources");
             // Create or update the expanded resource UI
             createExpandedResourceUI();
-            // Fix: directly update values (don't call updateResourceValuesUI)
-            this.refreshResourceUI();
+            // Update resource values in the UI
+            updateResourceValuesUI();
         },
         
         /**
@@ -610,7 +585,7 @@ function updateResourceValues() {
                 resources[resource] = Math.max(0, resources[resource]);
             }
             
-            // Update UI
+            // Update UI with new resource values - this is the fixed line
             updateResourceValuesUI();
             
             // Notify player if storage is full
@@ -993,6 +968,7 @@ function updateResourceValues() {
          */
         refreshResourceUI: function() {
             createExpandedResourceUI();
+            updateResourceValuesUI();
         }
     };
 })();

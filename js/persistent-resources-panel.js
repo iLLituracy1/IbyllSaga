@@ -386,15 +386,15 @@
             if (element) {
                 const value = Math.floor(resources[resource]);
                 
-                // Use K formatting for large numbers
-                let displayValue = value;
-                if (value >= 1000) {
-                    displayValue = (value / 1000).toFixed(1) + 'K';
+                // If capacity exists for this resource, show value/capacity format
+                if (storageCapacity[resource]) {
+                    element.textContent = `${value}/${storageCapacity[resource]}`;
+                } else {
+                    // Otherwise just show the value
+                    element.textContent = value;
                 }
                 
-                element.textContent = displayValue;
-                
-                // Update capacity indicator if we have capacity information
+                // Update capacity indicator bar if it exists
                 const capacityElement = document.getElementById(`persistent-${resource}-capacity`);
                 if (capacityElement && storageCapacity[resource]) {
                     const capacity = storageCapacity[resource];
