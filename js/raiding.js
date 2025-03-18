@@ -16,8 +16,8 @@ const RaidManager = (function() {
             id: "quick_raid",
             name: "Quick Raid",
             description: "A swift raid focused on grabbing easy loot with minimal resistance.",
-            minSize: 15,
-            maxSize: 50,
+            minSize: 5,
+            maxSize: 15,
             preparationTime: 3,  // Days needed to prepare
             travelSpeedModifier: 1.3,  // 30% faster travel
             combatStrength: 0.8,  // Lower combat strength
@@ -31,8 +31,8 @@ const RaidManager = (function() {
             id: "standard_raid",
             name: "Standard Raid",
             description: "A balanced raiding party capable of both fighting and plundering effectively.",
-            minSize: 50,
-            maxSize: 300,
+            minSize: 15,
+            maxSize: 30,
             preparationTime: 5,
             travelSpeedModifier: 1.0,
             combatStrength: 1.0,
@@ -46,8 +46,8 @@ const RaidManager = (function() {
             id: "great_raid",
             name: "Great Raid",
             description: "A massive raid focused on overwhelming defenses and maximum plunder.",
-            minSize: 300,
-            maxSize: 1000,
+            minSize: 30,
+            maxSize: 100,
             preparationTime: 10,
             travelSpeedModifier: 0.7,  // 30% slower travel
             combatStrength: 1.5,  // Stronger in combat

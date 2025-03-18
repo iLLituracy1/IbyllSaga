@@ -313,22 +313,6 @@ const GameEngine = (function() {
                 PopulationManager.assignWorkers(role, -1);
             });
         });
-        
-                // World action buttons
-        safeAddEventListener('btn-explore', 'click', function() {
-            NavigationSystem.registerPanel('explore-panel', 'world');
-            NavigationSystem.switchToTab('world');
-        });
-
-        safeAddEventListener('btn-raid', 'click', function() {
-            NavigationSystem.registerPanel('raid-panel', 'world');
-            NavigationSystem.switchToTab('world');
-        });
-
-        safeAddEventListener('btn-trade', 'click', function() {
-            NavigationSystem.registerPanel('trade-panel', 'world');
-            NavigationSystem.switchToTab('world');
-        });
 
         // Enable world action buttons now that features are implemented
         document.getElementById('btn-explore').disabled = false;
@@ -377,7 +361,24 @@ const GameEngine = (function() {
             StatisticsPanel.init();
             BuildingSystem.init();
             
-            // Step 7: Initialize immigration system
+            // Step 7: Initialize the world interaction systems
+            // Make sure these are initialized AFTER the core systems
+            if (typeof ExploreManager !== 'undefined' && typeof ExploreManager.init === 'function') {
+                ExploreManager.init();
+                this.registerTickProcessor(ExploreManager.processTick);
+            }
+            
+            if (typeof RaidManager !== 'undefined' && typeof RaidManager.init === 'function') {
+                RaidManager.init();
+                this.registerTickProcessor(RaidManager.processTick);
+            }
+            
+            if (typeof TradeManager !== 'undefined' && typeof TradeManager.init === 'function') {
+                TradeManager.init();
+                this.registerTickProcessor(TradeManager.processTick);
+            }
+            
+            // Step 8: Initialize immigration system
             if (typeof ImmigrationSystem !== 'undefined' && typeof ImmigrationSystem.init === 'function') {
                 console.log("Initializing Immigration System from GameEngine");
                 ImmigrationSystem.init();
@@ -388,17 +389,17 @@ const GameEngine = (function() {
                 }
             }
             
-            // Step 8: Perform a final panels refresh
+            // Step 9: Perform a final panels refresh
             NavigationSystem.refreshPanels();
             
-            // Step 9: Set up event listeners after all panels are ready
+            // Step 10: Set up event listeners after all panels are ready
             setupEventListeners();
             
-            // Step 10: Update initial UI state
+            // Step 11: Update initial UI state
             updateDateDisplay();
             WorldMap.updateUI();
             
-            // Step 11: Start game loop
+            // Step 12: Start game loop
             this.startGame();
             
             console.log("Game initialized successfully");

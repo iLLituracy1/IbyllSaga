@@ -1734,13 +1734,16 @@ const ExploreManager = (function() {
             // Create UI
             createExplorationUI();
             
-            // Register world action button
+            // Register world action button - MAKE SURE THIS CODE IS EXACTLY AS SHOWN
             const exploreButton = document.getElementById('btn-explore');
             if (exploreButton) {
                 exploreButton.disabled = false;
-                exploreButton.addEventListener('click', () => {
-                    NavigationSystem.registerPanel('explore-panel', 'world');
-                    NavigationSystem.switchToTab('world');
+                exploreButton.addEventListener('click', function() {
+                    // Make sure panel exists before switching
+                    if (!document.getElementById('explore-panel')) {
+                        createExplorationUI();
+                    }
+                    NavigationSystem.switchToPanel('explore-panel');
                 });
             }
             
