@@ -220,6 +220,37 @@ const ResourceManager = (function() {
     };
     
     // Private methods
+
+
+    /**
+ * Calculate the severity of starvation based on how long food has been at zero
+ * @param {number} previousFood - Previous food amount
+ * @param {number} tickSize - Size of the tick in days
+ * @returns {number} - Starvation severity (0-10)
+ */
+    function calculateStarvationSeverity(previousFood, tickSize) {
+    // If we had food before but now we're at zero, this is the first day of starvation
+    // Otherwise we've been starving for a while
+    const starvingDays = window.starvationDays || 0;
+    
+    // Update starvation tracker
+    if (previousFood <= 0) {
+        // Already starving, increment counter
+        window.starvationDays = starvingDays + tickSize;
+    } else {
+        // Just started starving
+        window.starvationDays = tickSize;
+    }
+    
+    // Severity increases with time (0-10 scale)
+    // 1-2: mild (occasional death)
+    // 3-5: moderate (regular deaths)
+    // 6-8: severe (multiple deaths per tick)
+    // 9-10: catastrophic (mass deaths)
+    const severity = Math.min(10, Math.floor(window.starvationDays / 3));
+    
+    return severity;
+}
     
     /**
      * Calculate production rates based on workers, modifiers, and region
@@ -712,48 +743,7 @@ processTick: function(population, tickSize) {
     };
 },
 
-/**
- * Calculate starvation severity based on food deficit and population
- * @param {Object} resources - Current resources object with foodDeficit property
- * @param {Object} population - Current population object
- * @returns {number} - Severity level from 0-10 (0 = no starvation, 10 = catastrophic)
- */
-    calculateStarvationSeverity: function(resources, population) {
-    if (!resources.foodDeficit || resources.foodDeficit <= 0) {
-        return 0; // No starvation
-    }
-    
-    // Calculate how severe the food deficit is relative to population size
-    const foodPerCapita = resources.food / population.total;
-    const deficitPerCapita = resources.foodDeficit / population.total;
-    
-    // Calculate severity based on percentage of deficit per capita
-    let severity = 0;
-    
-    if (resources.food <= 0) {
-        // No food at all - maximum severity
-        severity = 10;
-    } else if (foodPerCapita < 0.1) {
-        // Almost no food per person
-        severity = 9;
-    } else {
-        // Calculate based on deficit ratio
-        const deficitRatio = deficitPerCapita / (foodPerCapita + deficitPerCapita);
-        severity = Math.min(8, Math.floor(deficitRatio * 10));
-    }
-    
-    // Adjust based on how long starvation has been ongoing
-    if (window.starvationDays) {
-        window.starvationDays++;
-        // Increase severity by 1 for each week of starvation
-        severity += Math.floor(window.starvationDays / 7);
-    } else {
-        window.starvationDays = 1; // Start tracking starvation
-    }
-    
-    // Cap at 10
-    return Math.min(10, severity);
-},
+
         
         /**
          * Add resources manually (from events, actions, etc.)
