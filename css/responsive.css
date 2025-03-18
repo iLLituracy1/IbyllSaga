@@ -264,3 +264,67 @@ header {
 .resource {
     margin-bottom: 8px;
 }
+
+/* Additional styles for tier and warrior integration */
+.settlement-tier .tier-header h3 {
+    margin: 0;
+    color: #5d4037;
+    display: flex;
+    align-items: center;
+}
+
+.tier-badge.large {
+    font-size: 1rem;
+    padding: 3px 8px;
+    margin-left: 10px;
+}
+
+.warrior-panel {
+    background-color: #e6d8c3;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    border: 1px solid #c9ba9b;
+    margin-top: 20px;
+}
+
+.warrior-info-card {
+    display: flex;
+    flex-direction: column;
+    background-color: #f7f0e3;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-left: 4px solid #a52a2a;
+}
+
+.warrior-info-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.warrior-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.warrior-stat {
+    background-color: #ffffff;
+    padding: 8px 12px;
+    border-radius: 4px;
+}
+
+.warrior-stat-label {
+    font-weight: 500;
+    color: #5d4037;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.warrior-stat-value {
+    font-weight: 600;
+    color: #8b5d33;
+    font-size: 1.1rem;
+}

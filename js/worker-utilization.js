@@ -909,10 +909,12 @@ const WorkerUtilizationPanel = (function() {
             // Get current data
             const population = PopulationManager.getPopulation();
             const assignments = PopulationManager.getWorkerAssignments();
-            const capacity = BuildingSystem.getAvailableCapacity();
+            const capacity = typeof BuildingSystem !== 'undefined' && BuildingSystem.getAvailableCapacity ? 
+                             BuildingSystem.getAvailableCapacity() : {};
             const unassigned = PopulationManager.getUnassignedWorkers();
             const productionRates = ResourceManager.getProductionRates();
-            const buildings = BuildingSystem.getBuildingData();
+            const buildings = typeof BuildingSystem !== 'undefined' && BuildingSystem.getBuildingData ? 
+                              BuildingSystem.getBuildingData() : { built: {} };
             
             // Calculate total employed workers
             const employedWorkers = calculateEmployedWorkers(assignments);
@@ -939,7 +941,6 @@ const WorkerUtilizationPanel = (function() {
             
             // Update building breakdown
             updateBuildingBreakdown(buildings);
-            
         } catch (error) {
             console.error("Error updating worker utilization panel:", error);
         }
@@ -1455,90 +1456,113 @@ const WorkerUtilizationPanel = (function() {
      * Update building breakdown section
      * @param {Object} buildingData - Building data from BuildingSystem
      */
-    function updateBuildingBreakdown(buildingData) {
-        const breakdownElement = document.getElementById('building-breakdown');
-        if (!breakdownElement || !buildingData || !buildingData.built) return;
+    /**/
+
+function updateBuildingBreakdown(buildingData) {
+    const breakdownElement = document.getElementById('building-breakdown');
+    if (!breakdownElement || !buildingData || !buildingData.built) return;
+    
+    // Create building breakdown
+    let breakdownHTML = '';
+    
+    // Get building types from BuildingSystem
+    const buildings = buildingData.built;
+    
+    // Update building counts
+    buildingCounts = {};
+    
+    // Group buildings by category
+    const buildingCategories = {
+        housing: [],
+        production: [],
+        infrastructure: [],
+        military: [],
+        main: []
+    };
+    
+    // Group buildings
+    for (const buildingId in buildings) {
+        const count = buildings[buildingId];
+        if (count <= 0) continue;
         
-        // Create building breakdown
-        let breakdownHTML = '';
-        
-        // Get building types from BuildingSystem
-        const buildings = buildingData.built;
-        
-        // Update building counts
-        buildingCounts = {};
-        
-        // Group buildings by category
-        const buildingCategories = {
-            housing: [],
-            production: [],
-            infrastructure: []
-        };
-        
-        // Group buildings
-        for (const buildingId in buildings) {
-            const count = buildings[buildingId];
-            if (count <= 0) continue;
-            
-            // Get building type information
-            const buildingType = BuildingSystem.getBuildingType(buildingId);
-            if (!buildingType) continue;
-            
-            // Add to appropriate category
-            const category = buildingType.category || 'infrastructure';
-            
-            buildingCategories[category].push({
+        // Get building type information - THIS IS THE FIX
+        // Use the BuildingSystem.getBuildingType method to get proper building info
+        const buildingType = typeof BuildingSystem !== 'undefined' && 
+                            typeof BuildingSystem.getBuildingType === 'function' ?
+                            BuildingSystem.getBuildingType(buildingId) : null;
+                            
+        if (!buildingType) {
+            // If we can't get proper building info, use a minimal default object
+            console.log(`Could not get building info for ${buildingId}`);
+            buildingCategories.infrastructure.push({
                 id: buildingId,
-                name: buildingType.name,
+                name: buildingId.charAt(0).toUpperCase() + buildingId.slice(1).replace('_', ' '),
                 count: count,
-                workers: buildingType.workerCapacity * count
+                workers: 0
             });
-            
-            // Track total workers by building type
-            buildingCounts[buildingId] = {
-                name: buildingType.name,
-                count: count,
-                workers: buildingType.workerCapacity * count,
-                category: category
-            };
+            continue;
         }
         
-        // Create section for each building category
-        for (const category in buildingCategories) {
-            if (buildingCategories[category].length === 0) continue;
-            
-            let categoryName = category.charAt(0).toUpperCase() + category.slice(1);
-            
+        // Add to appropriate category
+        const category = buildingType.category || 'infrastructure';
+        
+        // Make sure the category exists
+        if (!buildingCategories[category]) {
+            buildingCategories[category] = [];
+        }
+        
+        buildingCategories[category].push({
+            id: buildingId,
+            name: buildingType.name,
+            count: count,
+            workers: buildingType.workerCapacity * count
+        });
+        
+        // Track total workers by building type
+        buildingCounts[buildingId] = {
+            name: buildingType.name,
+            count: count,
+            workers: buildingType.workerCapacity * count,
+            category: category
+        };
+    }
+    
+    // Create section for each building category
+    for (const category in buildingCategories) {
+        if (buildingCategories[category].length === 0) continue;
+        
+        let categoryName = category.charAt(0).toUpperCase() + category.slice(1);
+        
+        breakdownHTML += `
+            <div class="building-breakdown-item">
+                <h4>${categoryName} Buildings</h4>
+                <div class="building-list">
+        `;
+        
+        // Add each building in this category
+        buildingCategories[category].forEach(building => {
             breakdownHTML += `
-                <div class="building-breakdown-item">
-                    <h4>${categoryName} Buildings</h4>
-                    <div class="building-list">
-            `;
-            
-            // Add each building in this category
-            buildingCategories[category].forEach(building => {
-                breakdownHTML += `
-                    <div class="building-item">
-                        <div class="building-name">${building.name} x${building.count}</div>
-                        <div class="building-worker-count">${building.workers} capacity</div>
-                    </div>
-                `;
-            });
-            
-            // Close this category section
-            breakdownHTML += `
-                    </div>
+                <div class="building-item">
+                    <div class="building-name">${building.name} x${building.count}</div>
+                    <div class="building-worker-count">${building.workers} capacity</div>
                 </div>
             `;
-        }
+        });
         
-        // If no buildings
-        if (breakdownHTML === '') {
-            breakdownHTML = '<p>No buildings constructed yet.</p>';
-        }
-        
-        breakdownElement.innerHTML = breakdownHTML;
+        // Close this category section
+        breakdownHTML += `
+                </div>
+            </div>
+        `;
     }
+    
+    // If no buildings
+    if (breakdownHTML === '') {
+        breakdownHTML = '<p>No buildings constructed yet.</p>';
+    }
+    
+    breakdownElement.innerHTML = breakdownHTML;
+}
     
     // Public API
     return {

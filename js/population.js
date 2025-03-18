@@ -163,10 +163,17 @@ const PopulationManager = (function() {
         Utils.updateElement('population-warriors', population.warriors);
         Utils.updateElement('population-children', population.children);
         
+        
         // Update worker assignments display if elements exist
         for (const type in workerAssignments) {
             Utils.updateElement(`${type}-count`, workerAssignments[type]);
         }
+
+
+        // Update warriors
+        const warriorCount = typeof PopulationManager.getWarriors === 'function' ? 
+        PopulationManager.getWarriors() : 0;
+    Utils.updateElement('population-warriors', warriorCount);
         
         // Update dynasty info
         if (dynastyLeader) {
@@ -401,6 +408,7 @@ const PopulationManager = (function() {
         getDynastyLeader: function() {
             return dynastyLeader;
         },
+       
         
         /**
          * Calculate unassigned workers
@@ -414,6 +422,20 @@ const PopulationManager = (function() {
          * @param {number} change - Number of workers to add or remove
          * @returns {boolean} - Whether assignment was successful
          */
+        /**
+         * Get current warrior count
+         * @returns {number} - Current warrior count
+         */
+        getWarriors: function() {
+            // Safe check if BuildingSystem exists and has the getWarriorData function
+            if (typeof BuildingSystem !== 'undefined' && 
+                typeof BuildingSystem.getWarriorData === 'function') {
+                return BuildingSystem.getWarriorData().total || 0;
+            }
+            return 0;
+        },
+
+
         assignWorkers: function(role, change) {
             // Validate role
             if (!workerAssignments.hasOwnProperty(role) || role === 'unassigned') {

@@ -16,7 +16,7 @@ const LandManager = (function() {
             mining: 0,        // Land for mining resources
             wilderness: 0     // Undeveloped land
         },
-        maxExpansionRate: 0.5, // Maximum acres that can be claimed per day
+        maxExpansionRate: 0.25, // Maximum acres that can be claimed per day
         expansionDifficulty: 1.0 // Scales the cost and time for expansion
     };
     
@@ -30,7 +30,7 @@ const LandManager = (function() {
             name: "Expand Homestead",
             description: "Claim additional unclaimed land to expand your homestead.",
             targetType: "value", // Target is a specific value
-            baseRate: 0.05, // Acres per day
+            baseRate: 0.02, // Acres per day
             baseCost: {
                 food: 5, // Food per acre
                 wood: 3  // Wood per acre
@@ -94,7 +94,7 @@ const LandManager = (function() {
             name: "Expand Settlement",
             description: "Develop land for settlement to increase housing capacity.",
             targetType: "percentage",
-            baseRate: 0.2,
+            baseRate: 0.02,
             baseCost: {
                 food: 5,
                 wood: 8,
@@ -1009,6 +1009,9 @@ const LandManager = (function() {
                 }
                 
                 // Update progress
+
+
+
                 order.progress += progressThisTick;
                 
                 // Process order effects

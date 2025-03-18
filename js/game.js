@@ -571,6 +571,7 @@ const GameEngine = (function() {
                 landData: LandManager.getLandData(),
                 activeOrders: LandManager.getActiveOrders(),
                 buildings: BuildingSystem.getBuildingData(),
+                warriors: BuildingSystem.getWarriorData(),
             };
         },
 
