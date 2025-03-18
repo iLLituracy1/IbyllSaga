@@ -314,18 +314,26 @@ const GameEngine = (function() {
             });
         });
         
-        // World action buttons (coming soon)
+                // World action buttons
         safeAddEventListener('btn-explore', 'click', function() {
-            Utils.log("Exploration feature coming soon!", "important");
+            NavigationSystem.registerPanel('explore-panel', 'world');
+            NavigationSystem.switchToTab('world');
         });
-        
+
         safeAddEventListener('btn-raid', 'click', function() {
-            Utils.log("Raiding feature coming soon!", "important");
+            NavigationSystem.registerPanel('raid-panel', 'world');
+            NavigationSystem.switchToTab('world');
         });
-        
+
         safeAddEventListener('btn-trade', 'click', function() {
-            Utils.log("Trading feature coming soon!", "important");
+            NavigationSystem.registerPanel('trade-panel', 'world');
+            NavigationSystem.switchToTab('world');
         });
+
+        // Enable world action buttons now that features are implemented
+        document.getElementById('btn-explore').disabled = false;
+        document.getElementById('btn-raid').disabled = false;
+        document.getElementById('btn-trade').disabled = false;
     }
 
     
