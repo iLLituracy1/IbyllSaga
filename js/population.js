@@ -773,13 +773,18 @@ function processThrallsInTick(gameDate, tickSize, resources) {
          * @returns {Object|null} - The new character or null if at capacity
          */
         addCharacter: function(options = {}) {
+            console.log("Adding character with options:", options);
+            
             // Check housing capacity
-            if (population.total >= this.getHousingCapacity()) {
+            const housingCapacity = this.getHousingCapacity();
+            if (population.total >= housingCapacity) {
+                console.warn(`Cannot add character: At capacity (${population.total}/${housingCapacity})`);
                 return null;
             }
             
             // Create character
             const character = createCharacter(options);
+            console.log("Created character:", character);
             
             // Update population
             switch (character.role) {
@@ -795,12 +800,27 @@ function processThrallsInTick(gameDate, tickSize, resources) {
                 case 'elder':
                     population.elders++;
                     break;
+                default:
+                    console.warn(`Unknown role: ${character.role}, defaulting to worker`);
+                    population.workers++;
+                    character.role = 'worker';
+                    break;
             }
             
             population.total++;
             
+            // Log the operation
+            console.log(`Character added: ${character.name} (${character.role})`);
+            console.log("Updated population:", {...population});
+            
             // Update UI
             updatePopulationUI();
+            
+            // Double-check that the character was actually added to the array
+            if (!characters.includes(character)) {
+                console.error("Character was not properly added to characters array!");
+                characters.push(character);
+            }
             
             return character;
         },
@@ -812,6 +832,14 @@ function processThrallsInTick(gameDate, tickSize, resources) {
          */
         getCharacterById: function(id) {
             return characters.find(char => char.id === id) || null;
+        },
+
+        /**
+         * Get possible traits
+         * @returns {Object} - Object containing positive and negative traits
+         */
+        getPossibleTraits: function() {
+            return { ...possibleTraits };
         },
 
         reconcilePopulation: function() {

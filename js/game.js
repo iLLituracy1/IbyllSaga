@@ -247,6 +247,13 @@ const GameEngine = (function() {
         if (typeof StatisticsPanel !== 'undefined' && typeof StatisticsPanel.update === 'function') {
             StatisticsPanel.update();
         }
+        
+        // Occasionally reconcile population to catch any mismatches
+        if (gameState.date.day % 10 === 0) { // Every 10 days
+            if (typeof PopulationManager.reconcilePopulation === 'function') {
+                PopulationManager.reconcilePopulation();
+            }
+        }
     }
     
     /**
@@ -327,58 +334,67 @@ const GameEngine = (function() {
         /**
          * Initialize the game engine and all modules
          */
-        // Replace the init function in GameEngine
-    init: function() {
-    console.log("Initializing Viking Legacy game...");
-    
-    // Step 1: Initialize NavigationSystem first
-    NavigationSystem.init();
-    
-    // Step 2: Initialize core systems
-    ResourceManager.init();
-    ResourceManager.refreshResourceUI(); 
-    
-    // Step 3: Initialize population and rank systems
-    PopulationManager.init();
-    PopulationManager.initializeSpecializedWorkers();
-    RankManager.init();
-    
-    // Step 4: Initialize world and event systems
-    WorldMap.init();
-    const playerRegion = WorldMap.getPlayerRegion();
-    if (playerRegion) {
-        WorldMap.updateRegionResourceModifiers(playerRegion);
-    }
-    EventManager.init();
-    
-    // Step 5: Register core panels that exist in HTML
-    NavigationSystem.registerPanel('resources-panel', 'settlement');
-    NavigationSystem.registerPanel('population-panel', 'settlement');
-    NavigationSystem.registerPanel('actions-panel', 'settlement');
-    NavigationSystem.registerPanel('log-panel', 'saga');
-    NavigationSystem.registerPanel('world-panel', 'world');
-    
-    // Step 6: Initialize feature modules that create their own panels
-    LandManager.init();
-    StatisticsPanel.init();
-    BuildingSystem.init();
-    
-    // Step 7: Perform a final panels refresh
-    NavigationSystem.refreshPanels();
-    
-    // Step 8: Set up event listeners after all panels are ready
-    setupEventListeners();
-    
-    // Step 9: Update initial UI state
-    updateDateDisplay();
-    WorldMap.updateUI();
- 
-    
-    // Step 10: Start game loop
-    this.startGame();
-    
-    console.log("Game initialized successfully");
-},
+        init: function() {
+            console.log("Initializing Viking Legacy game...");
+            
+            // Step 1: Initialize NavigationSystem first
+            NavigationSystem.init();
+            
+            // Step 2: Initialize core systems
+            ResourceManager.init();
+            ResourceManager.refreshResourceUI(); 
+            
+            // Step 3: Initialize population and rank systems
+            PopulationManager.init();
+            PopulationManager.initializeSpecializedWorkers();
+            RankManager.init();
+            
+            // Step 4: Initialize world and event systems
+            WorldMap.init();
+            const playerRegion = WorldMap.getPlayerRegion();
+            if (playerRegion) {
+                WorldMap.updateRegionResourceModifiers(playerRegion);
+            }
+            EventManager.init();
+            
+            // Step 5: Register core panels that exist in HTML
+            NavigationSystem.registerPanel('resources-panel', 'settlement');
+            NavigationSystem.registerPanel('population-panel', 'settlement');
+            NavigationSystem.registerPanel('actions-panel', 'settlement');
+            NavigationSystem.registerPanel('log-panel', 'saga');
+            NavigationSystem.registerPanel('world-panel', 'world');
+            
+            // Step 6: Initialize feature modules that create their own panels
+            LandManager.init();
+            StatisticsPanel.init();
+            BuildingSystem.init();
+            
+            // Step 7: Initialize immigration system
+            if (typeof ImmigrationSystem !== 'undefined' && typeof ImmigrationSystem.init === 'function') {
+                console.log("Initializing Immigration System from GameEngine");
+                ImmigrationSystem.init();
+                
+                // Register immigration system tick processor
+                if (typeof ImmigrationSystem.processTick === 'function') {
+                    this.registerTickProcessor(ImmigrationSystem.processTick);
+                }
+            }
+            
+            // Step 8: Perform a final panels refresh
+            NavigationSystem.refreshPanels();
+            
+            // Step 9: Set up event listeners after all panels are ready
+            setupEventListeners();
+            
+            // Step 10: Update initial UI state
+            updateDateDisplay();
+            WorldMap.updateUI();
+            
+            // Step 11: Start game loop
+            this.startGame();
+            
+            console.log("Game initialized successfully");
+        },
         
         /**
          * Start the game simulation
@@ -420,12 +436,19 @@ const GameEngine = (function() {
         },
 
         registerTickProcessor: function(processorFunction) {
-            const originalProcessTick = this.processTick;
-            this.processTick = function() {
-                const result = originalProcessTick.apply(this, arguments);
-                processorFunction(this.getGameState(), arguments[0]);
-                return result;
+            // Store original processTick reference
+            const originalProcessTick = processTick;
+            
+            // Override the private processTick function to include our processor
+            processTick = function() {
+                // Call original first
+                originalProcessTick();
+                
+                // Then call our registered processor with current game state and tick size
+                processorFunction(GameEngine.getGameState(), gameSpeeds[gameState.gameSpeed]);
             };
+            
+            console.log("Registered external tick processor:", processorFunction.name || "anonymous function");
         },
         
         /**

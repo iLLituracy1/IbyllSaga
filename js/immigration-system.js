@@ -632,8 +632,19 @@ const ImmigrationSystem = (function() {
             if (immigrantGroup.type.id === "refugees" && successfullyAdded > 0) {
                 RankManager.addFame(5, "Sheltering refugees");
             }
+            
+            // Force reconcile population counts with characters
+            if (typeof PopulationManager.reconcilePopulation === 'function') {
+                console.log("Reconciling population after immigration...");
+                PopulationManager.reconcilePopulation();
+            }
         } else {
             Utils.log(`None of the ${immigrantGroup.type.name} could join due to lack of housing.`, "important");
+        }
+        
+        // Update UI
+        if (typeof updatePopulationUI === 'function') {
+            updatePopulationUI();
         }
         
         // Resume game if it was running
@@ -797,17 +808,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (typeof GameEngine !== 'undefined' && 
             typeof GameEngine.registerTickProcessor === 'function') {
             
+            console.log("Registering Immigration System with GameEngine");
             GameEngine.registerTickProcessor(ImmigrationSystem.processTick);
         } else {
-            // Fallback - hook into the processTick method if it exists
-            const originalProcessTick = GameEngine.processTick;
-            if (typeof originalProcessTick === 'function') {
-                GameEngine.processTick = function(tickSize) {
-                    const result = originalProcessTick.apply(this, arguments);
-                    ImmigrationSystem.processTick(GameEngine.getGameState(), tickSize);
-                    return result;
-                };
-            }
+            console.warn("GameEngine not available for registering Immigration System");
         }
     }, 1000);
 });

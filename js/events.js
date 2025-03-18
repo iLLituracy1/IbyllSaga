@@ -288,13 +288,29 @@ const EventManager = (function() {
                     {
                         text: "Welcome them",
                         effects: function(gameState) {
-                            const newCharacter = PopulationManager.addCharacter({
-                                age: Utils.randomBetween(16, 40),
-                                role: 'worker'
-                            });
+                            console.log("Welcoming traveler...");
                             
-                            if (newCharacter) {
-                                Utils.log(`${newCharacter.name} has joined your settlement.`, "success");
+                            // Check capacity directly before adding
+                            const pop = PopulationManager.getPopulation();
+                            const capacity = PopulationManager.getHousingCapacity();
+                            
+                            if (pop.total < capacity) {
+                                const newCharacter = PopulationManager.addCharacter({
+                                    age: Utils.randomBetween(16, 40),
+                                    role: 'worker'
+                                });
+                                
+                                if (newCharacter) {
+                                    Utils.log(`${newCharacter.name} has joined your settlement.`, "success");
+                                    
+                                    // Force reconcile population
+                                    if (typeof PopulationManager.reconcilePopulation === 'function') {
+                                        console.log("Reconciling population after adding traveler...");
+                                        PopulationManager.reconcilePopulation();
+                                    }
+                                } else {
+                                    Utils.log("The traveler moved on after seeing you don't have enough housing.", "important");
+                                }
                             } else {
                                 Utils.log("The traveler moved on after seeing you don't have enough housing.", "important");
                             }
@@ -882,6 +898,12 @@ eventPool.push(
                 if (index !== -1) {
                     activeEvents.splice(index, 1);
                 }
+            }
+            
+            // Reconcile population to ensure everything is consistent
+            if (typeof PopulationManager !== 'undefined' && 
+                typeof PopulationManager.reconcilePopulation === 'function') {
+                PopulationManager.reconcilePopulation();
             }
             
             // Resume game if it was running before
