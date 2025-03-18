@@ -1,0 +1,266 @@
+/**
+ * Viking Legacy - Responsive Layout Fixes
+ * 
+ * This fixes the layout to be properly responsive
+ * and ensure controls are always visible.
+ */
+
+/* Fix container layout and remove black space */
+body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    width: 100vw;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+.game-container {
+    max-width: 100%;
+    width: 100%;
+    margin: 0 auto;
+    padding: 30px 15px;
+    min-height: 100vh;
+    box-sizing: border-box;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ensure game content has proper layout */
+.game-content {
+    display: block; /* Override grid layout */
+    width: 100%;
+    position: relative;
+    margin-bottom: 70px; /* Space for controls */
+}
+
+/* Fix panel layout without grid */
+.resources-panel,
+.population-panel,
+.actions-panel,
+.log-panel,
+.world-panel,
+.land-panel,
+.building-panel,
+.statistics-panel {
+    width: 100%;
+    margin: 20px 0;
+    box-sizing: border-box;
+}
+
+/* Navigation bar fullwidth */
+.game-navigation {
+    max-width: 100%;
+    width: 100%;
+    margin: 15px auto 0;
+    box-sizing: border-box;
+}
+
+/* Two column layout for larger screens */
+@media (min-width: 769px) {
+    .resources-panel,
+    .population-panel,
+    .actions-panel,
+    .log-panel {
+        width: 48%;
+        float: left;
+        margin-right: 2%;
+    }
+    
+    .population-panel,
+    .log-panel {
+        margin-right: 0;
+        float: right;
+    }
+    
+    /* Full width panels */
+    .world-panel,
+    .land-panel,
+    .building-panel,
+    .statistics-panel {
+        clear: both;
+        width: 100%;
+    }
+    
+    /* Clearfix for floated panels */
+    .game-content::after {
+        content: "";
+        display: table;
+        clear: both;
+    }
+}
+
+/* Make sure game controls are always visible */
+.game-controls {
+    position: fixed;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    background: #f7f0e3;
+    border: 2px solid #8b7355;
+    border-radius: 8px;
+    padding: 10px 15px;
+    z-index: 100;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    max-width: 600px;
+}
+
+/* Header styling */
+header {
+    width: 100%;
+    max-width: 100%;
+    text-align: center;
+}
+
+/* Responsive adjustments for controls */
+@media (max-width: 480px) {
+    .game-controls {
+        width: 90%;
+        padding: 8px;
+    }
+    
+    .game-controls button {
+        padding: 6px 10px;
+        font-size: 0.9rem;
+    }
+}
+
+/* Apply a max width to prevent extreme stretching on ultra-wide screens */
+@media (min-width: 2000px) {
+    .game-container {
+        max-width: 1800px;
+        margin: 0 auto;
+    }
+}
+
+/* Make sure modals appear on top of everything */
+.event-modal {
+    z-index: 1001;
+}
+
+/**
+ * Extended Resource Categories Styling
+ * Add this to the end of your existing responsive-css-fix.css file
+ */
+
+/* Resource Category Container */
+.resource-categories {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+}
+
+/* Individual Resource Category */
+.resource-category {
+    background-color: #f7f0e3;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+/* Resource Category Headers */
+.resource-category h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #5d4037;
+    font-size: 1.1rem;
+    border-bottom: 1px solid #c9ba9b;
+    padding-bottom: 5px;
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+}
+
+/* Resource Grids */
+.resource-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+    width: 100%;
+}
+
+/* Colors for different resource categories */
+/* Basic Resources */
+.basic-resources .resource:nth-child(1) { border-left-color: #c62828; } /* Food - Red */
+.basic-resources .resource:nth-child(2) { border-left-color: #2e7d32; } /* Wood - Green */
+.basic-resources .resource:nth-child(3) { border-left-color: #5d4037; } /* Stone - Brown */
+.basic-resources .resource:nth-child(4) { border-left-color: #1565c0; } /* Metal - Blue */
+
+/* Advanced Resources */
+.advanced-resources .resource { border-left-color: #6a1b9a; } /* Purple */
+
+/* Wealth Resources */
+.wealth-resources .resource { border-left-color: #ff8f00; } /* Gold/Amber */
+
+/* Environmental Resources */
+.environmental-resources .resource { border-left-color: #00695c; } /* Teal */
+
+/* Hide advanced categories until resources are discovered */
+.advanced-category, 
+.wealth-category, 
+.environmental-category {
+    display: none;
+}
+
+/* Resource Category Toggle Buttons */
+.category-toggle {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.category-toggle .toggle-icon {
+    margin-left: auto;
+    transition: transform 0.3s;
+}
+
+.category-toggle.collapsed .toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.category-toggle.collapsed + .resource-grid {
+    display: none;
+}
+
+/* Media Queries for resource categories */
+@media (max-width: 768px) {
+    .resource-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Animations for new resource discovery */
+@keyframes newResourceGlow {
+    0% { box-shadow: 0 0 5px rgba(139, 93, 51, 0.5); }
+    50% { box-shadow: 0 0 20px rgba(139, 93, 51, 0.8); }
+    100% { box-shadow: 0 0 5px rgba(139, 93, 51, 0.5); }
+}
+
+.resource.new-discovery {
+    animation: newResourceGlow 2s ease-in-out;
+}
+
+/* Thrall worker assignment styling */
+.thrall-control {
+    background-color: #ffebee;
+    border-left: 4px solid #c62828;
+}
+
+.thrall-control label {
+    color: #c62828;
+}
+
+/* Make sure resources panel accommodates the new layout */
+.resources-panel {
+    padding: 15px !important;
+    overflow: visible !important;
+}
+
+/* Ensure resource items have proper spacing */
+.resource {
+    margin-bottom: 8px;
+}

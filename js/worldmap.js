@@ -23,58 +23,135 @@ const WorldMap = (function() {
     };
     
     // Region types with resource modifiers
-    const REGION_TYPES = {
-        FOREST: {
-            name: "Forest",
-            resourceModifiers: {
-                food: 1.2,
-                wood: 1.5,
-                stone: 0.8,
-                metal: 0.7
-            },
-            description: "Dense forests provide ample wood but make mining difficult."
+    
+// Region types with resource modifiers (extended)
+const REGION_TYPES = {
+    FOREST: {
+        name: "Forest",
+        resourceModifiers: {
+            // Basic resources
+            food: 1.2,
+            wood: 1.5,
+            stone: 0.8,
+            metal: 0.7,
+            // Advanced resources
+            leather: 1.3, // Hunting in forests
+            fur: 1.5,     // More animals for fur
+            cloth: 0.8,   // Not much cloth production in forests
+            clay: 0.7,    // Limited clay deposits
+            pitch: 1.4,   // Pine trees produce good pitch
+            salt: 0.5,    // Limited salt deposits
+            honey: 1.3,   // Wild beehives
+            herbs: 1.8,   // Rich in medicinal plants
+            // Wealth resources - generally not directly produced
+            // Environmental resources
+            peat: 0.0,    // No peat in forests
+            whale_oil: 0.0, // Inland, no whales
+            ice: 0.0       // No ice preservation
         },
-        PLAINS: {
-            name: "Plains",
-            resourceModifiers: {
-                food: 1.3,
-                wood: 0.7,
-                stone: 0.9,
-                metal: 0.8
-            },
-            description: "Fertile plains ideal for farming and settlement."
+        description: "Dense forests provide ample wood, herbs, and hunting but make mining difficult."
+    },
+    
+    PLAINS: {
+        name: "Plains",
+        resourceModifiers: {
+            // Basic resources
+            food: 1.3,
+            wood: 0.7,
+            stone: 0.9,
+            metal: 0.8,
+            // Advanced resources
+            leather: 1.0, // Some hunting
+            fur: 0.8,     // Limited fur animals
+            cloth: 1.5,   // Good for crops for cloth
+            clay: 1.3,    // Good clay deposits along rivers
+            pitch: 0.5,   // Limited pitch production
+            salt: 0.8,    // Some salt deposits
+            honey: 1.2,   // Beekeeping possible
+            herbs: 1.2,   // Some medicinal plants
+            // Environmental resources
+            peat: 0.8,    // Some peat in wetter areas
+            whale_oil: 0.0, // Inland, no whales
+            ice: 0.0       // No ice preservation
         },
-        MOUNTAINS: {
-            name: "Mountains",
-            resourceModifiers: {
-                food: 0.7,
-                wood: 0.8,
-                stone: 1.5,
-                metal: 1.7
-            },
-            description: "Rich in stone and metals, but farming is difficult."
+        description: "Fertile plains ideal for farming, cloth production, and settlement."
+    },
+    
+    MOUNTAINS: {
+        name: "Mountains",
+        resourceModifiers: {
+            // Basic resources
+            food: 0.7,
+            wood: 0.8,
+            stone: 1.5,
+            metal: 1.7,
+            // Advanced resources
+            leather: 0.7, // Limited hunting
+            fur: 1.0,     // Mountain animals provide fur
+            cloth: 0.5,   // Poor conditions for crops
+            clay: 0.8,    // Some clay deposits
+            pitch: 0.7,   // Limited pitch production
+            salt: 1.5,    // Salt deposits in mountains
+            honey: 0.5,   // Limited beekeeping
+            herbs: 1.4,   // Specialized mountain herbs
+            // Environmental resources
+            peat: 0.0,    // No peat in mountains
+            whale_oil: 0.0, // Inland, no whales
+            ice: 1.0       // Ice preservation possible in high mountains
         },
-        COASTAL: {
-            name: "Coastal",
-            resourceModifiers: {
-                food: 1.3,
-                wood: 1.0,
-                stone: 1.0,
-                metal: 0.7
-            },
-            description: "Coastal regions provide fishing and trade opportunities."
+        description: "Rich in stone, metals, and salt, but farming and cloth production are difficult."
+    },
+    
+    COASTAL: {
+        name: "Coastal",
+        resourceModifiers: {
+            // Basic resources
+            food: 1.3,
+            wood: 1.0,
+            stone: 1.0,
+            metal: 0.7,
+            // Advanced resources
+            leather: 0.8, // Some hunting
+            fur: 0.7,     // Limited fur animals
+            cloth: 1.0,   // Average cloth production
+            clay: 1.5,    // Good clay deposits in coastal areas
+            pitch: 1.0,   // Average pitch production
+            salt: 2.0,    // Excellent for salt production from seawater
+            honey: 0.8,   // Some beekeeping
+            herbs: 0.9,   // Some coastal herbs
+            // Environmental resources
+            peat: 0.5,    // Some peat in coastal marshes
+            whale_oil: 1.5, // Whale hunting possible
+            ice: 0.0       // Generally too warm for ice preservation
         },
-        FJORD: {
-            name: "Fjord",
-            resourceModifiers: {
-                food: 1.1,
-                wood: 1.2,
-                stone: 1.2,
-                metal: 0.9
-            },
-            description: "Sheltered waterways with access to both sea and land resources."
-        }
-    };
+        description: "Coastal regions provide excellent fishing, salt production, and trade opportunities."
+    },
+    
+    FJORD: {
+        name: "Fjord",
+        resourceModifiers: {
+            // Basic resources
+            food: 1.1,
+            wood: 1.2,
+            stone: 1.2,
+            metal: 0.9,
+            // Advanced resources
+            leather: 1.0, // Average hunting
+            fur: 1.2,     // Good fur hunting
+            cloth: 0.8,   // Limited cloth production
+            clay: 1.0,    // Average clay deposits
+            pitch: 1.2,   // Good pitch production
+            salt: 1.5,    // Good salt production from seawater
+            honey: 0.7,   // Limited beekeeping
+            herbs: 1.0,   // Average herbs
+            // Environmental resources
+            peat: 0.5,    // Some peat in marshy areas
+            whale_oil: 2.0, // Excellent whale hunting in fjords
+            ice: 1.5       // Good ice preservation in northern fjords
+        },
+        description: "Sheltered waterways with access to both sea and land resources, excellent for whale hunting."
+    }
+};
     
     // Settlement types
     const SETTLEMENT_TYPES = {
@@ -484,6 +561,54 @@ const WorldMap = (function() {
                 createSettlements(region, Utils.randomBetween(1, 3), SETTLEMENT_TYPES.FRANKISH);
             }
         });
+
+        function updateRegionResourceModifiers(region) {
+            // Get the region type
+            const regionType = REGION_TYPES[region.type];
+            if (!regionType || !regionType.resourceModifiers) return;
+            
+            // Apply modifiers to resources in ResourceManager
+            if (typeof ResourceManager !== 'undefined' && ResourceManager.applyRegionalModifiers) {
+                ResourceManager.applyRegionalModifiers(regionType.resourceModifiers);
+            }
+            
+            // Add discovery of rare resources based on region
+            if (typeof ResourceManager !== 'undefined' && ResourceManager.addResources) {
+                // Randomly discover rare resources based on region
+                const discoveryChance = 0.3; // 30% chance
+                
+                if (Math.random() < discoveryChance) {
+                    const possibleResources = [];
+                    
+                    // Add resources with high modifiers to the possible discoveries
+                    for (const resource in regionType.resourceModifiers) {
+                        if (regionType.resourceModifiers[resource] > 1.3 && 
+                            ResourceManager.isResourceDiscovered && 
+                            !ResourceManager.isResourceDiscovered(resource)) {
+                            
+                            possibleResources.push(resource);
+                        }
+                    }
+                    
+                    // Discover a random resource if any are available
+                    if (possibleResources.length > 0) {
+                        const resourceToDiscover = possibleResources[
+                            Math.floor(Math.random() * possibleResources.length)
+                        ];
+                        
+                        // Add a small amount to discover it
+                        const discoveryAmount = {};
+                        discoveryAmount[resourceToDiscover] = Math.random() * 5 + 1;
+                        ResourceManager.addResources(discoveryAmount);
+                        
+                        // Log discovery
+                        Utils.log(`While exploring the ${regionType.name}, you discovered ${resourceToDiscover}!`, "success");
+                    }
+                }
+            }
+        }
+
+
         
         console.log("World generation complete");
         console.log(`Created ${worldMap.landmasses.length} landmasses`);
@@ -578,33 +703,35 @@ const WorldMap = (function() {
      /**
  * Initialize the world map system
  */
-init: function() {
-    console.log("Initializing World Map system...");
-    
-    // Generate the world data first
-    generateWorld();
-    
-    // Create the UI panel
-    this.createWorldMapPanel();
-    
-    // Log player location
-    const playerSettlement = getPlayerSettlement();
-    if (playerSettlement) {
-        const playerRegion = worldMap.regions.find(r => r.id === playerSettlement.region);
-        const playerLandmass = worldMap.landmasses.find(lm => lm.id === playerSettlement.landmass);
+     init: function() {
+        console.log("Initializing World Map system...");
         
-        console.log(`Player settlement: ${playerSettlement.name}`);
-        console.log(`Located in region: ${playerRegion.name} (${REGION_TYPES[playerRegion.type].name})`);
-        console.log(`On landmass: ${playerLandmass.name} (${playerLandmass.type})`);
+        // Generate the world data first
+        generateWorld();
         
-        // Log to game console
-        Utils.log(`Your settlement is established in ${playerRegion.name}, a ${REGION_TYPES[playerRegion.type].name} region.`, "important");
-        Utils.log(REGION_TYPES[playerRegion.type].description);
-    }
-    
-    
-    console.log("World Map system initialized");
-},
+        // Create the UI panel
+        this.createWorldMapPanel();
+        
+        // Log player location
+        const playerSettlement = getPlayerSettlement();
+        if (playerSettlement) {
+            const playerRegion = worldMap.regions.find(r => r.id === playerSettlement.region);
+            const playerLandmass = worldMap.landmasses.find(lm => lm.id === playerSettlement.landmass);
+            
+            console.log(`Player settlement: ${playerSettlement.name}`);
+            console.log(`Located in region: ${playerRegion.name} (${REGION_TYPES[playerRegion.type].name})`);
+            console.log(`On landmass: ${playerLandmass.name} (${playerLandmass.type})`);
+            
+            // Log to game console
+            Utils.log(`Your settlement is established in ${playerRegion.name}, a ${REGION_TYPES[playerRegion.type].name} region.`, "important");
+            Utils.log(REGION_TYPES[playerRegion.type].description);
+            
+            // Add this line to apply the regional modifiers
+            this.updateRegionResourceModifiers(playerRegion);
+        }
+        
+        console.log("World Map system initialized");
+    },
 
 /**
  * Update the world map UI elements with current data
@@ -660,6 +787,13 @@ updateUI: function() {
         }
     }
 },
+
+
+
+
+
+
+
         
         /**
          * Get the world map data
@@ -734,6 +868,10 @@ updateUI: function() {
          */
         getPlayerLandmass: function() {
             return worldMap.playerLandmass;
+        },
+
+        updateRegionResourceModifiers: function(region) {
+            updateRegionResourceModifiers(region);
         },
         
         /**

@@ -20,7 +20,7 @@ const BuildingSystem = (function() {
                 stone: 10
             },
             constructionTime: 5, // Days to build
-            workerCapacity: 5, // People that can live here
+            workerCapacity: 0, // Housing building, doesn't provide jobs
             workersRequired: 1, // Workers needed to build
             maintenanceCost: {
                 wood: 1 // Maintenance cost per month
@@ -46,7 +46,7 @@ const BuildingSystem = (function() {
                 stone: 25
             },
             constructionTime: 10,
-            workerCapacity: 10,
+            workerCapacity: 0, // Housing building, doesn't provide jobs
             workersRequired: 3,
             maintenanceCost: {
                 wood: 2
@@ -76,7 +76,7 @@ const BuildingSystem = (function() {
                 stone: 5
             },
             constructionTime: 7,
-            workerCapacity: 3, // Maximum workers that can work here
+            workerCapacity: 3, // Employs 3 farmers
             workersRequired: 2,
             maintenanceCost: {
                 wood: 1
@@ -94,7 +94,7 @@ const BuildingSystem = (function() {
             upgradesTo: "large_farm",
             effects: {
                 resourceProduction: {
-                    food: 5 // Base food production per day
+                    food: 25 // Base food production per day
                 }
             }
         },
@@ -109,11 +109,11 @@ const BuildingSystem = (function() {
                 amount: 5
             },
             constructionCost: {
-                wood: 30,
-                stone: 15
+                wood: 130,
+                stone: 115
             },
             constructionTime: 12,
-            workerCapacity: 5,
+            workerCapacity: 15, // Employs 5 farmers
             workersRequired: 3,
             maintenanceCost: {
                 wood: 2
@@ -124,11 +124,11 @@ const BuildingSystem = (function() {
             },
             upgradesTo: null,
             unlockRequirements: {
-                rank: 4
+                rank: 6
             },
             effects: {
                 resourceProduction: {
-                    food: 12
+                    food: 100
                 }
             }
         },
@@ -147,7 +147,7 @@ const BuildingSystem = (function() {
                 stone: 5
             },
             constructionTime: 5,
-            workerCapacity: 3,
+            workerCapacity: 3, // Employs 3 woodcutters
             workersRequired: 2,
             maintenanceCost: {
                 metal: 1
@@ -179,7 +179,7 @@ const BuildingSystem = (function() {
                 metal: 10
             },
             constructionTime: 10,
-            workerCapacity: 4,
+            workerCapacity: 4, // Employs 4 woodcutters
             workersRequired: 3,
             maintenanceCost: {
                 metal: 2
@@ -216,7 +216,7 @@ const BuildingSystem = (function() {
                 metal: 5
             },
             constructionTime: 8,
-            workerCapacity: 3,
+            workerCapacity: 3, // Employs 3 miners
             workersRequired: 2,
             maintenanceCost: {
                 metal: 1
@@ -247,7 +247,7 @@ const BuildingSystem = (function() {
                 stone: 20
             },
             constructionTime: 10,
-            workerCapacity: 3,
+            workerCapacity: 3, // Employs 3 miners
             workersRequired: 3,
             maintenanceCost: {
                 wood: 2
@@ -279,7 +279,7 @@ const BuildingSystem = (function() {
                 metal: 5
             },
             constructionTime: 8,
-            workerCapacity: 2,
+            workerCapacity: 2, // Employs 2 workers (currently counted as miners)
             workersRequired: 2,
             maintenanceCost: {
                 wood: 1,
@@ -316,7 +316,7 @@ const BuildingSystem = (function() {
                 metal: 15
             },
             constructionTime: 15,
-            workerCapacity: 3,
+            workerCapacity: 3, // Employs 3 workers (currently counted as miners)
             workersRequired: 3,
             maintenanceCost: {
                 wood: 2,
@@ -354,7 +354,7 @@ const BuildingSystem = (function() {
                 stone: 10
             },
             constructionTime: 6,
-            workerCapacity: 1,
+            workerCapacity: 1, // Employs 1 worker
             workersRequired: 2,
             maintenanceCost: {},
             maxCount: function(gameState) {
@@ -387,7 +387,7 @@ const BuildingSystem = (function() {
                 stone: 5
             },
             constructionTime: 5,
-            workerCapacity: 2,
+            workerCapacity: 2, // Employs 2 farmers
             workersRequired: 1,
             maintenanceCost: {
                 wood: 1
@@ -420,7 +420,7 @@ const BuildingSystem = (function() {
                 stone: 5
             },
             constructionTime: 6,
-            workerCapacity: 2,
+            workerCapacity: 2, // Employs 2 farmers
             workersRequired: 1,
             maintenanceCost: {
                 wood: 1
@@ -444,12 +444,12 @@ const BuildingSystem = (function() {
                 amount: 2
             },
             constructionCost: {
-                wood: 40,
-                stone: 20,
-                metal: 10
+                wood: 400,
+                stone: 200,
+                metal: 100
             },
             constructionTime: 12,
-            workerCapacity: 3,
+            workerCapacity: 3, // Employs 3 workers
             workersRequired: 4,
             maintenanceCost: {},
             maxCount: 1,
@@ -473,15 +473,15 @@ const BuildingSystem = (function() {
                 amount: 3
             },
             constructionCost: {
-                wood: 60,
-                stone: 30,
-                metal: 15
+                wood: 6000,
+                stone: 3000,
+                metal: 1500
             },
             constructionTime: 20,
-            workerCapacity: 2,
+            workerCapacity: 2, // Employs 2 workers
             workersRequired: 5,
             maintenanceCost: {
-                food: 5
+                food: 500
             },
             maxCount: 1,
             upgradesTo: null,
@@ -515,6 +515,9 @@ const BuildingSystem = (function() {
         startDate: null, // Game date when construction started
         estimatedCompletion: null // Estimated completion date
     };
+    
+    // Tracks workers assigned to each building
+    let buildingWorkers = {};
     
     // Private methods
     
@@ -911,7 +914,7 @@ const BuildingSystem = (function() {
             // Initial update of UI
             updateBuildingUI();
 
-                        // Register with NavigationSystem if it exists
+            // Register with NavigationSystem if it exists
             if (typeof NavigationSystem !== 'undefined') {
                 NavigationSystem.registerPanel('building-panel', 'buildings');
             }
@@ -956,6 +959,11 @@ const BuildingSystem = (function() {
                     <div class="building-effects">
                         ${formatBuildingEffects(building)}
                     </div>
+                    ${building.workerCapacity > 0 ? 
+                    `<div class="building-workers">
+                        <span class="worker-capacity-label">Workers:</span>
+                        <span class="worker-capacity-value">${building.workerCapacity} per building</span>
+                    </div>` : ''}
                 </div>
             `;
         }
@@ -1087,6 +1095,13 @@ const BuildingSystem = (function() {
                             Workers required: ${building.workersRequired}
                         </div>
                     </div>
+                    ${building.workerCapacity > 0 ? 
+                    `<div class="building-workers-info">
+                        <div class="worker-capacity">
+                            <span class="capacity-label">Employs:</span>
+                            <span class="capacity-value">${building.workerCapacity} workers</span>
+                        </div>
+                    </div>` : ''}
                     <div class="building-effects">
                         ${formatBuildingEffects(building)}
                     </div>
@@ -1207,8 +1222,7 @@ const BuildingSystem = (function() {
         );
         
         // Also account for workers assigned to other tasks
-        const assignments = PopulationManager.getWorkerAssignments();
-        const assignedToTasks = assignments.farmers + assignments.woodcutters + assignments.miners;
+        const assignedToTasks = getTotalAssignedWorkers();
         
         const availableWorkers = population.workers - workersInConstruction - assignedToTasks;
         
@@ -1268,6 +1282,105 @@ const BuildingSystem = (function() {
         
         // Update UI
         updateConstructionList();
+    }
+
+    /**
+     * Get the total number of workers assigned to all buildings of a specific type
+     * @param {string} workerType - Type of worker (farmers, woodcutters, miners)
+     * @returns {number} - Total workers of that type
+     */
+    function getWorkersOfType(workerType) {
+        let total = 0;
+        
+        // Map building types to worker types
+        const buildingToWorkerType = {
+            farm: "farmers",
+            large_farm: "farmers",
+            fishing_hut: "farmers",
+            hunting_lodge: "farmers",
+            woodcutter_lodge: "woodcutters",
+            sawmill: "woodcutters",
+            quarry: "miners",
+            mine: "miners",
+            smithy: "miners",
+            forge: "miners",
+            storehouse: "unassigned",
+            marketplace: "unassigned",
+            mead_hall: "unassigned"
+        };
+        
+        // Count workers in all relevant buildings
+        for (const buildingId in buildings.built) {
+            if (buildingToWorkerType[buildingId] === workerType) {
+                const count = buildings.built[buildingId] || 0;
+                const buildingType = Object.values(buildingTypes).find(b => b.id === buildingId);
+                
+                if (buildingType) {
+                    // Calculate workers per building based on building worker capacity
+                    const workersPerBuilding = buildingType.workerCapacity || 0;
+                    total += count * workersPerBuilding;
+                }
+            }
+        }
+        
+        return total;
+    }
+    
+    /**
+     * Get all worker assignments from buildings
+     * @returns {Object} - Worker assignments by type
+     */
+    function getWorkerAssignments() {
+        return {
+            farmers: getWorkersOfType("farmers"),
+            woodcutters: getWorkersOfType("woodcutters"),
+            miners: getWorkersOfType("miners")
+        };
+    }
+    
+    /**
+     * Get the total number of workers assigned to buildings
+     * @returns {number} - Total assigned workers
+     */
+    function getTotalAssignedWorkers() {
+        const assignments = getWorkerAssignments();
+        return assignments.farmers + assignments.woodcutters + assignments.miners;
+    }
+    
+    /**
+     * Get available worker capacity for all buildings
+     * @returns {Object} - Available capacity by worker type
+     */
+    function getAvailableCapacity() {
+        const builtBuildings = buildings.built;
+        const capacity = {
+            farmers: 0,
+            woodcutters: 0,
+            miners: 0
+        };
+        
+        // Building types that provide jobs
+        const farmBuildings = ['farm', 'large_farm', 'fishing_hut', 'hunting_lodge'];
+        const woodcutterBuildings = ['woodcutter_lodge', 'sawmill'];
+        const minerBuildings = ['quarry', 'mine', 'smithy', 'forge'];
+        
+        // Calculate capacity for each building type
+        for (const buildingId in builtBuildings) {
+            const count = builtBuildings[buildingId];
+            const building = Object.values(buildingTypes).find(b => b.id === buildingId);
+            
+            if (!building) continue;
+            
+            if (farmBuildings.includes(buildingId)) {
+                capacity.farmers += count * building.workerCapacity;
+            } else if (woodcutterBuildings.includes(buildingId)) {
+                capacity.woodcutters += count * building.workerCapacity;
+            } else if (minerBuildings.includes(buildingId)) {
+                capacity.miners += count * building.workerCapacity;
+            }
+        }
+        
+        return capacity;
     }
     
     // Public API
@@ -1370,7 +1483,39 @@ const BuildingSystem = (function() {
          */
         getBuildingCount: function(buildingType) {
             return buildings.built[buildingType] || 0;
-        }
+        },
+
+        // Building-based worker system methods
+        /**
+         * Get the total number of workers assigned to all buildings of a specific type
+         * @param {string} workerType - Type of worker (farmers, woodcutters, miners)
+         * @returns {number} - Total workers of that type
+         */
+        getWorkersOfType: getWorkersOfType,
+        
+        /**
+         * Get all worker assignments from buildings
+         * @returns {Object} - Worker assignments by type
+         */
+        getWorkerAssignments: getWorkerAssignments,
+        
+        /**
+         * Get the total number of workers assigned to buildings
+         * @returns {number} - Total assigned workers
+         */
+        getTotalAssignedWorkers: getTotalAssignedWorkers,
+        
+        /**
+         * Get available worker capacity for all buildings
+         * @returns {Object} - Available capacity by worker type
+         */
+        getAvailableCapacity: getAvailableCapacity,
+        
+        /**
+         * Update the building UI
+         * Public method that can be called from other modules
+         */
+        updateBuildingUI: updateBuildingUI
     };
 
     

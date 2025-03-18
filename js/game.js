@@ -18,9 +18,9 @@ const GameEngine = (function() {
     
     // Game tick interval (in milliseconds)
     const tickIntervals = {
-        slow: 3000,
-        normal: 2000,
-        fast: 1000
+        slow: 5000,
+        normal: 1000,
+        fast: 100
     };
     
     // Day progress update intervals (ms)
@@ -338,13 +338,19 @@ const GameEngine = (function() {
     
     // Step 2: Initialize core systems
     ResourceManager.init();
+    ResourceManager.refreshResourceUI(); 
     
     // Step 3: Initialize population and rank systems
     PopulationManager.init();
+    PopulationManager.initializeSpecializedWorkers();
     RankManager.init();
     
     // Step 4: Initialize world and event systems
     WorldMap.init();
+    const playerRegion = WorldMap.getPlayerRegion();
+    if (playerRegion) {
+        WorldMap.updateRegionResourceModifiers(playerRegion);
+    }
     EventManager.init();
     
     // Step 5: Register core panels that exist in HTML

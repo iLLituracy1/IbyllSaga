@@ -6,10 +6,10 @@
 const ResourceManager = (function() {
     // Private variables
     let resources = {
-        food: 50,
-        wood: 30,
-        stone: 10,
-        metal: 5
+        food: 150,
+        wood: 130,
+        stone: 100,
+        metal: 50
     };
     
     // Production rates per worker per day
@@ -54,24 +54,45 @@ const ResourceManager = (function() {
      * @param {Object} workers - Object containing worker assignments
      */
     function calculateProductionRates(workers) {
-        // Get region modifiers if available
+        // Region and production modifiers
         let regionModifiers = { food: 1.0, wood: 1.0, stone: 1.0, metal: 1.0 };
-        
-        // Check if WorldMap exists and has a player region
         if (typeof WorldMap !== 'undefined' && WorldMap.getPlayerRegion) {
             const playerRegion = WorldMap.getPlayerRegion();
             if (playerRegion && playerRegion.resourceModifiers) {
                 regionModifiers = playerRegion.resourceModifiers;
             }
         }
-        
-        // Apply both regular modifiers and region modifiers
-        productionRates.food = workers.farmers * baseProductionRates.food * productionModifiers.food * regionModifiers.food;
+    
+        // Worker-based production
+        const workerFoodProduction = workers.farmers * baseProductionRates.food;
+    
+        // Building-based production
+        let buildingFoodProduction = 0;
+        if (typeof BuildingSystem !== 'undefined') {
+            const buildingData = BuildingSystem.getBuildingData();
+            
+            for (const buildingType in buildingData.built) {
+                const building = BuildingSystem.getBuildingType(buildingType);
+                const buildingCount = buildingData.built[buildingType];
+                
+                if (building && building.effects && building.effects.resourceProduction && building.effects.resourceProduction.food) {
+                    buildingFoodProduction += building.effects.resourceProduction.food * buildingCount;
+                }
+            }
+        }
+    
+        // Total production with modifiers
+        // KEY CHANGE: Don't add worker and building production before modifiers
+        productionRates.food = (
+            workerFoodProduction * productionModifiers.food * regionModifiers.food +
+            buildingFoodProduction * productionModifiers.food * regionModifiers.food
+        );
+    
+        // Rest of the method remains the same
         productionRates.wood = workers.woodcutters * baseProductionRates.wood * productionModifiers.wood * regionModifiers.wood;
         productionRates.stone = workers.miners * baseProductionRates.stone * productionModifiers.stone * regionModifiers.stone;
         productionRates.metal = workers.miners * baseProductionRates.metal * productionModifiers.metal * regionModifiers.metal;
-        
-        // Update UI
+    
         updateResourceRatesUI();
     }
     
@@ -137,10 +158,22 @@ const ResourceManager = (function() {
         
         /**
          * Update resource production rates based on worker assignments
-         * @param {Object} workers - Current worker assignments
+         * Now pulls automatically from BuildingSystem if available
          */
         updateProductionRates: function(workers) {
-            calculateProductionRates(workers);
+            // Get workers from BuildingSystem if available, otherwise use provided workers
+            let workerAssignments = workers;
+            
+            if (!workers && typeof BuildingSystem !== 'undefined' && typeof BuildingSystem.getWorkerAssignments === 'function') {
+                workerAssignments = BuildingSystem.getWorkerAssignments();
+            } else if (!workers && typeof PopulationManager !== 'undefined' && typeof PopulationManager.getWorkerAssignments === 'function') {
+                workerAssignments = PopulationManager.getWorkerAssignments(); 
+            }
+            
+            // Calculate production rates
+            if (workerAssignments) {
+                calculateProductionRates(workerAssignments);
+            }
         },
         
         /**
@@ -149,6 +182,11 @@ const ResourceManager = (function() {
          * @param {number} tickSize - Size of the game tick in days
          */
         processTick: function(population, tickSize) {
+            // Update production rates based on current worker assignments from buildings
+            if (typeof BuildingSystem !== 'undefined' && typeof BuildingSystem.getWorkerAssignments === 'function') {
+                this.updateProductionRates(BuildingSystem.getWorkerAssignments());
+            }
+            
             // Calculate daily production
             const foodProduced = productionRates.food * tickSize;
             const woodProduced = productionRates.wood * tickSize;
@@ -379,7 +417,11 @@ const ResourceManager = (function() {
                 }
                 
                 // Recalculate production rates
-                const workerAssignments = PopulationManager.getWorkerAssignments();
+                const workerAssignments = typeof BuildingSystem !== 'undefined' && 
+                                        typeof BuildingSystem.getWorkerAssignments === 'function' ?
+                                        BuildingSystem.getWorkerAssignments() :
+                                        PopulationManager.getWorkerAssignments();
+                                        
                 this.updateProductionRates(workerAssignments);
             },
 

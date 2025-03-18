@@ -14,13 +14,28 @@ const PopulationManager = (function() {
         children: 5,      // Children who will grow into workers
         elders: 0         // Elders (non-working)
     };
+
+    const populationExtension = {
+        // New worker types
+        hunters: 0,      // For leather and fur production
+        crafters: 0,     // For cloth and crafted goods
+        gatherers: 0,    // For herbs, clay gathering
+        thralls: 0       // Forced laborers (captured in raids)
+    };
     
-    // Worker assignments
+    // Worker assignments (legacy - maintained for compatibility)
     let workerAssignments = {
-        farmers: 1,
-        woodcutters: 1,
-        miners: 1,
+        farmers: 0,
+        woodcutters: 0,
+        miners: 0,
         unassigned: 0
+    };
+
+    const workerAssignmentsExtension = {
+        hunters: 0,
+        crafters: 0,
+        gatherers: 0,
+        thralls: 0  // Thralls have their own assignment pool
     };
     
     // Dynasty and characters
@@ -29,7 +44,7 @@ const PopulationManager = (function() {
     
     // Buildings that affect housing capacity
     let buildings = {
-        houses: 1 // Start with one house
+        houses: 3 // Start with one house
     };
     
     // Constants
@@ -65,6 +80,167 @@ const PopulationManager = (function() {
         positive: ["Strong", "Quick", "Wise", "Charismatic", "Brave", "Cunning", "Patient", "Healthy"],
         negative: ["Weak", "Slow", "Foolish", "Craven", "Sickly", "Greedy", "Cruel", "Impatient"]
     };
+
+    function initializeSpecializedWorkers() {
+        // Add specialized worker properties to population
+        if (typeof population !== 'undefined') {
+            for (const prop in populationExtension) {
+                population[prop] = populationExtension[prop];
+            }
+        }
+        
+        // Add specialized workers to assignments
+        if (typeof workerAssignments !== 'undefined') {
+            for (const prop in workerAssignmentsExtension) {
+                workerAssignments[prop] = workerAssignmentsExtension[prop];
+            }
+        }
+        
+        // Update worker assignment UI
+        createSpecializedWorkerUI();
+    }
+
+    /**
+ * Create UI for specialized worker assignment
+ */
+function createSpecializedWorkerUI() {
+    // Find the assign actions div
+    const assignActionsDiv = document.querySelector('.assign-actions');
+    if (!assignActionsDiv) return;
+    
+    // Create UI for specialized workers
+    const specializedWorkersHTML = `
+        <h3>Assign Specialized Workers</h3>
+        <div class="assign-control">
+            <label for="hunters">Hunters:</label>
+            <button class="decrement" data-target="hunters">-</button>
+            <span id="hunters-count">0</span>
+            <button class="increment" data-target="hunters">+</button>
+        </div>
+        <div class="assign-control">
+            <label for="crafters">Crafters:</label>
+            <button class="decrement" data-target="crafters">-</button>
+            <span id="crafters-count">0</span>
+            <button class="increment" data-target="crafters">+</button>
+        </div>
+        <div class="assign-control">
+            <label for="gatherers">Gatherers:</label>
+            <button class="decrement" data-target="gatherers">-</button>
+            <span id="gatherers-count">0</span>
+            <button class="increment" data-target="gatherers">+</button>
+        </div>
+    `;
+    
+    // Create separate section for thralls if we have any
+    const thralIsDiscovered = document.querySelector('#thralls-count') || population.thralls > 0;
+    let thrallsHTML = '';
+    
+    if (thralIsDiscovered) {
+        thrallsHTML = `
+            <h3>Assign Thralls</h3>
+            <div class="assign-control thrall-control">
+                <label for="thralls">Thralls:</label>
+                <button class="decrement" data-target="thralls">-</button>
+                <span id="thralls-count">${population.thralls}</span>
+                <button class="increment" data-target="thralls">+</button>
+            </div>
+        `;
+    }
+    
+    // Append to assign actions
+    assignActionsDiv.insertAdjacentHTML('beforeend', specializedWorkersHTML);
+    
+    if (thrallsHTML) {
+        assignActionsDiv.insertAdjacentHTML('beforeend', thrallsHTML);
+    }
+    
+    // Add event listeners for new buttons
+    const incrementButtons = assignActionsDiv.querySelectorAll('.increment');
+    const decrementButtons = assignActionsDiv.querySelectorAll('.decrement');
+    
+    incrementButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const role = this.dataset.target;
+            PopulationManager.assignWorkers(role, 1);
+        });
+    });
+    
+    decrementButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const role = this.dataset.target;
+            PopulationManager.assignWorkers(role, -1);
+        });
+    });
+    
+    // Add CSS for thrall controls
+    const style = document.createElement('style');
+    style.textContent = `
+        .thrall-control {
+            background-color: #ffebee;
+            border-left: 4px solid #c62828;
+        }
+        
+        .thrall-control label {
+            color: #c62828;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Add thralls (typically from raiding)
+function addThralls(amount) {
+    if (amount <= 0) return false;
+    
+    population.thralls += amount;
+    population.total += amount;
+    
+    // If thralls UI doesn't exist yet, create it
+    if (!document.querySelector('.thrall-control')) {
+        createSpecializedWorkerUI();
+    } else {
+        // Just update the count
+        Utils.updateElement('thralls-count', population.thralls);
+    }
+    
+    Utils.log(`${amount} thralls have been added to your settlement.`, "important");
+    return true;
+}
+
+// Process thralls in population tick
+function processThrallsInTick(gameDate, tickSize, resources) {
+    let thrallChanges = {
+        escaped: 0,
+        died: 0
+    };
+    
+    // Small chance of thralls escaping
+    if (population.thralls > 0 && Utils.chanceOf(2 * tickSize)) {
+        const escaped = Math.ceil(population.thralls * 0.1); // 10% escape rate
+        population.thralls -= escaped;
+        population.total -= escaped;
+        thrallChanges.escaped = escaped;
+        
+        Utils.log(`${escaped} thralls have escaped from your settlement!`, "important");
+    }
+    
+    // Thralls have higher death rate with food shortage
+    if (resources && resources.foodDeficit && population.thralls > 0) {
+        if (Utils.chanceOf(8 * tickSize)) {
+            const died = Math.ceil(population.thralls * 0.2); // 20% death rate during famine
+            population.thralls -= died;
+            population.total -= died;
+            thrallChanges.died = died;
+            
+            Utils.log(`${died} thralls have died from starvation!`, "danger");
+        }
+    }
+    
+    // Update UI
+    Utils.updateElement('thralls-count', population.thralls);
+    Utils.updateElement('population-total', population.total);
+    
+    return thrallChanges;
+}
     
     // Private methods
     
@@ -77,10 +253,12 @@ const PopulationManager = (function() {
         Utils.updateElement('population-warriors', population.warriors);
         Utils.updateElement('population-children', population.children);
         
-        // Update worker assignments
-        Utils.updateElement('farmers-count', workerAssignments.farmers);
-        Utils.updateElement('woodcutters-count', workerAssignments.woodcutters);
-        Utils.updateElement('miners-count', workerAssignments.miners);
+        // Legacy - update worker assignments display elements
+        // These will show building-based assignments
+        const assignments = getWorkerAssignments();
+        Utils.updateElement('farmers-count', assignments.farmers);
+        Utils.updateElement('woodcutters-count', assignments.woodcutters);
+        Utils.updateElement('miners-count', assignments.miners);
         
         // Update dynasty info
         if (dynastyLeader) {
@@ -89,13 +267,12 @@ const PopulationManager = (function() {
     }
     
     /**
-     * Calculate total assigned workers
+     * Calculate total assigned workers (legacy method)
      * @returns {number} - Total number of assigned workers
      */
     function getTotalAssignedWorkers() {
-        return workerAssignments.farmers + 
-               workerAssignments.woodcutters + 
-               workerAssignments.miners;
+        const assignments = getWorkerAssignments();
+        return assignments.farmers + assignments.woodcutters + assignments.miners;
     }
     
     /**
@@ -201,6 +378,34 @@ const PopulationManager = (function() {
         spouse.relations.push(child.id);
     }
     
+    /**
+     * Get worker assignments (building-based)
+     * @returns {Object} - Worker assignments by type
+     */
+    function getWorkerAssignments() {
+        // Get worker assignments from building system
+        if (typeof BuildingSystem !== 'undefined' && typeof BuildingSystem.getWorkerAssignments === 'function') {
+            return BuildingSystem.getWorkerAssignments();
+        }
+        
+        // Fallback to legacy assignments if building system not available
+        return { ...workerAssignments };
+    }
+    
+    /**
+     * Calculate unassigned workers
+     * @returns {number} - Number of unassigned workers
+     */
+    function getUnassignedWorkers() {
+        const totalWorkers = population.workers;
+        const assignedWorkers = typeof BuildingSystem !== 'undefined' && 
+                               typeof BuildingSystem.getTotalAssignedWorkers === 'function' ?
+                               BuildingSystem.getTotalAssignedWorkers() : 
+                               getTotalAssignedWorkers();
+        
+        return Math.max(0, totalWorkers - assignedWorkers);
+    }
+    
     // Public API
     return {
         /**
@@ -210,8 +415,7 @@ const PopulationManager = (function() {
             // Initialize dynasty with starting characters
             initializeDynasty();
             
-            // Calculate initial worker assignments
-            workerAssignments.unassigned = population.workers - getTotalAssignedWorkers();
+            // Calculate initial worker assignments (handled by buildings now)
             
             // Update UI
             updatePopulationUI();
@@ -233,9 +437,7 @@ const PopulationManager = (function() {
          * Get current worker assignments
          * @returns {Object} - Current worker assignments
          */
-        getWorkerAssignments: function() {
-            return { ...workerAssignments };
-        },
+        getWorkerAssignments: getWorkerAssignments,
         
         /**
          * Get all characters
@@ -254,45 +456,21 @@ const PopulationManager = (function() {
         },
         
         /**
-         * Assign workers to different roles
-         * @param {string} role - Role to assign workers to (farmers, woodcutters, miners)
+         * Calculate unassigned workers
+         * @returns {number} - Number of unassigned workers
+         */
+        getUnassignedWorkers: getUnassignedWorkers,
+        
+        /**
+         * Legacy method - maintained for backward compatibility but now automatically 
+         * handled by buildings
+         * @param {string} role - Role to assign workers to
          * @param {number} change - Number of workers to add or remove
-         * @returns {boolean} - Whether the assignment was successful
+         * @returns {boolean} - Always returns false as this method is deprecated
          */
         assignWorkers: function(role, change) {
-            // Check if role exists
-            if (!workerAssignments.hasOwnProperty(role)) {
-                console.warn(`Unknown worker role: ${role}`);
-                return false;
-            }
-            
-            // Calculate totals
-            const currentAssigned = getTotalAssignedWorkers();
-            const maxAssignable = population.workers;
-            
-            // Check if we're trying to add too many workers
-            if (currentAssigned + change > maxAssignable) {
-                console.warn("Not enough workers available.");
-                return false;
-            }
-            
-            // Check if we're trying to remove too many workers
-            if (workerAssignments[role] + change < 0) {
-                console.warn(`Cannot reduce ${role} below 0.`);
-                return false;
-            }
-            
-            // Update assignment
-            workerAssignments[role] += change;
-            workerAssignments.unassigned = maxAssignable - (currentAssigned + change);
-            
-            // Update resource production rates
-            ResourceManager.updateProductionRates(workerAssignments);
-            
-            // Update UI
-            updatePopulationUI();
-            
-            return true;
+            console.warn("Manual worker assignment is deprecated. Workers are now managed by buildings.");
+            return false;
         },
         
         /**
@@ -376,7 +554,7 @@ const PopulationManager = (function() {
                 
                 for (const woman of adultWomen) {
                     // Only process potential births occasionally to avoid too many births
-                    if (Utils.chanceOf(2 * (tickSize / 365))) {
+                    if (Utils.chanceOf(2 * (tickSize / 270))) {
                         // Find potential father (for inheritance, relations)
                         const potentialFathers = characters.filter(char => 
                             char.gender === 'male' && char.age >= ADULT_AGE && char.relations.includes(woman.id)
@@ -410,6 +588,8 @@ const PopulationManager = (function() {
                     }
                 }
             }
+
+            
             
             // Handle food shortage
             if (resources && resources.foodDeficit) {
@@ -466,6 +646,47 @@ const PopulationManager = (function() {
             
             Utils.log(`${newLeader.name} has become the new leader of your settlement.`, "important");
         },
+
+
+                    // Get thrall count
+            getThralls: function() {
+                return population.thralls || 0;
+            },
+
+            // Add thralls to the settlement
+            addThralls: function(amount) {
+                return addThralls(amount);
+            },
+
+            // Initialize specialized worker types
+            initializeSpecializedWorkers: function() {
+                initializeSpecializedWorkers();
+            },
+
+            // Extended getWorkerAssignments to include specialized workers
+            getWorkerAssignments: function() {
+                return {
+                    farmers: workerAssignments.farmers,
+                    woodcutters: workerAssignments.woodcutters,
+                    miners: workerAssignments.miners,
+                    hunters: workerAssignments.hunters || 0,
+                    crafters: workerAssignments.crafters || 0,
+                    gatherers: workerAssignments.gatherers || 0,
+                    thralls: workerAssignments.thralls || 0,
+                    unassigned: workerAssignments.unassigned
+                };
+            },
+
+            // Initialize different worker type with a value
+            initializeWorkerType: function(type, value) {
+                if (!workerAssignments.hasOwnProperty(type)) {
+                    workerAssignments[type] = 0;
+                }
+                workerAssignments[type] = value;
+                
+                // Update UI if element exists
+                Utils.updateElement(`${type}-count`, workerAssignments[type]);
+            },
         
         /**
          * Handle food shortage consequences

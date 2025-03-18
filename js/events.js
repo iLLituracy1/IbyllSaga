@@ -83,6 +83,8 @@ const EventManager = (function() {
      * @param {string} eventId - Event ID
      * @param {Object} currentDate - Current game date
      * @returns {boolean} - Whether the event is on cooldown
+     * @param {Function} createEvent - The EventManager's createEvent function
+     * @returns {Array} - Array of resource discovery events
      */
     function isEventOnCooldown(eventId, currentDate) {
         const lastTriggered = triggeredEvents.random[eventId];
@@ -391,6 +393,110 @@ const EventManager = (function() {
                 weight: 1
             })
         );
+
+        // Resource Discovery Events
+eventPool.push(
+    createEvent({
+        id: "hunting_party_success",
+        title: "Successful Hunt",
+        description: "Your hunting party returns with not only meat, but valuable animal hides and furs that could be useful for crafting.",
+        options: [
+            {
+                text: "Process the hides into leather",
+                effects: function(gameState) {
+                    ResourceManager.addResources({ 
+                        food: 15, 
+                        leather: 8 
+                    });
+                    Utils.log("Your people begin processing animal hides into leather.", "success");
+                }
+            },
+            {
+                text: "Preserve the furs for warmth",
+                effects: function(gameState) {
+                    ResourceManager.addResources({ 
+                        food: 15, 
+                        fur: 10 
+                    });
+                    Utils.log("The furs will provide warmth and valuable trade goods.", "success");
+                }
+            },
+            {
+                text: "Process both as best we can",
+                effects: function(gameState) {
+                    ResourceManager.addResources({ 
+                        food: 10, 
+                        leather: 5,
+                        fur: 5
+                    });
+                    Utils.log("Your people work to extract maximum value from the hunt.", "success");
+                }
+            }
+        ],
+        conditions: function(gameState) {
+            // More likely in seasons with good hunting
+            const season = gameState.date.season;
+            const chance = (season === "Fall" || season === "Winter") ? 10 : 5;
+            return Utils.chanceOf(chance);
+        },
+        cooldown: 20,
+        weight: 2,
+        importance: "moderate"
+    })
+);
+
+// Cloth Discovery Event
+eventPool.push(
+    createEvent({
+        id: "wool_cloth_trade",
+        title: "Cloth Merchant",
+        description: "A wandering merchant has arrived with bundles of wool and woven cloth, offering to trade or teach your people the basics of weaving.",
+        options: [
+            {
+                text: "Trade for cloth",
+                effects: function(gameState) {
+                    if (ResourceManager.subtractResources({ 
+                        food: 10, 
+                        silver: ResourceManager.isResourceDiscovered("silver") ? 5 : 0 
+                    })) {
+                        ResourceManager.addResources({ cloth: 15 });
+                        Utils.log("You acquire valuable cloth from the merchant.", "success");
+                    } else {
+                        Utils.log("You don't have enough resources to trade.", "important");
+                        ResourceManager.addResources({ cloth: 3 });
+                        Utils.log("The merchant gives you a small sample out of pity.", "important");
+                    }
+                }
+            },
+            {
+                text: "Learn weaving techniques",
+                effects: function(gameState) {
+                    if (ResourceManager.subtractResources({ food: 20 })) {
+                        ResourceManager.addResources({ cloth: 5 });
+                        // Increase base production rate for cloth
+                        const baseRates = ResourceManager.getBaseProductionRates();
+                        baseRates.cloth = 0.5; // Enable basic cloth production
+                        ResourceManager.updateBaseProductionRates(baseRates);
+                        
+                        Utils.log("Your people learn basic weaving techniques.", "success");
+                    } else {
+                        Utils.log("You cannot feed the merchant during his stay.", "important");
+                        ResourceManager.addResources({ cloth: 2 });
+                        Utils.log("The merchant gives you a small amount of cloth before leaving.", "important");
+                    }
+                }
+            }
+        ],
+        conditions: function(gameState) {
+            // Only trigger if cloth hasn't been discovered yet or is very low
+            return (!ResourceManager.isResourceDiscovered || !ResourceManager.isResourceDiscovered("cloth") || 
+                  (ResourceManager.getResources().cloth < 5)) && Utils.chanceOf(5);
+        },
+        cooldown: 40,
+        weight: 1.5,
+        importance: "moderate"
+    })
+);
         
         // Seasonal events
         
