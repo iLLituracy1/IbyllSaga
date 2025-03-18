@@ -122,10 +122,8 @@ const GameEngine = (function() {
             if (nextSeasonIndex === 0) {
                 gameState.date.year++;
                 Utils.log(`A new year begins: Year ${gameState.date.year}`, "important");
-            } else {
-                Utils.log(`The season changes to ${gameState.date.season}`, "important");
             }
-            
+           
             // Process season change for fame
             if (RankManager && typeof RankManager.processSeason === 'function') {
                 RankManager.processSeason(gameState.date, previousSeason);

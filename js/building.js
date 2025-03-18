@@ -841,10 +841,14 @@ const BuildingSystem = (function() {
         }
         
         // Update production rates in ResourceManager
-        // This would require extending ResourceManager to accept base production values
-        // For now, we'll simulate it with worker assignments
-        
-        // TODO: Implement this integration with ResourceManager
+        if (ResourceManager && typeof ResourceManager.updateBaseProductionRates === 'function') {
+            // Apply base production from buildings to ResourceManager
+            ResourceManager.updateBaseProductionRates(baseProduction);
+            
+            // Force an update of production rates with current workers
+            const workerAssignments = PopulationManager.getWorkerAssignments();
+            ResourceManager.updateProductionRates(workerAssignments);
+        }
     }
     
     /**

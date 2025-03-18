@@ -502,7 +502,9 @@ function processThrallsInTick(gameDate, tickSize, resources) {
                         population.children--;
                         population.workers++;
                         changes.childrenGrown++;
-                        Utils.log(`${character.name} has become an adult and joined the workforce.`);
+                        if (Math.random() < 0.3) { // Only show 30% of such messages
+                            Utils.log(`${character.name} has become an adult and joined the workforce.`);
+                        }
                     } else if (character.role === 'worker' && character.age >= ELDER_AGE) {
                         character.role = 'elder';
                         population.workers--;

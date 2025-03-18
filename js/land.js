@@ -1024,7 +1024,7 @@ const LandManager = (function() {
                     
                     // Check if order is complete
                     if (order.progress >= order.target) {
-                        Utils.log(`Order complete: ${order.name} - Your homestead now spans ${landData.totalAcreage.toFixed(1)} acres.`, "success");
+                        Utils.log(`${order.name} completed.`, "success");
                         order.active = false;
                         order.completed = Date.now();
                         

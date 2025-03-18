@@ -210,6 +210,15 @@ const ResourceManager = (function() {
         exotic: 0
     };
     
+    // Building-based production - new property to track building production
+    let buildingProduction = {
+        food: 0,
+        wood: 0,
+        stone: 0,
+        metal: 0,
+        // Other resources will be added as needed
+    };
+    
     // Private methods
     
     /**
@@ -228,11 +237,20 @@ const ResourceManager = (function() {
             }
         }
         
-        // Apply both regular modifiers and region modifiers
+        // Apply both regular modifiers and region modifiers for worker-based production
         productionRates.food = workers.farmers * baseProductionRates.food * productionModifiers.food * regionModifiers.food;
         productionRates.wood = workers.woodcutters * baseProductionRates.wood * productionModifiers.wood * regionModifiers.wood;
         productionRates.stone = workers.miners * baseProductionRates.stone * productionModifiers.stone * regionModifiers.stone;
         productionRates.metal = workers.miners * baseProductionRates.metal * productionModifiers.metal * regionModifiers.metal;
+        
+        // Add building-based production
+        for (const resource in buildingProduction) {
+            if (productionRates.hasOwnProperty(resource)) {
+                // Apply modifiers to building production too
+                const regionMod = regionModifiers[resource] || 1.0;
+                productionRates[resource] += buildingProduction[resource] * productionModifiers[resource] * regionMod;
+            }
+        }
         
         // Special case: hunters can produce leather and fur
         if (workers.hunters) {
@@ -585,13 +603,9 @@ const ResourceManager = (function() {
                 resources[resource] = Math.max(0, resources[resource]);
             }
             
-            // Update UI with new resource values - this is the fixed line
+            // Update UI with new resource values
             updateResourceValuesUI();
             
-            // Notify player if storage is full
-            if (hitCapacity) {
-                Utils.log("Some of your storage is full! Consider building more storehouses.", "important");
-            }
             
             // Check if UI needs to be refreshed for newly discovered resources
             const hasNewAdvancedResources = resourceCategories.advanced.some(
@@ -858,19 +872,15 @@ const ResourceManager = (function() {
         },
         
         /**
-         * Set base production rates from buildings
-         * @param {Object} rates - New base rates
+         * Update base production rates from buildings
+         * @param {Object} buildingProduction - Production values from buildings
          */
-        updateBaseProductionRates: function(rates) {
-            for (const resource in rates) {
-                if (baseProductionRates.hasOwnProperty(resource)) {
-                    baseProductionRates[resource] = rates[resource];
-                }
-            }
+        updateBaseProductionRates: function(newBuildingProduction) {
+            // Store building-based production
+            buildingProduction = { ...newBuildingProduction };
             
-            // Recalculate production rates
-            const workerAssignments = PopulationManager.getWorkerAssignments();
-            this.updateProductionRates(workerAssignments);
+            // Recalculate production rates with worker assignments
+            this.updateProductionRates(PopulationManager.getWorkerAssignments());
         },
         
         /**

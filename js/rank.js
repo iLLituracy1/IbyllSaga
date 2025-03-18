@@ -385,7 +385,7 @@ init: function() {
             currentFame += amount;
             
             // Log fame gain with reason if provided
-            if (reason) {
+            if (reason && amount >= 50) { // Only log significant fame gains
                 Utils.log(`+${amount} Fame: ${reason}`);
             }
             
