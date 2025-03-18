@@ -45,6 +45,12 @@ const NavigationSystem = (function() {
             title: 'Statistics',
             icon: '📊',
             panels: ['statistics-panel']
+        },
+        workers: {
+            id: 'workers-tab',
+            title: 'Workers',
+            icon: '👷',
+            panels: ['worker-panel']
         }
     };
     

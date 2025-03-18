@@ -18,8 +18,8 @@ const GameEngine = (function() {
     
     // Game tick interval (in milliseconds)
     const tickIntervals = {
-        slow: 5000,
-        normal: 2600,
+        slow: 10000,
+        normal: 5000,
         fast: 100
     };
     
@@ -419,6 +419,15 @@ const GameEngine = (function() {
                 
                 console.log("Game started");
             }
+        },
+
+        registerTickProcessor: function(processorFunction) {
+            const originalProcessTick = this.processTick;
+            this.processTick = function() {
+                const result = originalProcessTick.apply(this, arguments);
+                processorFunction(this.getGameState(), arguments[0]);
+                return result;
+            };
         },
         
         /**
