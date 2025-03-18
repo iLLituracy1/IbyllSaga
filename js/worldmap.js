@@ -538,9 +538,9 @@ const REGION_TYPES = {
         };
         
         // Create regions for each landmass
-        createRegionsForLandmass(vikingLandmass, 6);  // Viking Homeland Smaller
-        createRegionsForLandmass(angloLandmass, 14);   // Anglo lands
-        createRegionsForLandmass(frankishLandmass, 15); // Frankish lands
+        createRegionsForLandmass(vikingLandmass, 6);  // More regions in Viking homeland
+        createRegionsForLandmass(angloLandmass, 4);   // Anglo lands
+        createRegionsForLandmass(frankishLandmass, 5); // Frankish lands
         
         // 3. Generate settlements
         
@@ -605,10 +605,10 @@ const REGION_TYPES = {
                 createSettlements(region, Utils.randomBetween(1, 2), SETTLEMENT_TYPES.VIKING);
             } else if (landmass.type === LANDMASS_TYPES.ANGLO_LANDS) {
                 // 1-3 Anglo settlements per region
-                createSettlements(region, Utils.randomBetween(1, 4), SETTLEMENT_TYPES.ANGLO);
+                createSettlements(region, Utils.randomBetween(1, 3), SETTLEMENT_TYPES.ANGLO);
             } else if (landmass.type === LANDMASS_TYPES.FRANKISH_LANDS) {
                 // 1-3 Frankish settlements per region
-                createSettlements(region, Utils.randomBetween(1, 6), SETTLEMENT_TYPES.FRANKISH);
+                createSettlements(region, Utils.randomBetween(1, 3), SETTLEMENT_TYPES.FRANKISH);
             }
         });
         

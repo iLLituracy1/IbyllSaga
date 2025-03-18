@@ -366,43 +366,6 @@ const NavigationSystem = (function() {
         getActiveTab: function() {
             return activeTab;
         },
-
-        switchToPanel: function(panelId) {
-            // First determine which tab the panel belongs to
-            let tabId = null;
-            
-            for (const tab in this.panels) {
-                if (this.panels[tab].includes(panelId)) {
-                    tabId = tab;
-                    break;
-                }
-            }
-            
-            // If we found the tab, switch to it and show the panel
-            if (tabId) {
-                // Switch to the tab first
-                this.switchToTab(tabId);
-                
-                // Then show the specific panel
-                const panel = document.getElementById(panelId);
-                if (panel) {
-                    // Hide all other panels in this tab
-                    this.panels[tabId].forEach(id => {
-                        const p = document.getElementById(id);
-                        if (p) p.classList.add('hidden-panel');
-                    });
-                    
-                    // Show the requested panel
-                    panel.classList.remove('hidden-panel');
-                    
-                    console.log(`Switched to panel: ${panelId} in tab: ${tabId}`);
-                } else {
-                    console.warn(`Panel ${panelId} not found in the DOM.`);
-                }
-            } else {
-                console.warn(`Could not find tab for panel: ${panelId}`);
-            }
-        },
         
         /**
          * Register a panel with a tab
