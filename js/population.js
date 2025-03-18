@@ -658,7 +658,7 @@ const PopulationManager = (function() {
  * Handle a death from starvation
  * More systematic approach that prioritizes vulnerable characters
  */
-handleStarvationDeath: function() {
+    handleStarvationDeath: function() {
     if (characters.length === 0) return;
     
     // Weight characters by vulnerability to starvation

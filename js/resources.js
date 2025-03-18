@@ -590,53 +590,56 @@ const ResourceManager = (function() {
          * @param {Object} population - Current population data
          * @param {number} tickSize - Size of the game tick in days
          */
-        processTick: function(population, tickSize) {
-            // Calculate daily production for basic resources
-            const foodProduced = productionRates.food * tickSize;
-            const woodProduced = productionRates.wood * tickSize;
-            const stoneProduced = productionRates.stone * tickSize;
-            const metalProduced = productionRates.metal * tickSize;
-            
-            // Calculate production for advanced resources
-            const leatherProduced = productionRates.leather * tickSize;
-            const furProduced = productionRates.fur * tickSize;
-            const clothProduced = productionRates.cloth * tickSize;
-            const clayProduced = productionRates.clay * tickSize;
-            const pitchProduced = productionRates.pitch * tickSize;
-            const saltProduced = productionRates.salt * tickSize;
-            const honeyProduced = productionRates.honey * tickSize;
-            const herbsProduced = productionRates.herbs * tickSize;
-            
-            // Calculate production for environmental resources
-            const peatProduced = productionRates.peat * tickSize;
-            const whaleOilProduced = productionRates.whale_oil * tickSize;
-            const iceProduced = productionRates.ice * tickSize;
-            
-            // Wealth resources are mostly gained through events/trade, not passive production
-            
-            // Calculate consumption
-            const foodConsumed = population.total * consumptionRates.food * tickSize;
-            
-            // Initialize resourcesGained object for tracking production
-            const resourcesGained = {
-                food: foodProduced,
-                wood: woodProduced,
-                stone: stoneProduced,
-                metal: metalProduced,
-                leather: leatherProduced,
-                fur: furProduced,
-                cloth: clothProduced,
-                clay: clayProduced,
-                pitch: pitchProduced,
-                salt: saltProduced,
-                honey: honeyProduced,
-                herbs: herbsProduced,
-                peat: peatProduced,
-                whale_oil: whaleOilProduced,
-                ice: iceProduced
-            };
-            
-             // Process each resource respecting storage capacity
+        /**
+ * Process resource production and consumption for a game tick
+ * @param {Object} population - Current population data
+ * @param {number} tickSize - Size of the game tick in days
+ */
+processTick: function(population, tickSize) {
+    // Calculate daily production for basic resources
+    const foodProduced = productionRates.food * tickSize;
+    const woodProduced = productionRates.wood * tickSize;
+    const stoneProduced = productionRates.stone * tickSize;
+    const metalProduced = productionRates.metal * tickSize;
+    
+    // Calculate production for advanced resources
+    const leatherProduced = productionRates.leather * tickSize;
+    const furProduced = productionRates.fur * tickSize;
+    const clothProduced = productionRates.cloth * tickSize;
+    const clayProduced = productionRates.clay * tickSize;
+    const pitchProduced = productionRates.pitch * tickSize;
+    const saltProduced = productionRates.salt * tickSize;
+    const honeyProduced = productionRates.honey * tickSize;
+    const herbsProduced = productionRates.herbs * tickSize;
+    
+    // Calculate production for environmental resources
+    const peatProduced = productionRates.peat * tickSize;
+    const whaleOilProduced = productionRates.whale_oil * tickSize;
+    const iceProduced = productionRates.ice * tickSize;
+    
+    // Calculate consumption
+    const foodConsumed = population.total * consumptionRates.food * tickSize;
+    
+    // Initialize resourcesGained object for tracking production
+    const resourcesGained = {
+        food: foodProduced,
+        wood: woodProduced,
+        stone: stoneProduced,
+        metal: metalProduced,
+        leather: leatherProduced,
+        fur: furProduced,
+        cloth: clothProduced,
+        clay: clayProduced,
+        pitch: pitchProduced,
+        salt: saltProduced,
+        honey: honeyProduced,
+        herbs: herbsProduced,
+        peat: peatProduced,
+        whale_oil: whaleOilProduced,
+        ice: iceProduced
+    };
+    
+    // Process each resource respecting storage capacity
     let hitCapacity = false;
     for (const resource in resourcesGained) {
         const produced = resourcesGained[resource];
@@ -709,33 +712,47 @@ const ResourceManager = (function() {
     };
 },
 
-/* Calculate the severity of starvation based on how long food has been at zero
-* @param {number} previousFood - Previous food amount
-* @param {number} tickSize - Size of the tick in days
-* @returns {number} - Starvation severity (0-10)
-*/
-calculateStarvationSeverity: function(previousFood, tickSize) {
-   // If we had food before but now we're at zero, this is the first day of starvation
-   // Otherwise we've been starving for a while
-   const starvingDays = window.starvationDays || 0;
-   
-   // Update starvation tracker
-   if (previousFood <= 0) {
-       // Already starving, increment counter
-       window.starvationDays = starvingDays + tickSize;
-   } else {
-       // Just started starving
-       window.starvationDays = tickSize;
-   }
-   
-   // Severity increases with time (0-10 scale)
-   // 1-2: mild (occasional death)
-   // 3-5: moderate (regular deaths)
-   // 6-8: severe (multiple deaths per tick)
-   // 9-10: catastrophic (mass deaths)
-   const severity = Math.min(10, Math.floor(window.starvationDays / 3));
-   
-   return severity;
+/**
+ * Calculate starvation severity based on food deficit and population
+ * @param {Object} resources - Current resources object with foodDeficit property
+ * @param {Object} population - Current population object
+ * @returns {number} - Severity level from 0-10 (0 = no starvation, 10 = catastrophic)
+ */
+    calculateStarvationSeverity: function(resources, population) {
+    if (!resources.foodDeficit || resources.foodDeficit <= 0) {
+        return 0; // No starvation
+    }
+    
+    // Calculate how severe the food deficit is relative to population size
+    const foodPerCapita = resources.food / population.total;
+    const deficitPerCapita = resources.foodDeficit / population.total;
+    
+    // Calculate severity based on percentage of deficit per capita
+    let severity = 0;
+    
+    if (resources.food <= 0) {
+        // No food at all - maximum severity
+        severity = 10;
+    } else if (foodPerCapita < 0.1) {
+        // Almost no food per person
+        severity = 9;
+    } else {
+        // Calculate based on deficit ratio
+        const deficitRatio = deficitPerCapita / (foodPerCapita + deficitPerCapita);
+        severity = Math.min(8, Math.floor(deficitRatio * 10));
+    }
+    
+    // Adjust based on how long starvation has been ongoing
+    if (window.starvationDays) {
+        window.starvationDays++;
+        // Increase severity by 1 for each week of starvation
+        severity += Math.floor(window.starvationDays / 7);
+    } else {
+        window.starvationDays = 1; // Start tracking starvation
+    }
+    
+    // Cap at 10
+    return Math.min(10, severity);
 },
         
         /**
