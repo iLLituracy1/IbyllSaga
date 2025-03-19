@@ -316,7 +316,13 @@ const GameEngine = (function() {
         
         // World action buttons (coming soon)
         safeAddEventListener('btn-explore', 'click', function() {
-            Utils.log("Exploration feature coming soon!", "important");
+            if (typeof ExplorerSystem !== 'undefined' && typeof NavigationSystem !== 'undefined') {
+                // Switch directly to the explore tab
+                NavigationSystem.switchToTab('explore');
+                console.log("Switching to explore tab");
+            } else {
+                Utils.log("Exploration feature not available!", "important");
+            }
         });
         
         safeAddEventListener('btn-raid', 'click', function() {
@@ -368,6 +374,16 @@ const GameEngine = (function() {
             LandManager.init();
             StatisticsPanel.init();
             BuildingSystem.init();
+
+                        // Initialize Explorer System
+            if (typeof ExplorerSystem !== 'undefined') {
+                ExplorerSystem.init();
+                
+                // Register explorer tick processor
+                if (typeof ExplorerSystem.processTick === 'function') {
+                    this.registerTickProcessor(ExplorerSystem.processTick);
+                }
+            }
             
             // Step 7: Initialize immigration system
             if (typeof ImmigrationSystem !== 'undefined' && typeof ImmigrationSystem.init === 'function') {
@@ -572,6 +588,7 @@ const GameEngine = (function() {
                 activeOrders: LandManager.getActiveOrders(),
                 buildings: BuildingSystem.getBuildingData(),
                 warriors: BuildingSystem.getWarriorData(),
+                explorer: typeof ExplorerSystem !== 'undefined' ? ExplorerSystem.getExplorerState() : null,
             };
         },
 

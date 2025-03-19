@@ -398,6 +398,142 @@ const REGION_TYPES = {
         
         return settlement;
     }
+
+        /**
+     * Connect regions with neighboring relationships
+     * This should be called during world generation
+     */
+    function connectRegions() {
+        console.log("Connecting regions with neighbors...");
+        
+        // Group regions by landmass
+        const regionsByLandmass = {};
+        worldMap.landmasses.forEach(landmass => {
+            regionsByLandmass[landmass.id] = worldMap.regions.filter(r => r.landmass === landmass.id);
+        });
+        
+        // For each landmass, connect its regions
+        for (const landmassId in regionsByLandmass) {
+            const regions = regionsByLandmass[landmassId];
+            
+            // Initialize neighbors array if needed
+            regions.forEach(region => {
+                if (!region.neighbors) {
+                    region.neighbors = [];
+                }
+            });
+            
+            // Connect regions within the same landmass
+            for (let i = 0; i < regions.length; i++) {
+                for (let j = i + 1; j < regions.length; j++) {
+                    const region1 = regions[i];
+                    const region2 = regions[j];
+                    
+                    // Calculate distance between regions
+                    const dx = region1.position.x - region2.position.x;
+                    const dy = region1.position.y - region2.position.y;
+                    const distance = Math.sqrt(dx*dx + dy*dy);
+                    
+                    // If regions are close enough, connect them
+                    const connectThreshold = (region1.size.width + region2.size.width + 
+                                            region1.size.height + region2.size.height) / 4;
+                    
+                    if (distance < connectThreshold * 1.5) {
+                        // Add bidirectional connection if not already connected
+                        if (!region1.neighbors.includes(region2.id)) {
+                            region1.neighbors.push(region2.id);
+                        }
+                        if (!region2.neighbors.includes(region1.id)) {
+                            region2.neighbors.push(region1.id);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Connect regions between landmasses (sea routes)
+        // For now, just connect the closest regions between each pair of landmasses
+        for (let i = 0; i < worldMap.landmasses.length; i++) {
+            for (let j = i + 1; j < worldMap.landmasses.length; j++) {
+                const landmass1 = worldMap.landmasses[i];
+                const landmass2 = worldMap.landmasses[j];
+                
+                const regions1 = regionsByLandmass[landmass1.id];
+                const regions2 = regionsByLandmass[landmass2.id];
+                
+                // Find coastal regions in each landmass
+                const coastal1 = regions1.filter(r => r.type === 'COASTAL' || r.type === 'FJORD');
+                const coastal2 = regions2.filter(r => r.type === 'COASTAL' || r.type === 'FJORD');
+                
+                if (coastal1.length > 0 && coastal2.length > 0) {
+                    // Find the closest pair of coastal regions
+                    let closestPair = null;
+                    let shortestDistance = Infinity;
+                    
+                    for (const r1 of coastal1) {
+                        for (const r2 of coastal2) {
+                            const dx = r1.position.x - r2.position.x;
+                            const dy = r1.position.y - r2.position.y;
+                            const distance = Math.sqrt(dx*dx + dy*dy);
+                            
+                            if (distance < shortestDistance) {
+                                shortestDistance = distance;
+                                closestPair = [r1, r2];
+                            }
+                        }
+                    }
+                    
+                    // Connect the closest pair
+                    if (closestPair) {
+                        const [r1, r2] = closestPair;
+                        if (!r1.neighbors.includes(r2.id)) {
+                            r1.neighbors.push(r2.id);
+                        }
+                        if (!r2.neighbors.includes(r1.id)) {
+                            r2.neighbors.push(r1.id);
+                        }
+                        
+                        console.log(`Connected ${r1.name} and ${r2.name} with a sea route`);
+                    }
+                }
+            }
+        }
+        
+        // Ensure all regions have at least one connection
+        worldMap.regions.forEach(region => {
+            if (!region.neighbors || region.neighbors.length === 0) {
+                console.log(`Region ${region.name} has no connections, finding closest region...`);
+                
+                let closestRegion = null;
+                let shortestDistance = Infinity;
+                
+                for (const otherRegion of worldMap.regions) {
+                    if (otherRegion.id === region.id) continue;
+                    
+                    const dx = region.position.x - otherRegion.position.x;
+                    const dy = region.position.y - otherRegion.position.y;
+                    const distance = Math.sqrt(dx*dx + dy*dy);
+                    
+                    if (distance < shortestDistance) {
+                        shortestDistance = distance;
+                        closestRegion = otherRegion;
+                    }
+                }
+                
+                if (closestRegion) {
+                    if (!region.neighbors) region.neighbors = [];
+                    if (!closestRegion.neighbors) closestRegion.neighbors = [];
+                    
+                    region.neighbors.push(closestRegion.id);
+                    closestRegion.neighbors.push(region.id);
+                    
+                    console.log(`Connected ${region.name} to ${closestRegion.name}`);
+                }
+            }
+        });
+        
+        console.log("Region connections established");
+    }
     
     /**
      * Apply region resource modifiers to the player's resources
@@ -611,6 +747,9 @@ const REGION_TYPES = {
                 createSettlements(region, Utils.randomBetween(1, 3), SETTLEMENT_TYPES.FRANKISH);
             }
         });
+
+            // Connect regions to establish travel routes
+            connectRegions();
         
         console.log("World generation complete");
         console.log(`Created ${worldMap.landmasses.length} landmasses`);
@@ -715,7 +854,7 @@ const REGION_TYPES = {
                     <div id="settlements-list">None discovered yet.</div>
                 </div>
                 <div class="world-actions">
-                    <button id="btn-explore" disabled>Explore (Coming Soon)</button>
+                    <button id="btn-explore">Explore</button>
                     <button id="btn-raid" disabled>Raid (Coming Soon)</button>
                     <button id="btn-trade" disabled>Trade (Coming Soon)</button>
                 </div>
@@ -787,6 +926,54 @@ const REGION_TYPES = {
                     settlementsListElement.textContent = 'No settlements nearby.';
                 }
             }
+        },
+
+                /**
+         * Get neighboring regions of a specific region
+         * @param {string} regionId - ID of the region
+         * @returns {Array} - Array of neighboring region objects
+         */
+        getNeighborRegions: function(regionId) {
+            const region = this.getRegion(regionId);
+            if (!region || !region.neighbors) return [];
+            
+            return region.neighbors.map(id => this.getRegion(id)).filter(r => r !== null);
+        },
+
+        /**
+         * Check if two regions are neighbors
+         * @param {string} regionId1 - ID of the first region
+         * @param {string} regionId2 - ID of the second region
+         * @returns {boolean} - Whether the regions are neighbors
+         */
+        areRegionsNeighbors: function(regionId1, regionId2) {
+            const region1 = this.getRegion(regionId1);
+            if (!region1 || !region1.neighbors) return false;
+            
+            return region1.neighbors.includes(regionId2);
+        },
+
+        /**
+         * Get the travel type between two regions
+         * @param {string} regionId1 - ID of the first region
+         * @param {string} regionId2 - ID of the second region
+         * @returns {string} - Type of travel: 'land', 'sea', or 'none'
+         */
+        getTravelType: function(regionId1, regionId2) {
+            if (!this.areRegionsNeighbors(regionId1, regionId2)) {
+                return 'none';
+            }
+            
+            const region1 = this.getRegion(regionId1);
+            const region2 = this.getRegion(regionId2);
+            
+            // If regions are in different landmasses, it's a sea route
+            if (region1.landmass !== region2.landmass) {
+                return 'sea';
+            }
+            
+            // Otherwise it's a land route
+            return 'land';
         },
         
         /**
