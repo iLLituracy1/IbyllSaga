@@ -275,7 +275,7 @@ const ExplorerSystem = (function() {
                             </div>
                             
                             <div class="party-location">
-                                <div>Location: <span id="current-region-name">Home</span></div>
+                                <div>Location: <span id="party-current-region">Home</span></div>
                                 <div id="travel-status" class="hidden">
                                     <div>Traveling to: <span id="destination-name"></span></div>
                                     <div>Time remaining: <span id="travel-days">0</span> days</div>
@@ -316,12 +316,11 @@ const ExplorerSystem = (function() {
             // Add event listeners
             setupEventListeners();
             
-                // Register with NavigationSystem correctly
-        if (typeof NavigationSystem !== 'undefined') {
-            NavigationSystem.registerPanel('explorer-panel', 'explore');
-            console.log("Explorer panel registered with 'explore' tab");
-        }
-
+            // Register with NavigationSystem correctly
+            if (typeof NavigationSystem !== 'undefined') {
+                NavigationSystem.registerPanel('explorer-panel', 'explore');
+                console.log("Explorer panel registered with 'explore' tab");
+            }
         }
         
         // Add CSS for explorer panel
@@ -897,7 +896,7 @@ const ExplorerSystem = (function() {
             // Get current region name
             const currentRegion = WorldMap.getRegion(partyData.currentRegion);
             if (currentRegion) {
-                Utils.updateElement('current-region-name', currentRegion.name);
+                Utils.updateElement('party-current-region', currentRegion.name);
             }
             
             // Update neighboring regions
@@ -1103,7 +1102,7 @@ const ExplorerSystem = (function() {
                 
                 // Update UI
                 document.getElementById('travel-status').classList.add('hidden');
-                Utils.updateElement('current-region-name', newRegion.name);
+                Utils.updateElement('party-current-region', newRegion.name);
                 
                 // Show/hide return home button
                 const returnButton = document.getElementById('btn-return-home');

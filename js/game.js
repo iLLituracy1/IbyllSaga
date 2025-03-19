@@ -376,14 +376,14 @@ const GameEngine = (function() {
             BuildingSystem.init();
 
                         // Initialize Explorer System
-            if (typeof ExplorerSystem !== 'undefined') {
-                ExplorerSystem.init();
-                
-                // Register explorer tick processor
-                if (typeof ExplorerSystem.processTick === 'function') {
-                    this.registerTickProcessor(ExplorerSystem.processTick);
-                }
-            }
+                        if (typeof ExplorerSystem !== 'undefined') {
+                            ExplorerSystem.init();
+                            
+                            // Register explorer tick processor
+                            if (typeof ExplorerSystem.processTick === 'function') {
+                                this.registerTickProcessor(ExplorerSystem.processTick.bind(ExplorerSystem));
+                            }
+                        }
             
             // Step 7: Initialize immigration system
             if (typeof ImmigrationSystem !== 'undefined' && typeof ImmigrationSystem.init === 'function') {
