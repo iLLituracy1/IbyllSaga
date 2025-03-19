@@ -1,0 +1,404 @@
+/* Viking Legacy - Faction Integration Styles */
+
+/* Common section styling */
+#locations-section,
+#politics-panel {
+    margin-top: 20px;
+    background-color: #f7f0e3;
+    padding: 15px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+#locations-section h4,
+#politics-panel h4,
+.politics-panel h4 {
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    color: #5d4037;
+    margin-top: 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #c9ba9b;
+    padding-bottom: 5px;
+}
+
+/* Location items */
+.location-item {
+    padding: 10px;
+    margin-bottom: 8px;
+    background-color: #f8f5f0;
+    border-radius: 4px;
+    border-left: 3px solid #8b7355;
+    transition: all 0.2s ease;
+}
+
+.location-item:hover {
+    background-color: #f0e6d2;
+}
+
+.location-name {
+    font-weight: bold;
+    color: #5d4037;
+    margin-bottom: 5px;
+}
+
+.location-type {
+    font-size: 0.9rem;
+    color: #8b7355;
+}
+
+.location-buttons {
+    margin-top: 10px;
+    display: flex;
+    gap: 5px;
+}
+
+/* Faction-specific styles */
+.location-norse {
+    border-left-color: #3949ab; /* Viking blue */
+}
+
+.location-anglo-saxon {
+    border-left-color: #4caf50; /* Anglo green */
+}
+
+.location-frankish {
+    border-left-color: #ff9800; /* Frankish orange */
+}
+
+/* Location detail panel */
+.location-detail-panel {
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 15px;
+    border-left: 4px solid #8b5d33;
+    display: none;
+}
+
+.location-detail-panel.visible {
+    display: block;
+}
+
+.location-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.location-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.location-action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.btn-close-location,
+.btn-view-location,
+.btn-raid-location,
+.btn-visit-location {
+    padding: 5px 10px;
+    background-color: #8b5d33;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-close-location:hover,
+.btn-view-location:hover,
+.btn-raid-location:hover,
+.btn-visit-location:hover {
+    background-color: #a97c50;
+}
+
+.btn-raid-location {
+    background-color: #c62828; /* Red for raid */
+}
+
+.btn-raid-location:hover {
+    background-color: #e53935;
+}
+
+.btn-visit-location {
+    background-color: #2e7d32; /* Green for visit */
+}
+
+.btn-visit-location:hover {
+    background-color: #388e3c;
+}
+
+/* Politics Panel Styles */
+.politics-panel {
+    margin-top: 20px;
+    background-color: #f7f0e3;
+    padding: 15px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+#regional-politics {
+    background-color: #fff;
+    border-radius: 4px;
+    padding: 12px;
+    margin-top: 10px;
+}
+
+.faction-culture {
+    margin-bottom: 20px;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.faction-culture h5 {
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    color: #5d4037;
+    margin-top: 0;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #e5d5c0;
+}
+
+/* Culture-specific backgrounds */
+.faction-norse {
+    background-color: rgba(57, 73, 171, 0.1); /* Viking blue (light) */
+    border-left: 3px solid #3949ab;
+}
+
+.faction-anglo_saxon {
+    background-color: rgba(76, 175, 80, 0.1); /* Anglo green (light) */
+    border-left: 3px solid #4caf50;
+}
+
+.faction-frankish {
+    background-color: rgba(255, 152, 0, 0.1); /* Frankish orange (light) */
+    border-left: 3px solid #ff9800;
+}
+
+/* Faction item styling */
+.faction-item {
+    margin: 8px 0;
+    padding: 10px;
+    background-color: #fff;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border-left: 3px solid #8b7355;
+}
+
+.faction-name {
+    font-weight: 600;
+    color: #5d4037;
+    margin-bottom: 4px;
+}
+
+.faction-ruler {
+    font-size: 0.9rem;
+    color: #6d4c2a;
+    font-style: italic;
+    margin-bottom: 8px;
+}
+
+/* Rank-specific faction styles */
+.kingdom-faction {
+    border-left: 4px solid #ffd700; /* Gold */
+    background-color: #fff9e0;
+}
+
+.major-faction {
+    border-left: 4px solid #c0c0c0; /* Silver */
+    background-color: #f8f8f8;
+}
+
+.regional-faction {
+    border-left: 4px solid #cd7f32; /* Bronze */
+    background-color: #fff7f0;
+}
+
+.minor-faction {
+    border-left: 3px solid #8b7355; /* Brown */
+}
+
+/* Faction detail panel */
+#faction-detail-panel {
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 15px;
+    border-left: 4px solid #8b5d33;
+    display: none;
+}
+
+#faction-detail-panel.visible {
+    display: block;
+}
+
+.faction-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #e5d5c0;
+    padding-bottom: 8px;
+}
+
+.faction-header h4 {
+    margin: 0;
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    color: #5d4037;
+}
+
+.faction-ruler,
+.faction-capital,
+.faction-strength,
+.faction-relations,
+.faction-vassals,
+.faction-liege {
+    margin-bottom: 15px;
+}
+
+.faction-ruler h5,
+.faction-capital h5,
+.faction-strength h5,
+.faction-relations h5,
+.faction-vassals h5,
+.faction-liege h5 {
+    margin-top: 0;
+    margin-bottom: 5px;
+    font-size: 0.95rem;
+    color: #6d4c2a;
+}
+
+.ruler-name {
+    font-weight: 600;
+    color: #5d4037;
+}
+
+.ruler-traits {
+    font-style: italic;
+    font-size: 0.9rem;
+    color: #8b7355;
+    margin-top: 3px;
+}
+
+.vassals-list {
+    padding-left: 20px;
+    margin: 5px 0;
+}
+
+.vassals-list li {
+    margin-bottom: 5px;
+}
+
+.vassal-title,
+.liege-title {
+    font-weight: 600;
+    margin-right: 5px;
+}
+
+.vassal-faction,
+.liege-faction {
+    font-size: 0.9rem;
+    color: #8b7355;
+    margin-left: 5px;
+}
+
+.faction-action-buttons {
+    margin-top: 15px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Relation styling */
+.relation {
+    padding: 5px 10px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+.relation.friendly {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.relation.positive {
+    background-color: #e0f2f1;
+    color: #00796b;
+}
+
+.relation.cordial {
+    background-color: #e1f5fe;
+    color: #0288d1;
+}
+
+.relation.neutral {
+    background-color: #f5f5f5;
+    color: #616161;
+}
+
+.relation.wary {
+    background-color: #fff3e0;
+    color: #ef6c00;
+}
+
+.relation.negative {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+.relation.hostile {
+    background-color: #ffcdd2;
+    color: #b71c1c;
+}
+
+/* Settlement faction info */
+.settlement-faction-info {
+    margin: 15px 0;
+    padding: 10px;
+    background-color: #f8f5f0;
+    border-radius: 4px;
+    border-left: 3px solid #8b5d33;
+}
+
+.settlement-faction-info h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #5d4037;
+    border-bottom: 1px solid #e5d5c0;
+    padding-bottom: 5px;
+}
+
+.faction-details {
+    margin-bottom: 10px;
+}
+
+.faction-details div {
+    margin-bottom: 5px;
+}
+
+.faction-action {
+    margin-top: 10px;
+}
+
+.btn-view-faction,
+.btn-view-faction-details {
+    padding: 5px 10px;
+    background-color: #8b5d33;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.btn-view-faction:hover,
+.btn-view-faction-details:hover {
+    background-color: #a97c50;
+}
