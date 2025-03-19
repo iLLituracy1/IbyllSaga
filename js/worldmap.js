@@ -293,7 +293,7 @@ const REGION_TYPES = {
      */
     function generateSettlement(region, type, position, isPlayer = false) {
         const landmass = worldMap.landmasses.find(lm => lm.id === region.landmass);
-        
+
         if (!landmass) {
             console.error(`Landmass not found for region: ${region.id}`);
             return null;
@@ -390,6 +390,9 @@ const REGION_TYPES = {
                 relationValue = Utils.randomBetween(30, 70);
             }
             
+
+            settlement.region = region.id
+
             settlement.relations[otherSettlement.id] = relationValue;
             
             // Add reciprocal relation
@@ -925,6 +928,29 @@ const REGION_TYPES = {
                 } else {
                     settlementsListElement.textContent = 'No settlements nearby.';
                 }
+
+                const currentRegionSettlements = this.getSettlementsByRegion(playerRegion.id);
+                const regionalSettlementsElement = document.getElementById('regional-settlements-list');
+
+                if (regionalSettlementsElement) {
+                    if (currentRegionSettlements.length > 0) {
+                        let settlementsHTML = '';
+                        
+                        currentRegionSettlements.forEach(settlement => {
+                            settlementsHTML += `
+                                <div class="settlement-item settlement-${settlement.type.toLowerCase()}">
+                                    <div class="settlement-name">${settlement.name}</div>
+                                    <div class="settlement-type">${settlement.type}</div>
+                                    <div class="settlement-population">Population: ~${settlement.population}</div>
+                                </div>
+                            `;
+                        });
+                        
+                        regionalSettlementsElement.innerHTML = settlementsHTML;
+                    } else {
+                        regionalSettlementsElement.textContent = 'No settlements in this region.';
+                    }
+                }
             }
         },
 
@@ -975,6 +1001,23 @@ const REGION_TYPES = {
             // Otherwise it's a land route
             return 'land';
         },
+
+        /**
+         * Get settlements in a specific region
+         * @param {string} regionId - ID of the region to check
+         * @returns {Array} - Array of settlement objects in the region
+         */
+        getSettlementsByRegion: function(regionId) {
+            if (!regionId) return [];
+            
+            // First, check if the region exists
+            const region = this.getRegion(regionId);
+            if (!region) return [];
+            
+            // Return all settlements in this region
+            return worldMap.settlements.filter(s => s.region === regionId);
+        },
+
         
         /**
          * Get the world map data
@@ -1011,13 +1054,21 @@ const REGION_TYPES = {
             return worldMap.landmasses.find(lm => lm.id === landmassId);
         },
         
-        /**
-         * Get region by ID
+            /**
+         * Get region by ID with optional settlement data
          * @param {string} regionId - ID of the region
-         * @returns {Object|undefined} - Region object
+         * @param {boolean} includeSettlements - Whether to include settlement data
+         * @returns {Object|undefined} - Region object or undefined if not found
          */
-        getRegion: function(regionId) {
-            return worldMap.regions.find(r => r.id === regionId);
+        getRegion: function(regionId, includeSettlements = false) {
+            const region = worldMap.regions.find(r => r.id === regionId);
+            
+            // If we want to include settlements, add them to the region object
+            if (region && includeSettlements) {
+                region.settlements = this.getSettlementsByRegion(regionId);
+            }
+            
+            return region;
         },
         
         /**

@@ -298,6 +298,13 @@ const ExplorerSystem = (function() {
                                 <p>No neighboring regions available.</p>
                             </div>
                         </div>
+
+                         <div id="settlements-section">
+                            <h4>Settlements in Region</h4>
+                            <div id="settlements-list-explorer">
+                            <p>No settlements discovered in this region.</p>
+                        </div>
+                    </div>
                         
                         <div id="exploration-actions" class="${partyData.active ? '' : 'hidden'}">
                             <button id="btn-explore-region" disabled>Explore Selected Region</button>
@@ -629,6 +636,119 @@ const ExplorerSystem = (function() {
             .hidden {
                 display: none;
             }
+
+             /* Settlement styles */
+        #settlements-section {
+            margin-top: 20px;
+        }
+        
+        .settlement-explorer-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            background-color: #f8f5f0;
+            border-radius: 4px;
+            border-left: 3px solid #8b7355;
+            transition: all 0.2s ease;
+        }
+        
+        .settlement-explorer-item:hover {
+            background-color: #f0e6d2;
+        }
+        
+        .settlement-explorer-item .settlement-name {
+            font-weight: bold;
+            color: #5d4037;
+            margin-bottom: 5px;
+        }
+        
+        .settlement-explorer-item .settlement-type {
+            font-size: 0.9rem;
+            color: #8b7355;
+        }
+        
+        .settlement-explorer-item .settlement-size {
+            font-size: 0.85rem;
+            color: #6d4c2a;
+            margin-top: 5px;
+        }
+        
+        .settlement-explorer-item .settlement-buttons {
+            margin-top: 10px;
+            display: flex;
+            gap: 5px;
+        }
+        
+        /* Relationship colors */
+        .relationship-friendly {
+            border-left-color: #2e7d32; /* Green */
+        }
+        
+        .relationship-cautious {
+            border-left-color: #ff8f00; /* Orange */
+        }
+        
+        .relationship-neutral {
+            border-left-color: #8b7355; /* Default brown */
+        }
+        
+        .relationship-hostile {
+            border-left-color: #c62828; /* Red */
+        }
+        
+        /* Settlement type colors */
+        .settlement-viking {
+            background-color: #e3f2fd; /* Light blue */
+        }
+        
+        .settlement-anglo {
+            background-color: #f1f8e9; /* Light green */
+        }
+        
+        .settlement-frankish {
+            background-color: #fff3e0; /* Light orange */
+        }
+        
+        .settlement-neutral {
+            background-color: #f5f5f5; /* Light gray */
+        }
+        
+        /* Settlement detail panel */
+        .settlement-detail-panel {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            border-left: 4px solid #8b5d33;
+            display: none;
+        }
+        
+        .settlement-detail-panel.visible {
+            display: block;
+        }
+        
+        .settlement-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .settlement-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .settlement-action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .btn-close-settlement {
+            margin-left: auto;
+        }
         `;
         
         document.head.appendChild(styleElement);
@@ -713,6 +833,67 @@ const ExplorerSystem = (function() {
             });
         });
     }
+
+    /**
+ * Get settlements in the current region
+ * @returns {Array} - Array of settlement objects in current region
+ */
+function getSettlementsInCurrentRegion() {
+    if (!partyData.currentRegion) return [];
+    
+    return WorldMap.getSettlementsByRegion(partyData.currentRegion);
+}
+
+/**
+ * Update settlements list in the explorer UI
+ */
+function updateSettlementsList() {
+    const settlementsListElement = document.getElementById('settlements-list-explorer');
+    if (!settlementsListElement) return;
+    
+    const settlements = getSettlementsInCurrentRegion();
+    
+    if (settlements.length === 0) {
+        settlementsListElement.innerHTML = '<p>No settlements discovered in this region.</p>';
+        return;
+    }
+    
+    let settlementsHTML = '';
+    
+    settlements.forEach(settlement => {
+        // Determine relationship status - this can be expanded later
+        let relationshipClass = 'neutral';
+        if (settlement.isPlayer) {
+            relationshipClass = 'friendly';
+        } else if (settlement.type === 'VIKING') {
+            relationshipClass = 'cautious'; // Fellow Vikings are cautious
+        } else {
+            relationshipClass = 'hostile'; // Others are initially hostile
+        }
+        
+        settlementsHTML += `
+            <div class="settlement-explorer-item settlement-${settlement.type.toLowerCase()} relationship-${relationshipClass}" 
+                 data-settlement-id="${settlement.id}">
+                <div class="settlement-name">${settlement.name}</div>
+                <div class="settlement-type">${settlement.type}</div>
+                <div class="settlement-size">Population: ~${settlement.population}</div>
+                <div class="settlement-buttons">
+                    <button class="btn-visit-settlement" data-settlement-id="${settlement.id}">Visit</button>
+                </div>
+            </div>
+        `;
+    });
+    
+    settlementsListElement.innerHTML = settlementsHTML;
+    
+    // Add event listeners for settlement buttons
+    document.querySelectorAll('.btn-visit-settlement').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const settlementId = this.dataset.settlementId;
+            ExplorerSystem.visitSettlement(settlementId);
+        });
+    });
+}
     
     // Public API
     return {
@@ -901,6 +1082,7 @@ const ExplorerSystem = (function() {
             
             // Update neighboring regions
             updateNeighboringRegions();
+            updateSettlementsList();
             
             // Log to game console
             Utils.log(`Mustered a ${partyType.name} with ${warriorCount} warriors.`, "success");
@@ -1006,6 +1188,122 @@ const ExplorerSystem = (function() {
             Utils.log(`Your party is traveling to ${destRegion.name}. The journey will take ${travelTime} days.`, "important");
         },
         
+        /**
+ * Visit a settlement in the current region
+ * @param {string} settlementId - ID of the settlement to visit
+ */
+visitSettlement: function(settlementId) {
+    if (!partyData.active || partyData.travelStatus.traveling) {
+        Utils.log("No active party available for travel", "important");
+        return;
+    }
+    
+    const settlement = WorldMap.getSettlement(settlementId);
+    if (!settlement) {
+        Utils.log("Settlement not found", "important");
+        return;
+    }
+    
+    // Check if the settlement is in the current region
+    if (settlement.region !== partyData.currentRegion) {
+        Utils.log("Settlement is not in the current region", "important");
+        return;
+    }
+    
+    // Log the visit
+    Utils.log(`Your party approaches ${settlement.name}.`, "success");
+    
+    // Show settlement details panel
+    this.showSettlementDetails(settlement);
+},
+
+/**
+ * Show detailed information about a settlement
+ * @param {Object} settlement - Settlement object
+ */
+showSettlementDetails: function(settlement) {
+    // Create settlement detail panel if it doesn't exist
+    let detailPanel = document.getElementById('settlement-detail-panel');
+    
+    if (!detailPanel) {
+        detailPanel = document.createElement('div');
+        detailPanel.id = 'settlement-detail-panel';
+        detailPanel.className = 'settlement-detail-panel';
+        
+        // Insert after settlements list
+        const settlementsSection = document.getElementById('settlements-section');
+        if (settlementsSection) {
+            settlementsSection.appendChild(detailPanel);
+        }
+    }
+    
+    // Populate with settlement details
+    detailPanel.innerHTML = `
+        <div class="settlement-header">
+            <h4>${settlement.name}</h4>
+            <button class="btn-close-settlement">×</button>
+        </div>
+        <div class="settlement-description">
+            A ${settlement.type.toLowerCase()} settlement with approximately ${settlement.population} inhabitants.
+        </div>
+        <div class="settlement-stats">
+            <div>
+                <strong>Type:</strong> ${settlement.type}
+            </div>
+            <div>
+                <strong>Population:</strong> ${settlement.population}
+            </div>
+            <div>
+                <strong>Military:</strong> ${settlement.military ? settlement.military.warriors : 'Unknown'} warriors
+            </div>
+            <div>
+                <strong>Defenses:</strong> ${settlement.military ? settlement.military.defenses : 'Unknown'}
+            </div>
+        </div>
+        <div class="settlement-action-buttons">
+            <button class="btn-trade" data-settlement-id="${settlement.id}" disabled>Trade (Coming Soon)</button>
+            <button class="btn-negotiate" data-settlement-id="${settlement.id}" disabled>Negotiate (Coming Soon)</button>
+            <button class="btn-raid" data-settlement-id="${settlement.id}" disabled>Raid (Coming Soon)</button>
+        </div>
+    `;
+    
+    // Make panel visible
+    detailPanel.classList.add('visible');
+    
+    // Add event listener for close button
+    const closeButton = detailPanel.querySelector('.btn-close-settlement');
+    if (closeButton) {
+        closeButton.addEventListener('click', function() {
+            detailPanel.classList.remove('visible');
+        });
+    }
+},
+
+/**
+ * Update the explorer UI when arriving at a new region
+ * @param {Object} region - The new region
+ */
+updateRegionArrival: function(region) {
+    // Update neighboring regions
+    updateNeighboringRegions();
+    
+    // Update settlements in the region
+    updateSettlementsList();
+    
+    // Log arrival
+    Utils.log(`Your party has arrived in ${region.name}.`, "success");
+    
+    // Apply region resource modifiers if in home region
+    if (partyData.currentRegion === partyData.homeRegion && 
+        typeof WorldMap.updateRegionResourceModifiers === 'function') {
+        WorldMap.updateRegionResourceModifiers(region);
+    }
+    
+    // Discover regional resources
+    this.discoverRegionalResources(region);
+},
+
+
         /**
          * Return to home region
          */
@@ -1115,11 +1413,7 @@ const ExplorerSystem = (function() {
                     }
                 }
                 
-                // Update neighboring regions
-                updateNeighboringRegions();
-                
-                // Log to game console
-                Utils.log(`Your party has arrived in ${newRegion.name}.`, "success");
+                this.updateRegionArrival(newRegion);
                 
                 // Apply region resource modifiers if in home region (as if we moved the settlement)
                 if (partyData.currentRegion === partyData.homeRegion && typeof WorldMap.updateRegionResourceModifiers === 'function') {
