@@ -303,6 +303,28 @@ const BattleSystem = (function() {
             }
             
             console.log("Battle System initialized");
+
+            // Register battle integration system
+if (typeof window !== 'undefined' && !window.battleIntegrationRegistered) {
+    // Ensure ExplorerSystem has correct warrior adjustment
+    const originalAdjustWarriorCount = ExplorerSystem.adjustWarriorCount;
+    ExplorerSystem.adjustWarriorCount = function(count) {
+        // Call original function
+        originalAdjustWarriorCount.call(ExplorerSystem, count);
+        
+        // Double-check that party data was updated
+        const state = ExplorerSystem.getExplorerState();
+        if (state.warriors !== count) {
+            console.warn(`Warrior count mismatch detected! UI: ${count}, Data: ${state.warriors}`);
+            // Force the update
+            partyData.warriors = count;
+            partyData.strength = calculatePartyStrength(count, partyData.type);
+        }
+    };
+    
+    window.battleIntegrationRegistered = true;
+    console.log("Battle integration system registered successfully");
+}
         },
         
         /**

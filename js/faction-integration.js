@@ -1576,83 +1576,92 @@ const FactionIntegration = (function() {
     }
     
     /**
-     * Update the location display in the explorer panel
-     */
-    function updateLocationDisplay() {
-        // Get current explorer state
-        if (typeof ExplorerSystem === 'undefined' || !ExplorerSystem.getExplorerState) return;
+ * Update the location display in the explorer panel
+ */
+function updateLocationDisplay() {
+    // Get current explorer state
+    if (typeof ExplorerSystem === 'undefined' || !ExplorerSystem.getExplorerState) return;
+    
+    const explorerState = ExplorerSystem.getExplorerState();
+    if (!explorerState || !explorerState.currentRegion) return;
+    
+    // Get locations in the current region that are discovered
+    const regionLocations = factionData.specialLocations.filter(
+        loc => loc.regionId === explorerState.currentRegion && loc.discovered
+    );
+    
+    // Check if locations section exists, create it if not
+    let locationsSection = document.getElementById('locations-section');
+    let locationsList;
+    
+    if (!locationsSection) {
+        // Create locations section
+        locationsSection = document.createElement('div');
+        locationsSection.id = 'locations-section';
+        locationsSection.innerHTML = `
+            <h4>Special Locations</h4>
+            <div id="locations-list">
+                <p>No special locations discovered in this region.</p>
+            </div>
+        `;
         
-        const explorerState = ExplorerSystem.getExplorerState();
-        if (!explorerState || !explorerState.currentRegion) return;
-        
-        // Get locations in the current region that are discovered
-        const regionLocations = factionData.specialLocations.filter(
-            loc => loc.regionId === explorerState.currentRegion && loc.discovered
-        );
-        
-        // Find locations list element
-        const locationsList = document.getElementById('locations-list');
-        if (!locationsList) {
-            // Create locations section if it doesn't exist
-            const locationsSection = document.createElement('div');
-            locationsSection.id = 'locations-section';
-            locationsSection.innerHTML = `
-                <h4>Special Locations</h4>
-                <div id="locations-list">
-                    <p>No special locations discovered in this region.</p>
-                </div>
-            `;
-            
-            // Add to explorer panel
-            const explorerContent = document.querySelector('.exploration-section');
-            if (explorerContent) {
-                explorerContent.appendChild(locationsSection);
-            }
-            
-            // Now try to get the list again
-            const locationsList = document.getElementById('locations-list');
-            if (!locationsList) return;
-        }
-        
-        // Update locations list
-        if (regionLocations.length === 0) {
-            locationsList.innerHTML = '<p>No special locations discovered in this region.</p>';
+        // Add to explorer panel
+        const explorerContent = document.querySelector('.exploration-section');
+        if (explorerContent) {
+            explorerContent.appendChild(locationsSection);
+        } else {
+            // If we can't find the exploration section, we can't proceed
+            console.warn("Exploration section not found, cannot display locations");
             return;
         }
-        
-        let locationsHTML = '';
-        
-        regionLocations.forEach(location => {
-            // Determine relationship class for styling
-            let relationshipClass = 'neutral';
-            if (location.factionType === 'NORSE') {
-                relationshipClass = 'cautious';
-            } else if (location.factionType === 'ANGLO_SAXON' || location.factionType === 'FRANKISH') {
-                relationshipClass = 'hostile';
-            }
-            
-            // Create HTML
-            locationsHTML += `
-                <div class="settlement-explorer-item relationship-${relationshipClass}" data-location-id="${location.id}">
-                    <div class="settlement-name">${location.name}</div>
-                    <div class="settlement-type">${location.factionType.split('_').join('-')}</div>
-                    <div class="settlement-buttons">
-                        <button class="btn-view-location" data-location-id="${location.id}">View</button>
-                    </div>
-                </div>
-            `;
-        });
-        
-        locationsList.innerHTML = locationsHTML;
-        
-        // Add event listeners
-        document.querySelectorAll('.btn-view-location').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const locationId = this.dataset.locationId;
-                ExplorerSystem.showLocationDetails(locationId);
-            });
-        });
     }
+    
+    // Now get the locations list element
+    locationsList = document.getElementById('locations-list');
+    if (!locationsList) {
+        console.warn("Locations list element not found even after creating it");
+        return;
+    }
+    
+    // Update locations list
+    if (regionLocations.length === 0) {
+        locationsList.innerHTML = '<p>No special locations discovered in this region.</p>';
+        return;
+    }
+    
+    let locationsHTML = '';
+    
+    regionLocations.forEach(location => {
+        // Determine relationship class for styling
+        let relationshipClass = 'neutral';
+        if (location.factionType === 'NORSE') {
+            relationshipClass = 'cautious';
+        } else if (location.factionType === 'ANGLO_SAXON' || location.factionType === 'FRANKISH') {
+            relationshipClass = 'hostile';
+        }
+        
+        // Create HTML
+        locationsHTML += `
+            <div class="settlement-explorer-item relationship-${relationshipClass}" data-location-id="${location.id}">
+                <div class="settlement-name">${location.name}</div>
+                <div class="settlement-type">${location.factionType.split('_').join('-')}</div>
+                <div class="settlement-buttons">
+                    <button class="btn-view-location" data-location-id="${location.id}">View</button>
+                </div>
+            </div>
+        `;
+    });
+    
+    locationsList.innerHTML = locationsHTML;
+    
+    // Add event listeners
+    document.querySelectorAll('.btn-view-location').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const locationId = this.dataset.locationId;
+            ExplorerSystem.showLocationDetails(locationId);
+        });
+    });
+}
     
     /**
      * Process a raid on a special location

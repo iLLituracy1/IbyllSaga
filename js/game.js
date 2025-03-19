@@ -401,9 +401,6 @@ const GameEngine = (function() {
             if (typeof NavigationSystem !== 'undefined') {
                 // Check if panel elements exist in the DOM before registering
                 const panelsToRegister = [
-                    { id: 'resources-panel', tab: 'settlement' },
-                    { id: 'population-panel', tab: 'settlement' },
-                    { id: 'actions-panel', tab: 'settlement' },
                     { id: 'log-panel', tab: 'saga' },
                     { id: 'world-panel', tab: 'world' }
                 ];
