@@ -1263,7 +1263,7 @@ showSettlementDetails: function(settlement) {
         <div class="settlement-action-buttons">
             <button class="btn-trade" data-settlement-id="${settlement.id}" disabled>Trade (Coming Soon)</button>
             <button class="btn-negotiate" data-settlement-id="${settlement.id}" disabled>Negotiate (Coming Soon)</button>
-            <button class="btn-raid" data-settlement-id="${settlement.id}" disabled>Raid (Coming Soon)</button>
+            <button class="btn-raid" data-settlement-id="${settlement.id}">Raid</button>
         </div>
     `;
     
