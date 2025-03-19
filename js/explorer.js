@@ -128,7 +128,6 @@ const ExplorerSystem = (function() {
      * @returns {number} - Travel time in days
      */
     function calculateTravelTime(sourceRegion, destRegion, partyTypeId) {
-        // Check if regions are neighbors
         if (!WorldMap.areRegionsNeighbors(sourceRegion.id, destRegion.id)) {
             console.error("Cannot travel to non-neighboring region");
             return -1;
@@ -140,13 +139,18 @@ const ExplorerSystem = (function() {
         if (travelType === 'sea') {
             baseDays = seaTravelTime;
         } else {
-            // Land travel - use region type table
-            baseDays = travelTimes[sourceRegion.type]?.[destRegion.type] || 2; // Default to 2 days
+            baseDays = travelTimes[sourceRegion.type]?.[destRegion.type] || 2;
         }
         
-        // Apply party speed modifier
+        if (!partyTypeId) {
+            return baseDays;
+        }
+        
         const partyType = partyTypes[partyTypeId.toUpperCase()];
-        if (!partyType) return baseDays; // Fallback
+        if (!partyType) {
+            console.warn(`Invalid party type: ${partyTypeId}`);
+            return baseDays;
+        }
         
         return Math.max(1, Math.round(baseDays / partyType.movementSpeed));
     }
@@ -159,6 +163,11 @@ const ExplorerSystem = (function() {
      * @returns {number} - Food needed
      */
     function calculateFoodNeeded(warriors, days, partyTypeId) {
+        // Handle null partyTypeId
+        if (!partyTypeId) {
+            return warriors * days; // Default food consumption
+        }
+        
         const partyType = partyTypes[partyTypeId.toUpperCase()];
         if (!partyType) return warriors * days; // Fallback
         
@@ -718,6 +727,13 @@ const ExplorerSystem = (function() {
             const playerRegion = WorldMap.getPlayerRegion();
             console.log("Player region:", playerRegion);
             
+            // Fix: Set currentRegion and homeRegion to player's region
+            if (playerRegion) {
+                partyData.currentRegion = playerRegion.id;
+                partyData.homeRegion = playerRegion.id;
+                console.log(`Set currentRegion and homeRegion to: ${playerRegion.id}`);
+            }
+            
             // Check if player region has neighbors
             if (playerRegion && playerRegion.neighbors) {
                 console.log("Player region has " + playerRegion.neighbors.length + " neighbors");
@@ -730,7 +746,7 @@ const ExplorerSystem = (function() {
                 if (typeof WorldMap.getRegion === 'function') {
                     // Get all regions and find the closest ones
                     const allRegions = WorldMap.getRegions ? WorldMap.getRegions() : [];
-                    if (allRegions.length > 0) {
+                    if (allRegions && allRegions.length > 0) {
                         console.log("Found " + allRegions.length + " total regions");
                         
                         // Force the player region to have neighbors
@@ -765,7 +781,8 @@ const ExplorerSystem = (function() {
             // Update available warriors display
             updateAvailableWarriors();
             
-            
+            // Force another update of neighboring regions after UI is created
+            updateNeighboringRegions();
             
             console.log("Explorer System initialized");
         },
