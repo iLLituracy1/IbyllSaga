@@ -155,7 +155,15 @@ const NavigationSystem = (function() {
         
         // Show/hide appropriate panels
         organizeGamePanels();
+
+           // Reset FactionsPanel layout when showing politics tab
+    if (tabKey === 'politics' && typeof FactionsPanel !== 'undefined' && typeof FactionsPanel.resetPanelLayout === 'function') {
+        // Give the DOM a moment to update before resetting layout
+        setTimeout(() => {
+            FactionsPanel.resetPanelLayout();
+        }, 50);
     }
+}
     
     /**
      * Organize game panels based on active tab

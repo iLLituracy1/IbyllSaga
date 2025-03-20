@@ -17,8 +17,8 @@ const WorldMap = (function() {
     // Landmass types
     const LANDMASS_TYPES = {
         VIKING_HOMELAND: "Viking Homeland",
-        ANGLO_LANDS: "Anglo Lands",     // Not-England
-        FRANKISH_LANDS: "Frankish Lands", // Not-France
+        ANGLO_LANDS: "Britannia",     // Not-England
+        FRANKISH_LANDS: "Frankia", // Not-France
         NEUTRAL_LANDS: "Neutral Lands"
     };
     
@@ -325,7 +325,7 @@ const REGION_TYPES = {
             // AI settlement - more established
             switch (type) {
                 case SETTLEMENT_TYPES.VIKING:
-                    initialPopulation = Utils.randomBetween(5, 20);
+                    initialPopulation = Utils.randomBetween(15, 30);
                     initialRank = Utils.randomBetween(0, 5);
                     militaryStrength = {
                         warriors: Utils.randomBetween(1, 5),
@@ -335,7 +335,7 @@ const REGION_TYPES = {
                     break;
                 case SETTLEMENT_TYPES.ANGLO:
                 case SETTLEMENT_TYPES.FRANKISH:
-                    initialPopulation = Utils.randomBetween(10, 30);
+                    initialPopulation = Utils.randomBetween(40, 80);
                     initialRank = Utils.randomBetween(2, 7);
                     militaryStrength = {
                         warriors: Utils.randomBetween(3, 8),
@@ -344,7 +344,7 @@ const REGION_TYPES = {
                     };
                     break;
                 default: // Neutral
-                    initialPopulation = Utils.randomBetween(3, 15);
+                    initialPopulation = Utils.randomBetween(80, 150);
                     initialRank = Utils.randomBetween(0, 3);
                     militaryStrength = {
                         warriors: Utils.randomBetween(1, 3),

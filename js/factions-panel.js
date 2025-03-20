@@ -217,6 +217,8 @@ const FactionsPanel = (function() {
     
     // Switch between different views
     function switchView(view) {
+        console.log(`Switching to view: ${view}`);
+        
         // Update currentView state
         currentView = view;
         
@@ -233,65 +235,132 @@ const FactionsPanel = (function() {
         // Add active class to selected view and button
         switch(view) {
             case 'overview':
-                document.getElementById('factions-overview').classList.add('active');
-                document.getElementById('btn-factions-overview').classList.add('active');
+                const overviewEl = document.getElementById('factions-overview');
+                if (overviewEl) overviewEl.classList.add('active');
+                
+                const overviewBtn = document.getElementById('btn-factions-overview');
+                if (overviewBtn) overviewBtn.classList.add('active');
+                
+                // Update overview content
+                updateOverview();
                 break;
+                
+            case 'kingdoms':
+                const kingdomsEl = document.getElementById('factions-kingdoms');
+                if (kingdomsEl) kingdomsEl.classList.add('active');
+                
+                const kingdomsBtn = document.getElementById('btn-factions-kingdoms');
+                if (kingdomsBtn) kingdomsBtn.classList.add('active');
+                
+                // Update kingdoms list
+                updateKingdomsList();
+                break;
+                
             case 'kingdom':
-                document.getElementById('factions-kingdom-detail').classList.add('active');
-                document.getElementById('btn-factions-kingdoms').classList.add('active');
+                const kingdomDetailEl = document.getElementById('factions-kingdom-detail');
+                if (kingdomDetailEl) kingdomDetailEl.classList.add('active');
+                
+                const kingdomsListBtn = document.getElementById('btn-factions-kingdoms');
+                if (kingdomsListBtn) kingdomsListBtn.classList.add('active');
                 break;
+                
             case 'ruler':
-                document.getElementById('factions-ruler-detail').classList.add('active');
+                const rulerDetailEl = document.getElementById('factions-ruler-detail');
+                if (rulerDetailEl) rulerDetailEl.classList.add('active');
                 break;
+                
             case 'territories':
-                document.getElementById('factions-territories').classList.add('active');
-                document.getElementById('btn-factions-territories').classList.add('active');
+                const territoriesEl = document.getElementById('factions-territories');
+                if (territoriesEl) territoriesEl.classList.add('active');
+                
+                const territoriesBtn = document.getElementById('btn-factions-territories');
+                if (territoriesBtn) territoriesBtn.classList.add('active');
+                
+                // Update territories list
+                updateTerritoriesList();
                 break;
+                
             case 'territory':
-                document.getElementById('factions-territory-detail').classList.add('active');
-                document.getElementById('btn-factions-territories').classList.add('active');
+                const territoryDetailEl = document.getElementById('factions-territory-detail');
+                if (territoryDetailEl) territoryDetailEl.classList.add('active');
+                
+                const territoriesListBtn = document.getElementById('btn-factions-territories');
+                if (territoriesListBtn) territoriesListBtn.classList.add('active');
                 break;
+                
             case 'relations':
-                document.getElementById('factions-relations').classList.add('active');
-                document.getElementById('btn-factions-relations').classList.add('active');
+                const relationsEl = document.getElementById('factions-relations');
+                if (relationsEl) relationsEl.classList.add('active');
+                
+                const relationsBtn = document.getElementById('btn-factions-relations');
+                if (relationsBtn) relationsBtn.classList.add('active');
+                
+                // Update relations view
+                updateRelationsView();
                 break;
         }
+        
+        console.log(`Switched to view: ${view}`);
     }
+
+
     
     // Update the overview page with faction counts and major kingdoms
     function updateOverview() {
+        console.log("Updating factions overview...");
+        
         const factionData = FactionIntegration.getFactionData();
+        
+        // Get the overview element
+        const overviewElement = document.getElementById('factions-overview');
+        if (!overviewElement) {
+            console.error("Could not find factions-overview element");
+            return;
+        }
         
         // Count kingdoms by type
         let norseCount = 0;
         let angloCount = 0;
         let frankishCount = 0;
         
-        factionData.kingdoms.forEach(kingdom => {
-            if (kingdom.type === 'NORSE') norseCount++;
-            else if (kingdom.type === 'ANGLO_SAXON') angloCount++;
-            else if (kingdom.type === 'FRANKISH') frankishCount++;
-        });
+        if (factionData.kingdoms && factionData.kingdoms.length > 0) {
+            factionData.kingdoms.forEach(kingdom => {
+                if (kingdom.type === 'NORSE') norseCount++;
+                else if (kingdom.type === 'ANGLO_SAXON') angloCount++;
+                else if (kingdom.type === 'FRANKISH') frankishCount++;
+            });
+        }
         
-        // Update counter displays
-        document.getElementById('norse-kingdom-count').textContent = norseCount;
-        document.getElementById('anglo-kingdom-count').textContent = angloCount;
-        document.getElementById('frankish-kingdom-count').textContent = frankishCount;
-        
-        // Update kingdoms list
-        const kingdomsList = document.getElementById('kingdoms-list');
-        if (kingdomsList) {
-            if (factionData.kingdoms.length === 0) {
-                kingdomsList.innerHTML = '<p>No kingdoms discovered yet.</p>';
-                return;
-            }
+        // Create HTML for the overview
+        let overviewHTML = `
+            <h3>Known Realms</h3>
+            <div class="faction-counters">
+                <div class="faction-counter norse">
+                    <div class="counter-label">Norse Kingdoms:</div>
+                    <div id="norse-kingdom-count" class="counter-value">${norseCount}</div>
+                </div>
+                <div class="faction-counter anglo">
+                    <div class="counter-label">Anglo Kingdoms:</div>
+                    <div id="anglo-kingdom-count" class="counter-value">${angloCount}</div>
+                </div>
+                <div class="faction-counter frankish">
+                    <div class="counter-label">Frankish Kingdoms:</div>
+                    <div id="frankish-kingdom-count" class="counter-value">${frankishCount}</div>
+                </div>
+            </div>
             
-            let kingdomsHTML = '';
+            <div class="faction-list-container">
+                <h4>Major Kingdoms</h4>
+                <div id="kingdoms-list" class="faction-list">
+        `;
+        
+        // Add kingdoms list
+        if (factionData.kingdoms && factionData.kingdoms.length > 0) {
             factionData.kingdoms.forEach(kingdom => {
                 const ruler = FactionIntegration.getRulerById(kingdom.rulerId);
                 const factionClass = kingdom.type.toLowerCase().replace('_', '-');
                 
-                kingdomsHTML += `
+                overviewHTML += `
                     <div class="faction-item ${factionClass}" data-faction-id="${kingdom.id}">
                         <div class="faction-name">${kingdom.name}</div>
                         <div class="faction-ruler">${ruler ? ruler.title + ' ' + ruler.name : 'Unknown'}</div>
@@ -300,11 +369,79 @@ const FactionsPanel = (function() {
                     </div>
                 `;
             });
+        } else {
+            overviewHTML += '<p>No kingdoms discovered yet.</p>';
+        }
+        
+        overviewHTML += `
+                </div>
+            </div>
             
-            kingdomsList.innerHTML = kingdomsHTML;
-            
-            // Add event listeners to view buttons
-            document.querySelectorAll('.btn-view-faction').forEach(btn => {
+            <div class="region-politics-info">
+                <h4>Your Region's Politics</h4>
+                <div id="player-region-politics">
+        `;
+        
+        // Add player region politics
+        const playerRegion = WorldMap.getPlayerRegion();
+        
+        if (!playerRegion) {
+            overviewHTML += '<p>No region information available.</p>';
+        } else {
+            // Get settlements in the player's region
+            const settlements = WorldMap.getSettlementsByRegion(playerRegion.id);
+            if (!settlements || settlements.length === 0) {
+                overviewHTML += '<p>No known settlements in your region.</p>';
+            } else {
+                // Get factions present in the region
+                const factionsInRegion = new Map();
+                settlements.forEach(settlement => {
+                    if (settlement.factionId) {
+                        const faction = FactionIntegration.getFactionById(settlement.factionId);
+                        if (faction && !factionsInRegion.has(faction.id)) {
+                            factionsInRegion.set(faction.id, faction);
+                        }
+                    }
+                });
+                
+                overviewHTML += `
+                    <div class="region-name">${playerRegion.name}</div>
+                    <div class="region-settlements-count">${settlements.length} settlements</div>
+                    <div class="region-factions-list">
+                `;
+                
+                if (factionsInRegion.size === 0) {
+                    overviewHTML += '<p>No known factions in this region.</p>';
+                } else {
+                    overviewHTML += '<h5>Factions in Region:</h5>';
+                    
+                    factionsInRegion.forEach(faction => {
+                        const factionClass = faction.type.toLowerCase().replace('_', '-');
+                        overviewHTML += `
+                            <div class="region-faction ${factionClass}">
+                                <div class="faction-name">${faction.name}</div>
+                                <button class="btn-view-faction" data-faction-id="${faction.id}">View</button>
+                            </div>
+                        `;
+                    });
+                }
+                
+                overviewHTML += '</div>';
+            }
+        }
+        
+        overviewHTML += `
+                </div>
+            </div>
+        `;
+        
+        // Update the overview element
+        overviewElement.innerHTML = overviewHTML;
+        
+        // Add event listeners to view buttons
+        const viewButtons = overviewElement.querySelectorAll('.btn-view-faction');
+        if (viewButtons && viewButtons.length > 0) {
+            viewButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
                     const factionId = this.dataset.factionId;
                     showKingdomDetail(factionId);
@@ -312,13 +449,128 @@ const FactionsPanel = (function() {
             });
         }
         
-        // Update player region politics
-        updatePlayerRegionPolitics();
+        console.log("Finished updating factions overview");
+    }
+
+    function recreatePanelStructure() {
+        console.log("Recreating factions panel structure...");
+        
+        // Get the factions panel
+        const factionsPanel = document.getElementById('factions-panel');
+        
+        if (!factionsPanel) {
+            console.error("Could not find factions-panel element");
+            return;
+        }
+        
+        // Create the basic panel structure
+        factionsPanel.innerHTML = `
+            <h2>Political Landscape</h2>
+            
+            <div class="factions-navigation">
+                <button id="btn-factions-overview" class="factions-nav-btn active">Overview</button>
+                <button id="btn-factions-kingdoms" class="factions-nav-btn">Kingdoms</button>
+                <button id="btn-factions-territories" class="factions-nav-btn">Territories</button>
+                <button id="btn-factions-relations" class="factions-nav-btn">Diplomacy</button>
+            </div>
+            
+            <div class="factions-content">
+                <div id="factions-overview" class="faction-view active">
+                    <!-- Overview content will be populated by updateOverview() -->
+                </div>
+                
+                <div id="factions-kingdom-detail" class="faction-view">
+                    <div class="detail-header">
+                        <button id="btn-back-from-kingdom" class="btn-back">← Back</button>
+                        <h3 id="kingdom-detail-name">Kingdom Name</h3>
+                    </div>
+                    <div class="kingdom-info-container">
+                        <div class="kingdom-ruler-info">
+                            <h4>Ruler</h4>
+                            <div id="kingdom-ruler-details">Loading ruler details...</div>
+                        </div>
+                        <div class="kingdom-stats">
+                            <h4>Kingdom Statistics</h4>
+                            <div id="kingdom-stats-details">Loading kingdom statistics...</div>
+                        </div>
+                        <div class="kingdom-vassals">
+                            <h4>Vassals</h4>
+                            <div id="kingdom-vassals-list">Loading vassals...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="factions-ruler-detail" class="faction-view">
+                    <div class="detail-header">
+                        <button id="btn-back-from-ruler" class="btn-back">← Back</button>
+                        <h3 id="ruler-detail-name">Ruler Name</h3>
+                    </div>
+                    <div id="ruler-details">Loading ruler information...</div>
+                </div>
+                
+                <div id="factions-territories" class="faction-view">
+                    <h3>Territories</h3>
+                    <div class="territory-filters">
+                        <select id="territory-faction-filter">
+                            <option value="all">All Factions</option>
+                            <option value="NORSE">Norse</option>
+                            <option value="ANGLO_SAXON">Anglo-Saxon</option>
+                            <option value="FRANKISH">Frankish</option>
+                        </select>
+                    </div>
+                    <div id="territories-list" class="territories-list">
+                        Loading territories...
+                    </div>
+                </div>
+                
+                <div id="factions-territory-detail" class="faction-view">
+                    <div class="detail-header">
+                        <button id="btn-back-from-territory" class="btn-back">← Back</button>
+                        <h3 id="territory-detail-name">Territory Name</h3>
+                    </div>
+                    <div id="territory-details">Loading territory information...</div>
+                </div>
+                
+                <div id="factions-relations" class="faction-view">
+                    <h3>Diplomatic Relations</h3>
+                    <div class="relations-container">
+                        <div class="relations-selector">
+                            <label for="relation-faction1">View relations between:</label>
+                            <select id="relation-faction1">
+                                <option value="">Select First Faction</option>
+                            </select>
+                            <select id="relation-faction2">
+                                <option value="">Select Second Faction</option>
+                            </select>
+                            <button id="btn-view-relation">View</button>
+                        </div>
+                        <div id="relation-display" class="relation-display">
+                            Select two factions to view their relationship
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Set up event listeners for the new elements
+        setupEventListeners();
+        
+        // Update the overview content
+        updateOverview();
+        
+        console.log("Factions panel structure recreated successfully");
     }
     
     // Update the player's region political information
     function updatePlayerRegionPolitics() {
         const playerRegionPoliticsDiv = document.getElementById('player-region-politics');
+        
+        // Add null check to prevent errors
+        if (!playerRegionPoliticsDiv) {
+            console.log("player-region-politics element not found, skipping update");
+            return;
+        }
+        
         const playerRegion = WorldMap.getPlayerRegion();
         
         if (!playerRegion) {
@@ -371,12 +623,15 @@ const FactionsPanel = (function() {
         playerRegionPoliticsDiv.innerHTML = regionHTML;
         
         // Add event listeners
-        playerRegionPoliticsDiv.querySelectorAll('.btn-view-faction').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const factionId = this.dataset.factionId;
-                showKingdomDetail(factionId);
+        const viewButtons = playerRegionPoliticsDiv.querySelectorAll('.btn-view-faction');
+        if (viewButtons && viewButtons.length > 0) {
+            viewButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const factionId = this.dataset.factionId;
+                    showKingdomDetail(factionId);
+                });
             });
-        });
+        }
     }
     
     // Show detailed information about a kingdom
@@ -592,8 +847,28 @@ const FactionsPanel = (function() {
     
     // Update the list of all kingdoms
     function updateKingdomsList() {
+        console.log("Updating kingdoms list...");
+        
         const factionData = FactionIntegration.getFactionData();
+        
+        // Check if we have the factions-overview element for safety
+        const kingdomsListView = document.getElementById('factions-overview');
+        if (!kingdomsListView) {
+            console.error("Could not find kingdoms list view element");
+            return;
+        }
+        
+        // Get factions and sort by rank and strength
         const factions = factionData.factions.filter(f => f.rank >= 4); // Show major factions only
+        
+        // Check if we have any factions
+        if (!factions || factions.length === 0) {
+            kingdomsListView.innerHTML = `
+                <h3>Known Realms</h3>
+                <p>No major realms discovered yet.</p>
+            `;
+            return;
+        }
         
         // Sort by rank and then strength
         factions.sort((a, b) => {
@@ -615,13 +890,13 @@ const FactionsPanel = (function() {
         });
         
         // Create factions list HTML
-        let factionsHTML = '';
+        let factionsHTML = '<h3>Known Realms</h3>';
         
         for (const type in factionsByType) {
             if (factionsByType[type].length > 0) {
                 const typeName = type === 'NORSE' ? 'Norse Realms' : 
-                                type === 'ANGLO_SAXON' ? 'Anglo-Saxon Realms' : 
-                                'Frankish Realms';
+                                 type === 'ANGLO_SAXON' ? 'Anglo-Saxon Realms' : 
+                                 'Frankish Realms';
                 
                 factionsHTML += `<div class="faction-type-section">
                     <h4>${typeName}</h4>
@@ -645,22 +920,21 @@ const FactionsPanel = (function() {
             }
         }
         
-        // Update the kingdoms list view
-        const kingdomsListView = document.getElementById('factions-overview');
-        if (kingdomsListView) {
-            kingdomsListView.innerHTML = `
-                <h3>Known Realms</h3>
-                ${factionsHTML}
-            `;
-            
-            // Add event listeners to view buttons
-            kingdomsListView.querySelectorAll('.btn-view-faction').forEach(btn => {
+        // Update the view
+        kingdomsListView.innerHTML = factionsHTML;
+        
+        // Add event listeners to view buttons
+        const viewButtons = kingdomsListView.querySelectorAll('.btn-view-faction');
+        if (viewButtons && viewButtons.length > 0) {
+            viewButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
                     const factionId = this.dataset.factionId;
                     showKingdomDetail(factionId);
                 });
             });
         }
+        
+        console.log(`Updated kingdoms list with ${factions.length} factions`);
     }
     
     // Update the list of territories
@@ -830,6 +1104,40 @@ const FactionsPanel = (function() {
                 showKingdomDetail(factionId);
             });
         }
+    }
+
+
+
+    function resetPanelLayout() {
+        console.log("Resetting factions panel layout...");
+        
+        // Reset the view state
+        currentView = 'overview';
+        
+        // Hide all views
+        document.querySelectorAll('.faction-view').forEach(el => {
+            el.classList.remove('active');
+        });
+        
+        // Show the overview view
+        const overviewElement = document.getElementById('factions-overview');
+        if (overviewElement) {
+            overviewElement.classList.add('active');
+        }
+        
+        // Reset navigation button states
+        document.querySelectorAll('.factions-nav-btn').forEach(el => {
+            el.classList.remove('active');
+        });
+        
+        // Activate overview button
+        const overviewBtn = document.getElementById('btn-factions-overview');
+        if (overviewBtn) {
+            overviewBtn.classList.add('active');
+        }
+        
+        // Update the overview content
+        updateOverview();
     }
     
     // Update the relations view with faction dropdowns
@@ -1671,7 +1979,7 @@ const FactionsPanel = (function() {
             // Create panel
             createFactionsPanel();
             
-            // Register the politics tab with NavigationSystem
+            // Register with NavigationSystem if it exists
             if (typeof NavigationSystem !== 'undefined') {
                 // Register the politics tab
                 NavigationSystem.tabs = NavigationSystem.tabs || {};
@@ -1705,22 +2013,27 @@ const FactionsPanel = (function() {
                             NavigationSystem.switchTab('politics');
                         }
                         
-                        // Update content when tab is activated
+                        // Recreate panel structure and update content
                         setTimeout(() => {
-                            updateOverview();
-                        }, 100);
+                            recreatePanelStructure();
+                        }, 50);
                     });
                 }
             }
             
             console.log("Factions Panel initialized");
         },
+
+        
         
         /**
          * Update panel content
          */
         update: function() {
-            // Update content based on current view
+            // Reset the layout first to ensure clean state
+            resetPanelLayout();
+            
+            // Then update content based on current view
             switch(currentView) {
                 case 'overview':
                     updateOverview();
@@ -1735,7 +2048,9 @@ const FactionsPanel = (function() {
                     updateRelationsView();
                     break;
             }
-        }
+        },
+
+        resetPanelLayout: resetPanelLayout
     };
 })();
 
