@@ -325,7 +325,7 @@ const REGION_TYPES = {
             // AI settlement - more established
             switch (type) {
                 case SETTLEMENT_TYPES.VIKING:
-                    initialPopulation = Utils.randomBetween(20, 35);
+                    initialPopulation = Utils.randomBetween(5, 20);
                     initialRank = Utils.randomBetween(0, 5);
                     militaryStrength = {
                         warriors: Utils.randomBetween(1, 5),
@@ -335,7 +335,7 @@ const REGION_TYPES = {
                     break;
                 case SETTLEMENT_TYPES.ANGLO:
                 case SETTLEMENT_TYPES.FRANKISH:
-                    initialPopulation = Utils.randomBetween(10, 100);
+                    initialPopulation = Utils.randomBetween(10, 30);
                     initialRank = Utils.randomBetween(2, 7);
                     militaryStrength = {
                         warriors: Utils.randomBetween(3, 8),
@@ -677,9 +677,9 @@ const REGION_TYPES = {
         };
         
         // Create regions for each landmass
-        createRegionsForLandmass(vikingLandmass, 8);  // Viking homeland
-        createRegionsForLandmass(angloLandmass, 12);   // Anglo lands
-        createRegionsForLandmass(frankishLandmass, 22); // Frankish lands
+        createRegionsForLandmass(vikingLandmass, 6);  // More regions in Viking homeland
+        createRegionsForLandmass(angloLandmass, 4);   // Anglo lands
+        createRegionsForLandmass(frankishLandmass, 5); // Frankish lands
         
         // 3. Generate settlements
         

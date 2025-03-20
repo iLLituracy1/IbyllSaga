@@ -222,41 +222,11 @@ const PopulationManager = (function() {
             }
         }
         
-        // IMPROVED: More diverse skill generation
+        // Random skills based on age and traits
         if (age >= ADULT_AGE) {
-            // Reset skills to empty object
-            character.skills = {
-                farming: 0,
-                woodcutting: 0,
-                mining: 0,
-                combat: 0,
-                crafting: 0,
-                leadership: 0
-            };
-            
-            // Set a primary and secondary skill focus
-            const skillKeys = Object.keys(character.skills);
-            const primarySkill = skillKeys[Utils.randomBetween(0, skillKeys.length - 1)];
-            
-            // Remove primary skill from options for secondary
-            const remainingSkills = skillKeys.filter(skill => skill !== primarySkill);
-            const secondarySkill = remainingSkills[Utils.randomBetween(0, remainingSkills.length - 1)];
-            
-            // Assign random values to all skills with primary and secondary being higher
             for (const skill in character.skills) {
-                // Base skill level - lower for most skills
-                let skillLevel;
-                
-                if (skill === primarySkill) {
-                    // Primary skill (5-9)
-                    skillLevel = Utils.randomBetween(5, 9);
-                } else if (skill === secondarySkill) {
-                    // Secondary skill (3-7)
-                    skillLevel = Utils.randomBetween(3, 7);
-                } else {
-                    // Other skills (1-4)
-                    skillLevel = Utils.randomBetween(1, 4);
-                }
+                // Base skill level
+                let skillLevel = Utils.randomBetween(1, 5);
                 
                 // Adjust based on traits
                 if (character.traits.includes("Strong") && (skill === "woodcutting" || skill === "mining" || skill === "combat")) {
@@ -321,7 +291,6 @@ const PopulationManager = (function() {
         dynastyLeader.relations.push(child.id);
         spouse.relations.push(child.id);
     }
-    
     
     /**
      * Get worker assignments
@@ -533,206 +502,185 @@ const PopulationManager = (function() {
  * @param {Object} resources - Current resources status
  * @returns {Object} - Population changes for the tick
  */
-        processTick: function(gameDate, tickSize, resources) {
-            let changes = {
-                births: 0,
-                deaths: 0,
-                childrenGrown: 0,
-                newElders: 0,
-                starvationDeaths: 0
-            };
+ processTick: function(gameDate, tickSize, resources) {
+    let changes = {
+        births: 0,
+        deaths: 0,
+        childrenGrown: 0,
+        newElders: 0,
+        starvationDeaths: 0
+    };
+    
+    // Process aging and life events
+    for (let i = characters.length - 1; i >= 0; i--) {
+        const character = characters[i];
+        
+        // Age character (simplified - in a full game, you'd age based on days/seasons)
+        if (gameDate.season === "Winter" && tickSize > 0) {
+            character.age += tickSize / 365; // Rough approximation
             
-            // Process aging and life events
-            const charactersToRemove = []; // Track characters to remove AFTER processing
-            
-            for (let i = characters.length - 1; i >= 0; i--) {
-                const character = characters[i];
-                
-                // Age character (simplified - in a full game, you'd age based on days/seasons)
-                if (gameDate.season === "Winter" && tickSize > 0) {
-                    character.age += tickSize / 365; // Rough approximation
-                    
-                    // Check for role changes based on age
-                    if (character.role === 'child' && character.age >= ADULT_AGE) {
-                        character.role = 'worker';
-                        population.children--;
-                        population.workers++;
-                        workerAssignments.unassigned++; // Add to unassigned workers
-                        changes.childrenGrown++;
-                        if (Math.random() < 0.3) { // Only show 30% of such messages
-                            Utils.log(`${character.name} has become an adult and joined the workforce.`);
-                        }
-                    } else if (character.role === 'worker' && character.age >= ELDER_AGE) {
-                        // Check what role they had before becoming an elder
-                        for (const role in workerAssignments) {
-                            if (role !== 'unassigned' && workerAssignments[role] > 0) {
-                                // Remove them from that role (randomly chosen if multiple roles possible)
-                                this.assignWorkers(role, -1);
-                                break;
-                            }
-                        }
-                        
-                        character.role = 'elder';
-                        population.workers--;
-                        population.elders++;
-                        changes.newElders++;
-                        Utils.log(`${character.name} has become an elder.`);
-                    }
-                    
-                    // Check for natural death (simplified)
-                    const deathChance = Math.pow(character.age / MAX_AGE, 2) * 5 * (tickSize / 365);
-                    if (Utils.chanceOf(deathChance)) {
-                        // Character dies
-                        if (character.isLeader) {
-                            // IMPORTANT FIX: Handle leader death and succession BEFORE removing
-                            const successionSuccessful = this.handleLeaderDeath(character);
-                            
-                            // Only mark for removal if succession was successful
-                            if (successionSuccessful) {
-                                charactersToRemove.push(i);
-                            } else {
-                                // Keep character until situation is resolved to prevent null references
-                                character.health = 1; // Critical health but not dead yet
-                                Utils.log(`${character.name} is at death's door, but clings to life as there is no successor.`, "important");
-                                continue; // Skip the rest of the death processing
-                            }
-                        } else {
-                            Utils.log(`${character.name} has passed away at the age of ${Math.floor(character.age)}.`, "important");
-                            charactersToRemove.push(i);
-                        }
-                        
-                        // Update population counts
-                        switch (character.role) {
-                            case 'child':
-                                population.children--;
-                                break;
-                            case 'worker':
-                                population.workers--;
-                                // Just remove from unassigned for simplicity
-                                workerAssignments.unassigned = Math.max(0, workerAssignments.unassigned - 1);
-                                validateWorkerAssignments();
-                                break;
-                            case 'warrior':
-                                population.warriors--;
-                                break;
-                            case 'elder':
-                                population.elders--;
-                                break;
-                        }
-                        
-                        changes.deaths++;
-                        population.total--;
+            // Check for role changes based on age
+            if (character.role === 'child' && character.age >= ADULT_AGE) {
+                character.role = 'worker';
+                population.children--;
+                population.workers++;
+                workerAssignments.unassigned++; // Add to unassigned workers
+                changes.childrenGrown++;
+                if (Math.random() < 0.3) { // Only show 30% of such messages
+                    Utils.log(`${character.name} has become an adult and joined the workforce.`);
+                }
+            } else if (character.role === 'worker' && character.age >= ELDER_AGE) {
+                // Check what role they had before becoming an elder
+                for (const role in workerAssignments) {
+                    if (role !== 'unassigned' && workerAssignments[role] > 0) {
+                        // Remove them from that role (randomly chosen if multiple roles possible)
+                        this.assignWorkers(role, -1);
+                        break;
                     }
                 }
+                
+                character.role = 'elder';
+                population.workers--;
+                population.elders++;
+                changes.newElders++;
+                Utils.log(`${character.name} has become an elder.`);
             }
             
-            // IMPORTANT FIX: Remove dead characters AFTER processing all characters
-            // This prevents index issues and ensures proper succession
-            charactersToRemove.sort((a, b) => b - a); // Sort in descending order to remove from end first
-            for (const index of charactersToRemove) {
-                characters.splice(index, 1);
+            // Check for natural death (simplified)
+            const deathChance = Math.pow(character.age / MAX_AGE, 2) * 5 * (tickSize / 365);
+            if (Utils.chanceOf(deathChance)) {
+                // Character dies
+                if (character.isLeader) {
+                    this.handleLeaderDeath(character);
+                } else {
+                    Utils.log(`${character.name} has passed away at the age of ${Math.floor(character.age)}.`, "important");
+                }
+                
+                // Update population counts
+                switch (character.role) {
+                    case 'child':
+                        population.children--;
+                        break;
+                    case 'worker':
+                        population.workers--;
+                        // Just remove from unassigned for simplicity
+                        workerAssignments.unassigned = Math.max(0, workerAssignments.unassigned - 1);
+                        validateWorkerAssignments();
+                        break;
+                    case 'warrior':
+                        population.warriors--;
+                        break;
+                    case 'elder':
+                        population.elders--;
+                        break;
+                }
+                
+                changes.deaths++;
+                population.total--;
+                
+                // Remove character
+                characters.splice(i, 1);
             }
-            
-            // Check for births (simplified)
-            if (population.total < this.getHousingCapacity()) {
-                const adultWomen = characters.filter(char => 
-                    char.gender === 'female' && char.age >= ADULT_AGE && char.age <= ELDER_AGE
+        }
+    }
+    
+    // Check for births (simplified)
+    if (population.total < this.getHousingCapacity()) {
+        const adultWomen = characters.filter(char => 
+            char.gender === 'female' && char.age >= ADULT_AGE && char.age <= ELDER_AGE
+        );
+        
+        for (const woman of adultWomen) {
+            // Only process potential births occasionally to avoid too many births
+            if (Utils.chanceOf(2 * (tickSize / 270))) {
+                // Find potential father (for inheritance, relations)
+                const potentialFathers = characters.filter(char => 
+                    char.gender === 'male' && char.age >= ADULT_AGE && char.relations.includes(woman.id)
                 );
                 
-                for (const woman of adultWomen) {
-                    // Only process potential births occasionally to avoid too many births
-                    if (Utils.chanceOf(2 * (tickSize / 270))) {
-                        // Find potential father (for inheritance, relations)
-                        const potentialFathers = characters.filter(char => 
-                            char.gender === 'male' && char.age >= ADULT_AGE && char.relations.includes(woman.id)
-                        );
-                        
-                        let father = null;
-                        if (potentialFathers.length > 0) {
-                            father = potentialFathers[0];
-                        }
-                        
-                        // Create child
-                        const child = createCharacter({
-                            age: 0,
-                            role: 'child'
-                        });
-                        
-                        // Setup relations
-                        child.relations.push(woman.id);
-                        woman.relations.push(child.id);
-                        
-                        if (father) {
-                            child.relations.push(father.id);
-                            father.relations.push(child.id);
-                        }
-                        
-                        population.children++;
-                        population.total++;
-                        changes.births++;
-                        
-                        Utils.log(`A child named ${child.name} was born to ${woman.name}.`, "success");
-                    }
+                let father = null;
+                if (potentialFathers.length > 0) {
+                    father = potentialFathers[0];
                 }
-            }
-            
-            // Handle food shortage
-            if (resources && resources.foodDeficit) {
-                const starvationSeverity = resources.starvationSeverity || 0;
                 
-                if (starvationSeverity > 0) {
-                    // Calculate how many people should die this tick based on severity
-                    let deathCount = 0;
-                    
-                    // Determine death count based on severity
-                    if (starvationSeverity >= 9) {
-                        // Catastrophic - up to 20% of population can die per tick
-                        deathCount = Math.ceil(population.total * (0.1 + (Math.random() * 0.1)) * tickSize);
-                        Utils.log("CATASTROPHIC FAMINE! Your people are dying en masse!", "danger");
-                    } else if (starvationSeverity >= 6) {
-                        // Severe - up to 10% of population can die per tick
-                        deathCount = Math.ceil(population.total * (0.05 + (Math.random() * 0.05)) * tickSize);
-                        Utils.log("SEVERE FAMINE! Multiple deaths from starvation!", "danger");
-                    } else if (starvationSeverity >= 3) {
-                        // Moderate - a few deaths per tick
-                        deathCount = Math.ceil(Math.random() * 3 * tickSize);
-                        Utils.log("Your people continue to starve. More deaths reported.", "danger");
-                    } else {
-                        // Mild - occasional deaths
-                        if (Utils.chanceOf(30 * tickSize)) {
-                            deathCount = 1;
-                            Utils.log("A villager has died from starvation!", "danger");
-                        }
-                    }
-                    
-                    // Process deaths from starvation
-                    for (let i = 0; i < deathCount; i++) {
-                        this.handleStarvationDeath();
-                        changes.starvationDeaths++;
-                    }
-                    
-                    changes.deaths += changes.starvationDeaths;
+                // Create child
+                const child = createCharacter({
+                    age: 0,
+                    role: 'child'
+                });
+                
+                // Setup relations
+                child.relations.push(woman.id);
+                woman.relations.push(child.id);
+                
+                if (father) {
+                    child.relations.push(father.id);
+                    father.relations.push(child.id);
                 }
-            } else if (window.starvationDays) {
-                // Reset starvation counter if food deficit is resolved
-                window.starvationDays = 0;
+                
+                population.children++;
+                population.total++;
+                changes.births++;
+                
+                Utils.log(`A child named ${child.name} was born to ${woman.name}.`, "success");
+            }
+        }
+    }
+    
+    // Handle food shortage - NEW IMPROVED SYSTEM
+    if (resources && resources.foodDeficit) {
+        const starvationSeverity = resources.starvationSeverity || 0;
+        
+        if (starvationSeverity > 0) {
+            // Calculate how many people should die this tick based on severity
+            let deathCount = 0;
+            
+            // Determine death count based on severity
+            if (starvationSeverity >= 9) {
+                // Catastrophic - up to 20% of population can die per tick
+                deathCount = Math.ceil(population.total * (0.1 + (Math.random() * 0.1)) * tickSize);
+                Utils.log("CATASTROPHIC FAMINE! Your people are dying en masse!", "danger");
+            } else if (starvationSeverity >= 6) {
+                // Severe - up to 10% of population can die per tick
+                deathCount = Math.ceil(population.total * (0.05 + (Math.random() * 0.05)) * tickSize);
+                Utils.log("SEVERE FAMINE! Multiple deaths from starvation!", "danger");
+            } else if (starvationSeverity >= 3) {
+                // Moderate - a few deaths per tick
+                deathCount = Math.ceil(Math.random() * 3 * tickSize);
+                Utils.log("Your people continue to starve. More deaths reported.", "danger");
+            } else {
+                // Mild - occasional deaths
+                if (Utils.chanceOf(30 * tickSize)) {
+                    deathCount = 1;
+                    Utils.log("A villager has died from starvation!", "danger");
+                }
             }
             
-            // IMPORTANT FIX: Verify dynasty leader exists in characters array
-            this.verifyDynastyLeader();
+            // Process deaths from starvation
+            for (let i = 0; i < deathCount; i++) {
+                this.handleStarvationDeath();
+                changes.starvationDeaths++;
+            }
             
-            // Update UI
-            updatePopulationUI();
-            
-            return changes;
-        },
+            changes.deaths += changes.starvationDeaths;
+        }
+    } else if (window.starvationDays) {
+        // Reset starvation counter if food deficit is resolved
+        window.starvationDays = 0;
+    }
+    
+    // Update UI
+    updatePopulationUI();
+    
+    return changes;
+},
 
 
 /**
  * Handle a death from starvation
  * More systematic approach that prioritizes vulnerable characters
  */
-handleStarvationDeath: function() {
+    handleStarvationDeath: function() {
     if (characters.length === 0) return;
     
     // Weight characters by vulnerability to starvation
@@ -763,18 +711,6 @@ handleStarvationDeath: function() {
     const selectedIndex = Math.floor(Math.random() * candidateCount);
     const victim = weightedCharacters[selectedIndex].character;
     
-    // Check if victim is the leader
-    if (victim.isLeader) {
-        // Handle leader death properly
-        const successionSuccessful = this.handleLeaderDeath(victim);
-        
-        // Only remove if succession was successful
-        if (!successionSuccessful) {
-            Utils.log(`${victim.name} is critically ill from starvation, but cannot be replaced as leader yet.`, "danger");
-            return; // Don't remove the character yet
-        }
-    }
-    
     // Remove from population
     const charIndex = characters.indexOf(victim);
     if (charIndex !== -1) {
@@ -802,6 +738,11 @@ handleStarvationDeath: function() {
         population.total--;
         
         Utils.log(`${victim.name} has died from starvation.`, "danger");
+        
+        // If leader died, handle succession
+        if (victim.isLeader) {
+            handleLeaderDeath(victim);
+        }
     }
 },
         
@@ -812,30 +753,21 @@ handleStarvationDeath: function() {
         handleLeaderDeath: function(leader) {
             Utils.log(`${leader.name}, your leader, has died at the age of ${Math.floor(leader.age)}.`, "important");
             
-            // IMPORTANT FIX: Keep leader in array until we find a replacement
-            // We'll use a flag to mark that we need to remove them after succession
-            let shouldRemoveLeader = true;
-            
             // Find potential heirs (adult relations)
             const potentialHeirs = characters.filter(char => 
-                char.id !== leader.id && // Don't consider the dying leader as their own heir
                 char.age >= ADULT_AGE && 
                 (char.relations.includes(leader.id) || leader.relations.includes(char.id))
             );
             
             // If no heirs, find highest leadership skill
-            let newLeader = null;
+            let newLeader;
             if (potentialHeirs.length > 0) {
                 // Sort by leadership skill
                 potentialHeirs.sort((a, b) => b.skills.leadership - a.skills.leadership);
                 newLeader = potentialHeirs[0];
             } else {
                 // No heirs, find highest leadership skill among all adults
-                const adultsRemaining = characters.filter(char => 
-                    char.id !== leader.id && // Don't consider the dying leader 
-                    char.age >= ADULT_AGE
-                );
-                
+                const adultsRemaining = characters.filter(char => char.age >= ADULT_AGE);
                 adultsRemaining.sort((a, b) => b.skills.leadership - a.skills.leadership);
                 
                 if (adultsRemaining.length > 0) {
@@ -843,33 +775,16 @@ handleStarvationDeath: function() {
                 } else {
                     // Game over condition - no adults left
                     Utils.log("With no suitable successor, your settlement falls into disarray. Your saga ends here.", "danger");
-                    
-                    // Trigger game over if the system exists
-                    if (typeof GameOverSystem !== 'undefined' && typeof GameOverSystem.debugTriggerGameOver === 'function') {
-                        GameOverSystem.debugTriggerGameOver("Your dynasty has ended with the death of your last leader.");
-                    }
-                    
-                    return false; // Indicate failure to find successor
+                    // Here you would trigger game over mechanics
+                    return;
                 }
             }
             
-            if (newLeader) {
-                // Update the previous leader
-                leader.isLeader = false;
-                
-                // Set new leader
-                newLeader.isLeader = true;
-                dynastyLeader = newLeader;
-                
-                Utils.log(`${newLeader.name} has become the new leader of your settlement.`, "important");
-                
-                // CRITICAL FIX: Update UI elements
-                Utils.updateElement('leader-name', newLeader.name);
-                
-                return true; // Indicate successful succession
-            }
+            // Set new leader
+            newLeader.isLeader = true;
+            dynastyLeader = newLeader;
             
-            return false; // No succession occurred
+            Utils.log(`${newLeader.name} has become the new leader of your settlement.`, "important");
         },
 
 
@@ -1005,61 +920,6 @@ handleStarvationDeath: function() {
             }
             return false;
         },
-
-/**
- * New function to verify the dynasty leader is valid and exists in characters array
- */
-verifyDynastyLeader: function() {
-    // Check if dynastyLeader is null or undefined
-    if (!dynastyLeader) {
-        console.error("Dynasty leader is null, attempting to fix...");
-        
-        // Find any character who could be leader
-        const adultCharacters = characters.filter(char => char.age >= ADULT_AGE);
-        
-        if (adultCharacters.length > 0) {
-            // Sort by leadership skill
-            adultCharacters.sort((a, b) => b.skills.leadership - a.skills.leadership);
-            dynastyLeader = adultCharacters[0];
-            dynastyLeader.isLeader = true;
-            
-            Utils.log(`${dynastyLeader.name} has stepped up to lead your settlement.`, "important");
-            Utils.updateElement('leader-name', dynastyLeader.name);
-            
-            return true;
-        } else {
-            console.error("No adults found to be leader!");
-            return false;
-        }
-    }
-    
-    // Check if dynasty leader exists in characters array
-    const leaderExists = characters.some(char => char.id === dynastyLeader.id);
-    
-    if (!leaderExists) {
-        console.error("Dynasty leader exists but is not in characters array, fixing...");
-        
-        // Find a new leader
-        const adultCharacters = characters.filter(char => char.age >= ADULT_AGE);
-        
-        if (adultCharacters.length > 0) {
-            // Sort by leadership skill
-            adultCharacters.sort((a, b) => b.skills.leadership - a.skills.leadership);
-            dynastyLeader = adultCharacters[0];
-            dynastyLeader.isLeader = true;
-            
-            Utils.log(`${dynastyLeader.name} has been recognized as your new leader.`, "important");
-            Utils.updateElement('leader-name', dynastyLeader.name);
-            
-            return true;
-        } else {
-            console.error("No adults found to replace missing leader!");
-            return false;
-        }
-    }
-    
-    return true; // Leader is valid and exists
-},
         
         /**
          * Add a new character to the settlement (e.g., for immigration events)
@@ -1120,8 +980,6 @@ verifyDynastyLeader: function() {
             
             return character;
         },
-
-        
         
         /**
          * Get character by ID
@@ -1164,9 +1022,6 @@ verifyDynastyLeader: function() {
             
             console.log("Actual character counts:", characterCounts);
             console.log("Current population counts:", {...population});
-            
-            // IMPORTANT FIX: Verify dynasty leader is valid
-            this.verifyDynastyLeader();
             
             // If there's a mismatch, either create missing characters or adjust counts
             if (population.total !== characterCounts.total) {

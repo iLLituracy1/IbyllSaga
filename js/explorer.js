@@ -1026,23 +1026,11 @@ function updateSettlementsList() {
             const availableWarriors = this.getAvailableWarriors();
             count = Math.min(count, availableWarriors + partyData.warriors);
             
-            // IMPORTANT FIX: Update the actual warrior count in the partyData
-            // This was missing in the original implementation
-            partyData.warriors = count;
-            
-            // Since warrior count changed, recalculate party strength
-            partyData.strength = calculatePartyStrength(count, partyData.type);
-            
             // Update display
             Utils.updateElement('warriors-count', count);
-            Utils.updateElement('active-party-warriors', count); // Update active party display too
-            Utils.updateElement('active-party-strength', partyData.strength);
             
-            // Update party strength in UI
+            // Update party strength
             updatePartyStrength(count, partyData.type);
-            
-            // Log for debugging
-            console.log(`Adjusted warrior count to ${count} (strength: ${partyData.strength})`);
         },
         
         /**
@@ -1204,133 +1192,29 @@ function updateSettlementsList() {
  * Visit a settlement in the current region
  * @param {string} settlementId - ID of the settlement to visit
  */
-        visitSettlement: function(settlementId) {
-            if (!partyData.active || partyData.travelStatus.traveling) {
-                Utils.log("No active party available for travel", "important");
-                return;
-            }
-            
-            const settlement = WorldMap.getSettlement(settlementId);
-            if (!settlement) {
-                Utils.log("Settlement not found", "important");
-                return;
-            }
-            
-            // Check if the settlement is in the current region
-            if (settlement.region !== partyData.currentRegion) {
-                Utils.log("Settlement is not in the current region", "important");
-                return;
-            }
-            
-            // Log the visit
-            Utils.log(`Your party approaches ${settlement.name}.`, "success");
-            
-            // IMMEDIATELY create the settlement detail panel if it doesn't exist
-            let detailPanel = document.getElementById('settlement-detail-panel');
-            if (!detailPanel) {
-                detailPanel = document.createElement('div');
-                detailPanel.id = 'settlement-detail-panel';
-                detailPanel.className = 'settlement-detail-panel';
-                
-                // Insert panel into the DOM
-                const settlementsSection = document.getElementById('settlements-section');
-                if (settlementsSection) {
-                    settlementsSection.appendChild(detailPanel);
-                }
-            }
-            
-            // Populate with settlement details
-            detailPanel.innerHTML = `
-                <div class="settlement-header">
-                    <h4>${settlement.name}</h4>
-                    <button class="btn-close-settlement">×</button>
-                </div>
-                <div class="settlement-description">
-                    A ${settlement.type.toLowerCase()} settlement with approximately ${settlement.population} inhabitants.
-                </div>
-                <div class="settlement-stats">
-                    <div>
-                        <strong>Type:</strong> ${settlement.type}
-                    </div>
-                    <div>
-                        <strong>Population:</strong> ${settlement.population}
-                    </div>
-                    <div>
-                        <strong>Military:</strong> ${settlement.military ? settlement.military.warriors : 'Unknown'} warriors
-                    </div>
-                    <div>
-                        <strong>Defenses:</strong> ${settlement.military ? settlement.military.defenses : 'Unknown'}
-                    </div>
-                </div>
-                <div class="settlement-action-buttons">
-                    <button class="btn-trade" data-settlement-id="${settlement.id}" disabled>Trade (Coming Soon)</button>
-                    <button class="btn-negotiate" data-settlement-id="${settlement.id}" disabled>Negotiate (Coming Soon)</button>
-                    <button class="btn-raid" data-settlement-id="${settlement.id}">Raid</button>
-                </div>
-            `;
-            
-            // EXPLICITLY make panel visible
-            detailPanel.classList.add('visible');
-            
-            // Add event listener for close button
-            const closeButton = detailPanel.querySelector('.btn-close-settlement');
-            if (closeButton) {
-                closeButton.addEventListener('click', function() {
-                    detailPanel.classList.remove('visible');
-                });
-            }
-            
-            // If BattleSystem exists, let it enhance raid buttons
-            if (typeof enhanceRaidButton === 'function') {
-                const raidButton = detailPanel.querySelector('.btn-raid');
-                if (raidButton) {
-                    enhanceRaidButton(raidButton, settlement);
-                    raidButton.setAttribute('data-battle-enhanced', 'true');
-                }
-            }
-        },
-
-        /**
- * Debug helper function to check if the settlement panel is working
- * Call this from the console if you're still having issues:
- * ExplorerSystem.debugVisitSettlement()
- */
-debugVisitSettlement: function() {
-    console.log("Testing settlement panel functionality...");
-    
-    // Get current region from state
-    const state = this.getExplorerState();
-    if (!state.currentRegion) {
-        console.error("No current region in explorer state!");
+visitSettlement: function(settlementId) {
+    if (!partyData.active || partyData.travelStatus.traveling) {
+        Utils.log("No active party available for travel", "important");
         return;
     }
     
-    // Get settlements in current region
-    const settlements = WorldMap.getSettlementsByRegion(state.currentRegion);
-    if (!settlements || settlements.length === 0) {
-        console.error("No settlements found in current region!");
+    const settlement = WorldMap.getSettlement(settlementId);
+    if (!settlement) {
+        Utils.log("Settlement not found", "important");
         return;
     }
     
-    // Pick a non-player settlement
-    const targetSettlement = settlements.find(s => !s.isPlayer);
-    if (!targetSettlement) {
-        console.error("No non-player settlements to visit!");
+    // Check if the settlement is in the current region
+    if (settlement.region !== partyData.currentRegion) {
+        Utils.log("Settlement is not in the current region", "important");
         return;
     }
     
-    console.log("Attempting to visit settlement:", targetSettlement.name);
+    // Log the visit
+    Utils.log(`Your party approaches ${settlement.name}.`, "success");
     
-    // Call visitSettlement
-    this.visitSettlement(targetSettlement.id);
-    
-    // Check if panel is visible
-    const panel = document.getElementById('settlement-detail-panel');
-    if (panel) {
-        console.log("Panel exists, visibility state:", panel.classList.contains('visible'));
-    } else {
-        console.error("Settlement detail panel does not exist!");
-    }
+    // Show settlement details panel
+    this.showSettlementDetails(settlement);
 },
 
 /**
@@ -1636,167 +1520,4 @@ updateRegionArrival: function(region) {
             return { ...partyData };
         }
     };
-})();
-
-(function() {
-    console.log("Initializing persistent visit button fix...");
-
-    // Wait until Explorer system and Navigation system are both available
-    const checkInterval = setInterval(function() {
-        if (typeof ExplorerSystem !== 'undefined' && 
-            typeof NavigationSystem !== 'undefined') {
-            
-            clearInterval(checkInterval);
-            initVisitButtonFix();
-        }
-    }, 500);
-
-    function initVisitButtonFix() {
-        console.log("Applying persistent visit button fix");
-        
-        // Store original functions we'll be enhancing
-        const originalVisitSettlement = ExplorerSystem.visitSettlement;
-        const originalShowSettlementDetails = ExplorerSystem.showSettlementDetails;
-        
-        // When the explore tab becomes active, ensure UI is properly set up
-        const originalSwitchToTab = NavigationSystem.switchToTab;
-        NavigationSystem.switchToTab = function(tabKey) {
-            // Call original function first
-            originalSwitchToTab.call(NavigationSystem, tabKey);
-            
-            // If switching to explore tab, ensure settlement list has proper event listeners
-            if (tabKey === 'explore') {
-                console.log("Explore tab activated, reinforcing visit buttons");
-                setTimeout(reinforceVisitButtons, 200);
-            }
-        };
-        
-        // Enhanced visitSettlement function
-        ExplorerSystem.visitSettlement = function(settlementId) {
-            console.log("Enhanced visitSettlement called for:", settlementId);
-            
-            if (!settlementId) {
-                console.error("No settlement ID provided");
-                return;
-            }
-            
-            // Call original function
-            originalVisitSettlement.call(ExplorerSystem, settlementId);
-            
-            // Double-check panel visibility
-            const panel = document.getElementById('settlement-detail-panel');
-            if (panel) {
-                panel.classList.add('visible');
-                console.log("Explicitly setting panel visible");
-                
-                // Double-check close button
-                reinforceCloseButton(panel);
-            } else {
-                console.warn("Panel not found after visitSettlement call");
-            }
-        };
-        
-        // Enhanced showSettlementDetails function
-        ExplorerSystem.showSettlementDetails = function(settlement) {
-            console.log("Enhanced showSettlementDetails called");
-            
-            // Call original function
-            originalShowSettlementDetails.call(ExplorerSystem, settlement);
-            
-            // Double-check panel visibility
-            const panel = document.getElementById('settlement-detail-panel');
-            if (panel) {
-                // Ensure panel is visible
-                panel.classList.add('visible');
-                
-                // Ensure close button works
-                reinforceCloseButton(panel);
-            } else {
-                console.warn("Panel not found after showSettlementDetails call");
-            }
-        };
-        
-        // Use event delegation for visit buttons to ensure they work even if recreated
-        document.addEventListener('click', function(e) {
-            // Check if the clicked element or any of its parents has the class btn-visit-settlement
-            let target = e.target;
-            while (target != null) {
-                if (target.classList && target.classList.contains('btn-visit-settlement')) {
-                    e.preventDefault();
-                    const settlementId = target.dataset.settlementId;
-                    if (settlementId) {
-                        console.log("Visit button clicked via delegation:", settlementId);
-                        ExplorerSystem.visitSettlement(settlementId);
-                    }
-                    return;
-                }
-                target = target.parentElement;
-            }
-        });
-        
-        // Also use event delegation for close button
-        document.addEventListener('click', function(e) {
-            // Check if the clicked element or any of its parents has the class btn-close-settlement
-            let target = e.target;
-            while (target != null) {
-                if (target.classList && target.classList.contains('btn-close-settlement')) {
-                    e.preventDefault();
-                    const panel = document.getElementById('settlement-detail-panel');
-                    if (panel) {
-                        console.log("Close button clicked via delegation");
-                        panel.classList.remove('visible');
-                    }
-                    return;
-                }
-                target = target.parentElement;
-            }
-        });
-        
-        // Initial setup
-        setTimeout(reinforceVisitButtons, 1000);
-        
-        // Run this function when coming back to explore tab
-        function reinforceVisitButtons() {
-            // This ensures visit buttons have event listeners
-            const visitButtons = document.querySelectorAll('.btn-visit-settlement');
-            if (visitButtons.length > 0) {
-                console.log(`Reinforcing ${visitButtons.length} visit buttons`);
-                
-                visitButtons.forEach(btn => {
-                    // Remove any existing event listeners (doesn't actually work for anonymous functions, but good practice)
-                    btn.replaceWith(btn.cloneNode(true));
-                    
-                    // Add fresh event listener
-                    const newBtn = document.querySelector(`[data-settlement-id="${btn.dataset.settlementId}"]`);
-                    if (newBtn) {
-                        newBtn.addEventListener('click', function() {
-                            console.log("Visit button clicked directly:", this.dataset.settlementId);
-                            ExplorerSystem.visitSettlement(this.dataset.settlementId);
-                        });
-                    }
-                });
-            } else {
-                console.log("No visit buttons found to reinforce");
-            }
-        }
-        
-        // Ensure close button works
-        function reinforceCloseButton(panel) {
-            const closeButton = panel.querySelector('.btn-close-settlement');
-            if (closeButton) {
-                // Remove existing listeners
-                closeButton.replaceWith(closeButton.cloneNode(true));
-                
-                // Add fresh listener
-                const newCloseButton = panel.querySelector('.btn-close-settlement');
-                if (newCloseButton) {
-                    newCloseButton.addEventListener('click', function() {
-                        panel.classList.remove('visible');
-                    });
-                }
-            }
-        }
-        
-        console.log("Persistent visit button fix applied successfully");
-    }
 })();

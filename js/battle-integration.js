@@ -16,57 +16,51 @@
                 clearInterval(checkInterval);
                 
                 // Store the original function reference
-const originalShowSettlementDetails = ExplorerSystem.showSettlementDetails;
-
-// Safely override with an extended version
-ExplorerSystem.showSettlementDetails = function(settlement) {
-    // First, update settlement population if it's the player's settlement
-    if (settlement && settlement.isPlayer) {
-        updatePlayerSettlementData(settlement);
-    }
-
-    // CRITICAL FIX: Call the original function first to ensure the panel is created and shown
-    originalShowSettlementDetails.call(ExplorerSystem, settlement);
-    
-    // Make sure the panel is visible (might be redundant but ensures visibility)
-    const detailPanel = document.getElementById('settlement-detail-panel');
-    if (detailPanel) {
-        detailPanel.classList.add('visible');
-    }
-    
-    // After a short delay, enhance the Raid buttons
-    setTimeout(function() {
-        // Find Raid buttons in the settlement detail panel
-        const detailPanel = document.getElementById('settlement-detail-panel');
-        if (detailPanel && detailPanel.classList.contains('visible')) {
-            // Don't add raid functionality for player's own settlement
-            if (settlement && settlement.isPlayer) {
-                // Find and hide any raid buttons for player's settlement
-                const raidButtons = Array.from(detailPanel.querySelectorAll('button'))
-                    .filter(btn => btn.textContent.includes('Raid') && !btn.textContent.includes('Coming'));
+                const originalShowSettlementDetails = ExplorerSystem.showSettlementDetails;
                 
-                raidButtons.forEach(btn => {
-                    btn.style.display = 'none';
-                });
-                return;
-            }
-            
-            // Find any buttons with "Raid" text that aren't marked as enhanced
-            const raidButtons = Array.from(detailPanel.querySelectorAll('button'))
-                .filter(btn => 
-                    btn.textContent.includes('Raid') && 
-                    !btn.textContent.includes('Coming') &&
-                    !btn.hasAttribute('data-battle-enhanced')
-                );
-            
-            // Enhance each button
-            raidButtons.forEach(function(btn) {
-                enhanceRaidButton(btn, settlement);
-                btn.setAttribute('data-battle-enhanced', 'true');
-            });
-        }
-    }, 300); // Wait a bit to ensure the panel is fully rendered
-}
+                // Safely override with an extended version
+                ExplorerSystem.showSettlementDetails = function(settlement) {
+                    // First, update settlement population if it's the player's settlement
+                    if (settlement && settlement.isPlayer) {
+                        updatePlayerSettlementData(settlement);
+                    }
+                
+                    // Call the original function 
+                    originalShowSettlementDetails.call(ExplorerSystem, settlement);
+                    
+                    // After a short delay, enhance the Raid buttons
+                    setTimeout(function() {
+                        // Find Raid buttons in the settlement detail panel
+                        const detailPanel = document.getElementById('settlement-detail-panel');
+                        if (detailPanel && detailPanel.classList.contains('visible')) {
+                            // Don't add raid functionality for player's own settlement
+                            if (settlement && settlement.isPlayer) {
+                                // Find and hide any raid buttons for player's settlement
+                                const raidButtons = Array.from(detailPanel.querySelectorAll('button'))
+                                    .filter(btn => btn.textContent.includes('Raid') && !btn.textContent.includes('Coming'));
+                                
+                                raidButtons.forEach(btn => {
+                                    btn.style.display = 'none';
+                                });
+                                return;
+                            }
+                            
+                            // Find any buttons with "Raid" text that aren't marked as enhanced
+                            const raidButtons = Array.from(detailPanel.querySelectorAll('button'))
+                                .filter(btn => 
+                                    btn.textContent.includes('Raid') && 
+                                    !btn.textContent.includes('Coming') &&
+                                    !btn.hasAttribute('data-battle-enhanced')
+                                );
+                            
+                            // Enhance each button
+                            raidButtons.forEach(function(btn) {
+                                enhanceRaidButton(btn, settlement);
+                                btn.setAttribute('data-battle-enhanced', 'true');
+                            });
+                        }
+                    }, 300); // Wait a bit to ensure the panel is fully rendered
+                };
                 
                 // Also fix the settlement population display
                 updateAllSettlementData();

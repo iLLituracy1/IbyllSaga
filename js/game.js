@@ -71,10 +71,7 @@ const GameEngine = (function() {
      */
     function updateDateDisplay() {
         const dateStr = `Year ${gameState.date.year}, Day ${gameState.date.day} - <span class="month-name">${gameState.date.monthName}</span> (${gameState.date.season})`;
-        const dateElement = document.getElementById('game-date');
-        if (dateElement) {
-            dateElement.innerHTML = dateStr;
-        }
+        document.getElementById('game-date').innerHTML = dateStr;
     }
     
     /**
@@ -139,20 +136,11 @@ const GameEngine = (function() {
     /**
      * Update world map UI with current information
      */
-    function updateWorldMapUI() {
         // Use WorldMap's updateUI method if available
         if (WorldMap && typeof WorldMap.updateUI === 'function') {
             WorldMap.updateUI();
         }
-        
-        // Get player region information
-        const playerRegion = WorldMap && typeof WorldMap.getPlayerRegion === 'function' ? 
-            WorldMap.getPlayerRegion() : null;
-            
-        if (!playerRegion) {
-            console.warn("Player region not available for UI update");
-            return;
-        }
+    
         
         // Update region name and description
         const regionNameEl = document.getElementById('current-region-name');
@@ -166,17 +154,16 @@ const GameEngine = (function() {
         const stoneModEl = document.getElementById('stone-modifier');
         const metalModEl = document.getElementById('metal-modifier');
         
-        if (foodModEl && playerRegion.resourceModifiers) foodModEl.textContent = playerRegion.resourceModifiers.food.toFixed(1);
-        if (woodModEl && playerRegion.resourceModifiers) woodModEl.textContent = playerRegion.resourceModifiers.wood.toFixed(1);
-        if (stoneModEl && playerRegion.resourceModifiers) stoneModEl.textContent = playerRegion.resourceModifiers.stone.toFixed(1);
-        if (metalModEl && playerRegion.resourceModifiers) metalModEl.textContent = playerRegion.resourceModifiers.metal.toFixed(1);
+        if (foodModEl) foodModEl.textContent = playerRegion.resourceModifiers.food.toFixed(1);
+        if (woodModEl) woodModEl.textContent = playerRegion.resourceModifiers.wood.toFixed(1);
+        if (stoneModEl) stoneModEl.textContent = playerRegion.resourceModifiers.stone.toFixed(1);
+        if (metalModEl) metalModEl.textContent = playerRegion.resourceModifiers.metal.toFixed(1);
         
         // Update nearby settlements
-        const playerSettlement = WorldMap && typeof WorldMap.getPlayerSettlement === 'function' ? 
-            WorldMap.getPlayerSettlement() : null;
+        const playerSettlement = WorldMap.getPlayerSettlement();
         const settlementsListElement = document.getElementById('settlements-list');
         
-        if (playerSettlement && settlementsListElement && typeof WorldMap.getNearbySettlements === 'function') {
+        if (playerSettlement && settlementsListElement) {
             const nearbySettlements = WorldMap.getNearbySettlements(playerSettlement.id);
             
             if (nearbySettlements.length > 0) {
@@ -196,7 +183,7 @@ const GameEngine = (function() {
                 settlementsListElement.textContent = 'No settlements nearby.';
             }
         }
-    }
+    
     
     /**
      * Process a single game tick
@@ -254,7 +241,7 @@ const GameEngine = (function() {
         );
         
         // Update World Map UI
-        updateWorldMapUI();
+        WorldMap.updateUI();
         
         // Update statistics panel if needed
         if (typeof StatisticsPanel !== 'undefined' && typeof StatisticsPanel.update === 'function') {
@@ -304,30 +291,30 @@ const GameEngine = (function() {
         safeAddEventListener('btn-pause', 'click', function() {
             GameEngine.togglePause();
         });
+
+     
         
-        // Worker assignment controls - only set up if elements exist
+    
+        
+        // Worker assignment controls
         const incrementButtons = document.querySelectorAll('.increment');
         const decrementButtons = document.querySelectorAll('.decrement');
         
-        if (incrementButtons.length > 0) {
-            incrementButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    const role = this.dataset.target;
-                    PopulationManager.assignWorkers(role, 1);
-                });
+        incrementButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const role = this.dataset.target;
+                PopulationManager.assignWorkers(role, 1);
             });
-        }
+        });
         
-        if (decrementButtons.length > 0) {
-            decrementButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    const role = this.dataset.target;
-                    PopulationManager.assignWorkers(role, -1);
-                });
+        decrementButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const role = this.dataset.target;
+                PopulationManager.assignWorkers(role, -1);
             });
-        }
+        });
         
-        // World action buttons
+        // World action buttons (coming soon)
         safeAddEventListener('btn-explore', 'click', function() {
             if (typeof ExplorerSystem !== 'undefined' && typeof NavigationSystem !== 'undefined') {
                 // Switch directly to the explore tab
@@ -346,6 +333,7 @@ const GameEngine = (function() {
             Utils.log("Trading feature coming soon!", "important");
         });
     }
+
     
     // Public API
     return {
@@ -356,86 +344,46 @@ const GameEngine = (function() {
             console.log("Initializing Viking Legacy game...");
             
             // Step 1: Initialize NavigationSystem first
-            if (typeof NavigationSystem !== 'undefined') {
-                NavigationSystem.init();
-            } else {
-                console.error("NavigationSystem is not defined!");
-            }
+            NavigationSystem.init();
             
             // Step 2: Initialize core systems
-            if (typeof ResourceManager !== 'undefined') {
-                ResourceManager.init();
-                ResourceManager.refreshResourceUI(); 
-            } else {
-                console.error("ResourceManager is not defined!");
-            }
+            ResourceManager.init();
+            ResourceManager.refreshResourceUI(); 
             
             // Step 3: Initialize population and rank systems
-            if (typeof PopulationManager !== 'undefined') {
-                PopulationManager.init();
-                PopulationManager.initializeSpecializedWorkers();
-            } else {
-                console.error("PopulationManager is not defined!");
-            }
-            
-            if (typeof RankManager !== 'undefined') {
-                RankManager.init();
-            }
+            PopulationManager.init();
+            PopulationManager.initializeSpecializedWorkers();
+            RankManager.init();
             
             // Step 4: Initialize world and event systems
-            if (typeof WorldMap !== 'undefined') {
-                WorldMap.init();
-                const playerRegion = WorldMap.getPlayerRegion();
-                if (playerRegion) {
-                    WorldMap.updateRegionResourceModifiers(playerRegion);
-                }
-            } else {
-                console.error("WorldMap is not defined!");
+            WorldMap.init();
+            const playerRegion = WorldMap.getPlayerRegion();
+            if (playerRegion) {
+                WorldMap.updateRegionResourceModifiers(playerRegion);
             }
-            
-            if (typeof EventManager !== 'undefined') {
-                EventManager.init();
-            }
+            EventManager.init();
             
             // Step 5: Register core panels that exist in HTML
-            if (typeof NavigationSystem !== 'undefined') {
-                // Check if panel elements exist in the DOM before registering
-                const panelsToRegister = [
-                    { id: 'log-panel', tab: 'saga' },
-                    { id: 'world-panel', tab: 'world' }
-                ];
-                
-                panelsToRegister.forEach(panel => {
-                    if (document.getElementById(panel.id)) {
-                        NavigationSystem.registerPanel(panel.id, panel.tab);
-                    } else {
-                        console.warn(`Panel ${panel.id} does not exist in the DOM, skipping registration`);
-                    }
-                });
-            }
+            NavigationSystem.registerPanel('resources-panel', 'settlement');
+            NavigationSystem.registerPanel('population-panel', 'settlement');
+            NavigationSystem.registerPanel('actions-panel', 'settlement');
+            NavigationSystem.registerPanel('log-panel', 'saga');
+            NavigationSystem.registerPanel('world-panel', 'world');
             
             // Step 6: Initialize feature modules that create their own panels
-            if (typeof LandManager !== 'undefined') {
-                LandManager.init();
-            }
-            
-            if (typeof StatisticsPanel !== 'undefined') {
-                StatisticsPanel.init();
-            }
-            
-            if (typeof BuildingSystem !== 'undefined') {
-                BuildingSystem.init();
-            }
-            
-            // Initialize Explorer System
-            if (typeof ExplorerSystem !== 'undefined') {
-                ExplorerSystem.init();
-                
-                // Register explorer tick processor
-                if (typeof ExplorerSystem.processTick === 'function') {
-                    this.registerTickProcessor(ExplorerSystem.processTick.bind(ExplorerSystem));
-                }
-            }
+            LandManager.init();
+            StatisticsPanel.init();
+            BuildingSystem.init();
+
+                        // Initialize Explorer System
+                        if (typeof ExplorerSystem !== 'undefined') {
+                            ExplorerSystem.init();
+                            
+                            // Register explorer tick processor
+                            if (typeof ExplorerSystem.processTick === 'function') {
+                                this.registerTickProcessor(ExplorerSystem.processTick.bind(ExplorerSystem));
+                            }
+                        }
             
             // Step 7: Initialize immigration system
             if (typeof ImmigrationSystem !== 'undefined' && typeof ImmigrationSystem.init === 'function') {
@@ -449,16 +397,14 @@ const GameEngine = (function() {
             }
             
             // Step 8: Perform a final panels refresh
-            if (typeof NavigationSystem !== 'undefined') {
-                NavigationSystem.refreshPanels();
-            }
+            NavigationSystem.refreshPanels();
             
             // Step 9: Set up event listeners after all panels are ready
             setupEventListeners();
             
             // Step 10: Update initial UI state
             updateDateDisplay();
-            updateWorldMapUI();
+            WorldMap.updateUI();
             
             // Step 11: Start game loop
             this.startGame();
@@ -546,7 +492,7 @@ const GameEngine = (function() {
             }
         },
 
-        /**
+                /**
          * Check if the game is currently running
          * @returns {boolean} - Whether the game is running or paused
          */
