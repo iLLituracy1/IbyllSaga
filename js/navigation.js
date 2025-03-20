@@ -58,13 +58,6 @@ const NavigationSystem = (function() {
             icon: '📊',
             panels: ['economy-panel']
         },
-        explore: {
-            id: 'explore-tab',
-            title: 'Explore',
-            icon: '🧭',
-            panels: ['explorer-panel'],
-            isDefault: false
-        },
     };
     
     // Map of panel registration status

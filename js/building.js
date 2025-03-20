@@ -219,7 +219,7 @@ const BuildingSystem = (function() {
             tier: 1,
             landRequirement: {
                 type: "settlement",
-                amount: .1
+                amount: 1
             },
             constructionCost: {
                 wood: 20,
