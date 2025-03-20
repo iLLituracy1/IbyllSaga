@@ -32,9 +32,8 @@ const Utils = {
         const element = document.getElementById(elementId);
         if (element) {
             element.textContent = value;
-        } else {
-            console.warn(`Element with ID '${elementId}' not found.`);
         }
+        // Removed the warning to avoid console spam
     },
     
     /**
@@ -46,7 +45,7 @@ const Utils = {
         const gameLog = document.getElementById('game-log');
         
         if (!gameLog) {
-            console.warn("Game log element not found.");
+            // Silently handle missing game log
             return;
         }
         

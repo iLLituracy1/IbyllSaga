@@ -58,6 +58,13 @@ const NavigationSystem = (function() {
             icon: '📊',
             panels: ['economy-panel']
         },
+        politics: {
+            id: 'politics-tab',
+            title: 'Politics',
+            icon: '👑',
+            panels: ['factions-panel'],
+            isDefault: false
+        },
     };
     
     // Map of panel registration status
