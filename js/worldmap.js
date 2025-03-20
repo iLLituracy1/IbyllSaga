@@ -538,9 +538,9 @@ const REGION_TYPES = {
         };
         
         // Create regions for each landmass
-        createRegionsForLandmass(vikingLandmass, 6);  // More regions in Viking homeland
-        createRegionsForLandmass(angloLandmass, 4);   // Anglo lands
-        createRegionsForLandmass(frankishLandmass, 5); // Frankish lands
+        createRegionsForLandmass(vikingLandmass, 8);  // More regions in Viking homeland
+        createRegionsForLandmass(angloLandmass, 14);   // Anglo lands
+        createRegionsForLandmass(frankishLandmass, 22); // Frankish lands
         
         // 3. Generate settlements
         
@@ -601,14 +601,14 @@ const REGION_TYPES = {
             if (region.id === worldMap.playerRegion?.id) return;
             
             if (landmass.type === LANDMASS_TYPES.VIKING_HOMELAND) {
-                // 1-2 Viking settlements per region in homeland
-                createSettlements(region, Utils.randomBetween(1, 2), SETTLEMENT_TYPES.VIKING);
+                // 1-3 Viking settlements per region in homeland
+                createSettlements(region, Utils.randomBetween(1, 3), SETTLEMENT_TYPES.VIKING);
             } else if (landmass.type === LANDMASS_TYPES.ANGLO_LANDS) {
-                // 1-3 Anglo settlements per region
-                createSettlements(region, Utils.randomBetween(1, 3), SETTLEMENT_TYPES.ANGLO);
+                // 5-10 Anglo settlements per region
+                createSettlements(region, Utils.randomBetween(5, 10), SETTLEMENT_TYPES.ANGLO);
             } else if (landmass.type === LANDMASS_TYPES.FRANKISH_LANDS) {
-                // 1-3 Frankish settlements per region
-                createSettlements(region, Utils.randomBetween(1, 3), SETTLEMENT_TYPES.FRANKISH);
+                // 10-15 Frankish settlements per region
+                createSettlements(region, Utils.randomBetween(10, 15), SETTLEMENT_TYPES.FRANKISH);
             }
         });
         
@@ -915,7 +915,7 @@ const REGION_TYPES = {
                     const region = this.getRegion(settlement.region);
                     if (region) {
                         // Base production rates * population * region modifier
-                        const foodProduced = 0.5 * settlement.population * region.resourceModifiers.food * tickSize;
+                        const foodProduced = 0.8 * settlement.population * region.resourceModifiers.food * tickSize;
                         const woodProduced = 0.3 * settlement.population * region.resourceModifiers.wood * tickSize;
                         const stoneProduced = 0.2 * settlement.population * region.resourceModifiers.stone * tickSize;
                         const metalProduced = 0.1 * settlement.population * region.resourceModifiers.metal * tickSize;

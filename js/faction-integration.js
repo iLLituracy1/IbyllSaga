@@ -66,7 +66,7 @@ const FactionIntegration = (function() {
             resourcePriorities: ["food", "wood", "metal"],
             buildingTypes: ["longhouse", "runestone", "longship_harbor"],
             specialLocationChance: 0.3, // Chance to spawn special locations
-            kingdomCount: [2, 4], // Min/max number of kingdoms to generate
+            kingdomCount: [1, 2], // Min/max number of kingdoms to generate
             vassalChance: 0.6, // Chance for a settlement to be a vassal rather than independent
             independenceSpirit: 0.7 // Higher values mean more fragmented realms
         },
@@ -79,7 +79,7 @@ const FactionIntegration = (function() {
             resourcePriorities: ["food", "stone", "wood"],
             buildingTypes: ["burh", "minster", "motte_and_bailey"],
             specialLocationChance: 0.4, // Higher chance for special locations
-            kingdomCount: [1, 3], // Min/max number of kingdoms to generate
+            kingdomCount: [2, 6], // Min/max number of kingdoms to generate
             vassalChance: 0.8, // Higher chance for settlements to be vassals
             independenceSpirit: 0.4 // More centralized realms
         },
@@ -92,7 +92,7 @@ const FactionIntegration = (function() {
             resourcePriorities: ["food", "stone", "metal", "silver"],
             buildingTypes: ["stone_keep", "cathedral", "royal_mint"],
             specialLocationChance: 0.5, // High chance for special locations
-            kingdomCount: [1, 2], // Min/max number of kingdoms to generate
+            kingdomCount: [2, 3], // Min/max number of kingdoms to generate
             vassalChance: 0.9, // Very high chance for settlements to be vassals
             independenceSpirit: 0.2 // Very centralized realms
         }
