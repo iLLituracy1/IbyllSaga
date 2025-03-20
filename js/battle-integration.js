@@ -1,10 +1,20 @@
 /**
- * Viking Legacy - Battle System Integration (Complete Bugfix)
- * Handles integration of battle system with explorer panels
+ * Viking Legacy - Battle System Integration for Modal Explorer
+ * Handles integration of battle system with explorer modal
  */
 
 (function() {
-    // Simplest approach - wait for game to fully load, then enhance the Explorer system
+    // Store reference to the original showSettlementDetails function
+    let originalShowSettlementDetails = null;
+    
+    // Create a global battleIntegration object for public methods
+    window.battleIntegration = {
+        executeRaid: null // Will be set during initialization
+    };
+    
+    /**
+     * Initialize the battle integration system
+     */
     function init() {
         console.log("Initializing Battle System Integration...");
         
@@ -16,7 +26,7 @@
                 clearInterval(checkInterval);
                 
                 // Store the original function reference
-                const originalShowSettlementDetails = ExplorerSystem.showSettlementDetails;
+                originalShowSettlementDetails = ExplorerSystem.showSettlementDetails;
                 
                 // Safely override with an extended version
                 ExplorerSystem.showSettlementDetails = function(settlement) {
@@ -61,6 +71,9 @@
                         }
                     }, 300); // Wait a bit to ensure the panel is fully rendered
                 };
+                
+                // Set up the global executeRaid method
+                window.battleIntegration.executeRaid = executeRaid;
                 
                 // Also fix the settlement population display
                 updateAllSettlementData();
@@ -177,12 +190,6 @@
             
             // Execute raid directly
             executeRaid(settlement, explorerState);
-            
-            // Close settlement panel
-            const detailPanel = document.getElementById('settlement-detail-panel');
-            if (detailPanel) {
-                detailPanel.classList.remove('visible');
-            }
         });
         
         // Replace the original button
@@ -197,6 +204,22 @@
      * @param {Object} party - Explorer party
      */
     function executeRaid(settlement, party) {
+        // Check if party is available
+        if (!party) {
+            party = ExplorerSystem.getExplorerState();
+        }
+        
+        if (!party || !party.active) {
+            Utils.log("You need an active exploration party to raid settlements.", "important");
+            return;
+        }
+        
+        // Double-check this isn't the player's settlement
+        if (settlement && settlement.isPlayer) {
+            Utils.log("You cannot raid your own settlement!", "important");
+            return;
+        }
+        
         // Calculate attacker strength
         const attackerStrength = calculateCombatStrength(party);
         
@@ -254,6 +277,12 @@
         // Add to battle history
         if (typeof BattleSystem !== 'undefined' && typeof BattleSystem.addBattleToHistory === 'function') {
             BattleSystem.addBattleToHistory(battleReport);
+        }
+        
+        // Close settlement detail panel
+        const detailPanel = document.getElementById('settlement-detail-panel');
+        if (detailPanel) {
+            detailPanel.classList.remove('visible');
         }
     }
     
@@ -561,7 +590,7 @@
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                z-index: 1000;
+                z-index: 1100; /* Above explorer modal */
             }
             
             .battle-result-content {
