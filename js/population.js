@@ -12,7 +12,7 @@ const PopulationManager = (function() {
     let population = {
         total: 9,         // Total population count
         workers: 5,       // Available adult workers
-        warriors: 15,      // Warriors (specialized workers)
+        warriors: 0,      // Warriors (specialized workers)
         children: 3,      // Children who will grow into workers
         elders: 1         // Elders (non-working)
     };
@@ -43,7 +43,7 @@ const PopulationManager = (function() {
     
     // Buildings that affect housing capacity
     let buildings = {
-        houses: 3 // Start with three houses
+        houses: 3, // Start with three house
     };
     
     // Constants

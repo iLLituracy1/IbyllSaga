@@ -258,8 +258,7 @@ const MilitaryPanel = (function() {
         // For now, just use placeholder content
         // In a full implementation, this would fetch recent battles, raids, etc.
         eventsList.innerHTML = `
-            <div class="event-item">You recruited 5 new warriors.</div>
-            <div class="event-item">Your scouts report a nearby settlement is vulnerable to raids.</div>
+        
         `;
     }
     
@@ -336,8 +335,8 @@ const MilitaryPanel = (function() {
         const targetRegionId = document.getElementById('expedition-target').value;
         
         if (!name || warriors <= 0 || !targetRegionId) {
-            // Display error somehow
-            console.error("Invalid expedition parameters");
+            // Display error
+            Utils.log("Invalid expedition parameters. Please provide a name, warriors, and target.", "danger");
             return;
         }
         
@@ -345,6 +344,7 @@ const MilitaryPanel = (function() {
         if (!window.ExpeditionSystem || !ExpeditionSystem.createPlayerExpedition) {
             // Mock expedition for testing
             console.log(`Creating mock expedition: ${name} with ${warriors} warriors to region ${targetRegionId}`);
+            Utils.log(`Created mock expedition: ${name} with ${warriors} warriors`, "important");
             
             // Hide form
             hideExpeditionCreation();
@@ -354,28 +354,39 @@ const MilitaryPanel = (function() {
             return;
         }
         
-        // Create the expedition
-        const expedition = ExpeditionSystem.createPlayerExpedition({
-            name: name,
-            warriors: warriors,
-            regionId: WorldMap.getPlayerRegion()?.id
-        });
-        
-        if (!expedition) {
-            console.error("Failed to create expedition");
-            return;
+        try {
+            // Create the expedition
+            const expedition = ExpeditionSystem.createPlayerExpedition({
+                name: name,
+                warriors: warriors,
+                regionId: WorldMap.getPlayerRegion()?.id
+            });
+            
+            if (!expedition) {
+                Utils.log("Failed to create expedition. Not enough warriors?", "danger");
+                return;
+            }
+            
+            // Launch expedition
+            const result = ExpeditionSystem.startExpedition(expedition.id, {
+                targetRegionId: targetRegionId
+            });
+            
+            if (result) {
+                Utils.log(`Your expedition ${name} has begun the journey!`, "important");
+            } else {
+                Utils.log("The expedition could not be launched. Path blocked?", "danger");
+            }
+            
+            // Hide form
+            hideExpeditionCreation();
+            
+            // Update UI
+            updateExpeditionsList();
+        } catch (error) {
+            console.error("Error launching expedition:", error);
+            Utils.log("An error occurred while trying to launch the expedition.", "danger");
         }
-        
-        // Launch expedition
-        ExpeditionSystem.startExpedition(expedition.id, {
-            targetRegionId: targetRegionId
-        });
-        
-        // Hide form
-        hideExpeditionCreation();
-        
-        // Update UI
-        updateExpeditionsList();
     }
     
     /**
@@ -391,67 +402,73 @@ const MilitaryPanel = (function() {
             return;
         }
         
-        // Get player expeditions
-        const expeditions = ExpeditionSystem.getExpeditions('player');
-        
-        if (expeditions.length === 0) {
-            expeditionsList.innerHTML = '<div class="empty-list">No active expeditions.</div>';
-            return;
-        }
-        
-        // Create HTML for each expedition
-        let expeditionsHTML = '';
-        
-        expeditions.forEach(expedition => {
-            // Get current region name
-            let regionName = 'Unknown';
-            if (expedition.currentRegion) {
-                const region = WorldMap.getRegion(expedition.currentRegion);
-                if (region) regionName = region.name;
+        try {
+            // Get player expeditions
+            const expeditions = ExpeditionSystem.getExpeditions('player');
+            
+            if (expeditions.length === 0) {
+                expeditionsList.innerHTML = '<div class="empty-list">No active expeditions.</div>';
+                return;
             }
             
-            // Get status text
-            const statusText = expedition.status.charAt(0).toUpperCase() + expedition.status.slice(1);
+            // Create HTML for each expedition
+            let expeditionsHTML = '';
             
-            expeditionsHTML += `
-                <div class="expedition-item status-${expedition.status}">
-                    <div class="expedition-header">
-                        <div class="expedition-name">${expedition.name}</div>
-                        <div class="expedition-status">${statusText}</div>
-                    </div>
-                    <div class="expedition-details">
-                        <div class="detail-row">
-                            <div class="detail-label">Warriors:</div>
-                            <div class="detail-value">${expedition.warriors}</div>
-                        </div>
-                        <div class="detail-row">
-                            <div class="detail-label">Location:</div>
-                            <div class="detail-value">${regionName}</div>
-                        </div>
-                        <div class="detail-row">
-                            <div class="detail-label">Days Active:</div>
-                            <div class="detail-value">${Math.floor(expedition.daysActive || 0)}</div>
-                        </div>
-                    </div>
-                    <div class="expedition-actions">
-                        <button class="btn-recall" data-expedition-id="${expedition.id}">Recall</button>
-                    </div>
-                </div>
-            `;
-        });
-        
-        expeditionsList.innerHTML = expeditionsHTML;
-        
-        // Add event listeners to recall buttons
-        expeditionsList.querySelectorAll('.btn-recall').forEach(button => {
-            button.addEventListener('click', function() {
-                const expeditionId = this.dataset.expeditionId;
-                if (window.ExpeditionSystem && ExpeditionSystem.recallExpedition) {
-                    ExpeditionSystem.recallExpedition(expeditionId);
-                    updateExpeditionsList();
+            expeditions.forEach(expedition => {
+                // Get current region name
+                let regionName = 'Unknown';
+                if (expedition.currentRegion) {
+                    const region = WorldMap.getRegion(expedition.currentRegion);
+                    if (region) regionName = region.name;
                 }
+                
+                // Get status text
+                const statusText = expedition.status.charAt(0).toUpperCase() + expedition.status.slice(1);
+                
+                expeditionsHTML += `
+                    <div class="expedition-item status-${expedition.status}">
+                        <div class="expedition-header">
+                            <div class="expedition-name">${expedition.name}</div>
+                            <div class="expedition-status">${statusText}</div>
+                        </div>
+                        <div class="expedition-details">
+                            <div class="detail-row">
+                                <div class="detail-label">Warriors:</div>
+                                <div class="detail-value">${expedition.warriors}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Location:</div>
+                                <div class="detail-value">${regionName}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Days Active:</div>
+                                <div class="detail-value">${Math.floor(expedition.daysActive || 0)}</div>
+                            </div>
+                        </div>
+                        <div class="expedition-actions">
+                            <button class="btn-recall" data-expedition-id="${expedition.id}">Recall</button>
+                        </div>
+                    </div>
+                `;
             });
-        });
+            
+            expeditionsList.innerHTML = expeditionsHTML;
+            
+            // Add event listeners to recall buttons
+            expeditionsList.querySelectorAll('.btn-recall').forEach(button => {
+                button.addEventListener('click', function() {
+                    const expeditionId = this.dataset.expeditionId;
+                    if (window.ExpeditionSystem && ExpeditionSystem.recallExpedition) {
+                        ExpeditionSystem.recallExpedition(expeditionId);
+                        Utils.log("You've recalled your expedition. It will return to your settlement.", "important");
+                        updateExpeditionsList();
+                    }
+                });
+            });
+        } catch (error) {
+            console.error("Error updating expeditions list:", error);
+            expeditionsList.innerHTML = '<div class="empty-list">Error loading expeditions.</div>';
+        }
     }
     
     /**
@@ -519,7 +536,7 @@ const MilitaryPanel = (function() {
         const targetSettlementId = document.getElementById('raid-target').value;
         
         if (warriors <= 0 || !targetSettlementId) {
-            console.error("Invalid raid parameters");
+            Utils.log("Invalid raid parameters. Please select a target and number of warriors.", "danger");
             return;
         }
         
@@ -527,6 +544,7 @@ const MilitaryPanel = (function() {
         if (!window.ExpeditionSystem || !ExpeditionSystem.createPlayerExpedition) {
             // Mock raid for testing
             console.log(`Creating mock raid with ${warriors} warriors to settlement ${targetSettlementId}`);
+            Utils.log(`Sending ${warriors} warriors to raid the target settlement.`, "important");
             
             // Hide form
             hideRaidPlanner();
@@ -538,30 +556,42 @@ const MilitaryPanel = (function() {
         
         // Get settlement for name
         const settlement = WorldMap.getSettlement(targetSettlementId);
+        const settlementName = settlement ? settlement.name : 'Enemy Settlement';
         
-        // Create the expedition
-        const expedition = ExpeditionSystem.createPlayerExpedition({
-            name: `Raid on ${settlement ? settlement.name : 'Enemy Settlement'}`,
-            type: 'raid',
-            warriors: warriors,
-            regionId: WorldMap.getPlayerRegion()?.id
-        });
-        
-        if (!expedition) {
-            console.error("Failed to create raid expedition");
-            return;
+        try {
+            // Create the expedition
+            const expedition = ExpeditionSystem.createPlayerExpedition({
+                name: `Raid on ${settlementName}`,
+                type: 'raid',
+                warriors: warriors,
+                regionId: WorldMap.getPlayerRegion()?.id
+            });
+            
+            if (!expedition) {
+                Utils.log("Failed to create raid expedition. Not enough warriors?", "danger");
+                return;
+            }
+            
+            // Launch expedition targeting the settlement
+            const result = ExpeditionSystem.startExpedition(expedition.id, {
+                targetSettlementId: targetSettlementId
+            });
+            
+            if (result) {
+                Utils.log(`Your raid expedition with ${warriors} warriors has set out toward ${settlementName}!`, "important");
+            } else {
+                Utils.log("The raid could not be launched. Path blocked?", "danger");
+            }
+            
+            // Hide form
+            hideRaidPlanner();
+            
+            // Update UI
+            updateRaidsList();
+        } catch (error) {
+            console.error("Error launching raid:", error);
+            Utils.log("An error occurred while trying to launch the raid.", "danger");
         }
-        
-        // Launch expedition targeting the settlement
-        ExpeditionSystem.startExpedition(expedition.id, {
-            targetSettlementId: targetSettlementId
-        });
-        
-        // Hide form
-        hideRaidPlanner();
-        
-        // Update UI
-        updateRaidsList();
     }
     
     /**
@@ -577,71 +607,76 @@ const MilitaryPanel = (function() {
             return;
         }
         
-        // Get player expeditions
-        const allExpeditions = ExpeditionSystem.getExpeditions('player');
-        const raids = allExpeditions.filter(exp => 
-            exp.status === 'raiding' || exp.status === 'sieging'
-        );
-        
-        if (raids.length === 0) {
-            raidsList.innerHTML = '<div class="empty-list">No active raids.</div>';
-            return;
-        }
-        
-        // Create HTML for each raid
-        let raidsHTML = '';
-        
-        raids.forEach(raid => {
-            // Get status text
-            const statusText = raid.status === 'raiding' ? 'Raiding' : 'Sieging';
+        try {
+            // Get player expeditions
+            const allExpeditions = ExpeditionSystem.getExpeditions('player');
+            const raids = allExpeditions.filter(exp => 
+                exp.status === 'raiding' || exp.status === 'sieging'
+            );
             
-            // Get target info
-            let targetName = 'Unknown';
-            if (raid.targetSettlement) {
-                const settlement = WorldMap.getSettlement(raid.targetSettlement);
-                if (settlement) targetName = settlement.name;
-            } else if (raid.currentRegion) {
-                const region = WorldMap.getRegion(raid.currentRegion);
-                if (region) targetName = region.name + ' Region';
+            if (raids.length === 0) {
+                raidsList.innerHTML = '<div class="empty-list">No active raids.</div>';
+                return;
             }
             
-            // Get progress
-            let progressHTML = '';
-            if (raid.status === 'sieging' && raid.siegeProgress !== undefined) {
-                progressHTML = `
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${raid.siegeProgress}%"></div>
+            // Create HTML for each raid
+            let raidsHTML = '';
+            
+            raids.forEach(raid => {
+                // Get status text
+                const statusText = raid.status === 'raiding' ? 'Raiding' : 'Sieging';
+                
+                // Get target info
+                let targetName = 'Unknown';
+                if (raid.targetSettlement) {
+                    const settlement = WorldMap.getSettlement(raid.targetSettlement);
+                    if (settlement) targetName = settlement.name;
+                } else if (raid.currentRegion) {
+                    const region = WorldMap.getRegion(raid.currentRegion);
+                    if (region) targetName = region.name + ' Region';
+                }
+                
+                // Get progress
+                let progressHTML = '';
+                if (raid.status === 'sieging' && raid.siegeProgress !== undefined) {
+                    progressHTML = `
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${raid.siegeProgress}%"></div>
+                        </div>
+                        <div class="progress-text">${Math.round(raid.siegeProgress)}%</div>
+                    `;
+                }
+                
+                raidsHTML += `
+                    <div class="raid-item status-${raid.status}">
+                        <div class="raid-header">
+                            <div class="raid-name">${raid.name}</div>
+                            <div class="raid-status">${statusText}</div>
+                        </div>
+                        <div class="raid-details">
+                            <div class="detail-row">
+                                <div class="detail-label">Target:</div>
+                                <div class="detail-value">${targetName}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Warriors:</div>
+                                <div class="detail-value">${raid.warriors}</div>
+                            </div>
+                            ${progressHTML ? `
+                            <div class="detail-row">
+                                <div class="detail-label">Progress:</div>
+                                <div class="detail-value">${progressHTML}</div>
+                            </div>` : ''}
+                        </div>
                     </div>
-                    <div class="progress-text">${Math.round(raid.siegeProgress)}%</div>
                 `;
-            }
+            });
             
-            raidsHTML += `
-                <div class="raid-item status-${raid.status}">
-                    <div class="raid-header">
-                        <div class="raid-name">${raid.name}</div>
-                        <div class="raid-status">${statusText}</div>
-                    </div>
-                    <div class="raid-details">
-                        <div class="detail-row">
-                            <div class="detail-label">Target:</div>
-                            <div class="detail-value">${targetName}</div>
-                        </div>
-                        <div class="detail-row">
-                            <div class="detail-label">Warriors:</div>
-                            <div class="detail-value">${raid.warriors}</div>
-                        </div>
-                        ${progressHTML ? `
-                        <div class="detail-row">
-                            <div class="detail-label">Progress:</div>
-                            <div class="detail-value">${progressHTML}</div>
-                        </div>` : ''}
-                    </div>
-                </div>
-            `;
-        });
-        
-        raidsList.innerHTML = raidsHTML;
+            raidsList.innerHTML = raidsHTML;
+        } catch (error) {
+            console.error("Error updating raids list:", error);
+            raidsList.innerHTML = '<div class="empty-list">Error loading raids.</div>';
+        }
     }
     
     /**
@@ -657,87 +692,92 @@ const MilitaryPanel = (function() {
             return;
         }
         
-        // Get active battles and sieges
-        const battles = ConflictSystem.getActiveBattles();
-        const sieges = ConflictSystem.getActiveSieges();
-        
-        if (battles.length === 0 && sieges.length === 0) {
-            battlesList.innerHTML = '<div class="empty-list">No active battles or sieges.</div>';
-            return;
-        }
-        
-        // Create HTML for battles and sieges
-        let battlesHTML = '';
-        
-        // Add battles
-        battles.forEach(battle => {
-            // Get phase text
-            const phaseText = battle.phase.charAt(0).toUpperCase() + battle.phase.slice(1);
+        try {
+            // Get active battles and sieges
+            const battles = ConflictSystem.getActiveBattles();
+            const sieges = ConflictSystem.getActiveSieges();
             
-            // Determine advantage
-            let advantageText = 'Even';
-            let advantageClass = 'neutral';
-            
-            if (battle.advantage > 30) {
-                advantageText = 'Advantage';
-                advantageClass = 'advantage';
-            } else if (battle.advantage < -30) {
-                advantageText = 'Disadvantage';
-                advantageClass = 'disadvantage';
+            if (battles.length === 0 && sieges.length === 0) {
+                battlesList.innerHTML = '<div class="empty-list">No active battles or sieges.</div>';
+                return;
             }
             
-            battlesHTML += `
-                <div class="battle-item phase-${battle.phase}">
-                    <div class="battle-header">
-                        <div class="battle-name">Battle of ${battle.regionName || 'Unknown Region'}</div>
-                        <div class="battle-phase">${phaseText}</div>
-                    </div>
-                    <div class="battle-details">
-                        <div class="detail-row">
-                            <div class="detail-label">Your Forces:</div>
-                            <div class="detail-value">${battle.attackerStrength}</div>
+            // Create HTML for battles and sieges
+            let battlesHTML = '';
+            
+            // Add battles
+            battles.forEach(battle => {
+                // Get phase text
+                const phaseText = battle.phase.charAt(0).toUpperCase() + battle.phase.slice(1);
+                
+                // Determine advantage
+                let advantageText = 'Even';
+                let advantageClass = 'neutral';
+                
+                if (battle.advantage > 30) {
+                    advantageText = 'Advantage';
+                    advantageClass = 'advantage';
+                } else if (battle.advantage < -30) {
+                    advantageText = 'Disadvantage';
+                    advantageClass = 'disadvantage';
+                }
+                
+                battlesHTML += `
+                    <div class="battle-item phase-${battle.phase}">
+                        <div class="battle-header">
+                            <div class="battle-name">Battle of ${battle.regionName || 'Unknown Region'}</div>
+                            <div class="battle-phase">${phaseText}</div>
                         </div>
-                        <div class="detail-row">
-                            <div class="detail-label">Enemy Forces:</div>
-                            <div class="detail-value">${battle.defenderStrength}</div>
-                        </div>
-                        <div class="detail-row">
-                            <div class="detail-label">Status:</div>
-                            <div class="detail-value advantage-${advantageClass}">${advantageText}</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-        
-        // Add sieges that aren't already represented in raids list
-        sieges.forEach(siege => {
-            battlesHTML += `
-                <div class="siege-item phase-${siege.phase}">
-                    <div class="siege-header">
-                        <div class="siege-name">Siege of ${siege.settlementName || 'Unknown Settlement'}</div>
-                        <div class="siege-phase">${siege.phase.charAt(0).toUpperCase() + siege.phase.slice(1)}</div>
-                    </div>
-                    <div class="siege-details">
-                        <div class="detail-row">
-                            <div class="detail-label">Progress:</div>
-                            <div class="detail-value">
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: ${siege.progress}%"></div>
-                                </div>
-                                <div class="progress-text">${Math.round(siege.progress)}%</div>
+                        <div class="battle-details">
+                            <div class="detail-row">
+                                <div class="detail-label">Your Forces:</div>
+                                <div class="detail-value">${battle.attackerStrength}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Enemy Forces:</div>
+                                <div class="detail-value">${battle.defenderStrength}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Status:</div>
+                                <div class="detail-value advantage-${advantageClass}">${advantageText}</div>
                             </div>
                         </div>
-                        <div class="detail-row">
-                            <div class="detail-label">Days Active:</div>
-                            <div class="detail-value">${Math.floor(siege.daysActive || 0)}</div>
+                    </div>
+                `;
+            });
+            
+            // Add sieges that aren't already represented in raids list
+            sieges.forEach(siege => {
+                battlesHTML += `
+                    <div class="siege-item phase-${siege.phase}">
+                        <div class="siege-header">
+                            <div class="siege-name">Siege of ${siege.settlementName || 'Unknown Settlement'}</div>
+                            <div class="siege-phase">${siege.phase.charAt(0).toUpperCase() + siege.phase.slice(1)}</div>
+                        </div>
+                        <div class="siege-details">
+                            <div class="detail-row">
+                                <div class="detail-label">Progress:</div>
+                                <div class="detail-value">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: ${siege.progress}%"></div>
+                                    </div>
+                                    <div class="progress-text">${Math.round(siege.progress)}%</div>
+                                </div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Days Active:</div>
+                                <div class="detail-value">${Math.floor(siege.daysActive || 0)}</div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
-        });
-        
-        battlesList.innerHTML = battlesHTML;
+                `;
+            });
+            
+            battlesList.innerHTML = battlesHTML;
+        } catch (error) {
+            console.error("Error updating battles list:", error);
+            battlesList.innerHTML = '<div class="empty-list">Error loading battles.</div>';
+        }
     }
     
     /**
@@ -1076,6 +1116,19 @@ const MilitaryPanel = (function() {
         init: function() {
             console.log("Initializing Military Panel...");
             
+            // Debug check if systems are available
+            console.log("DEBUG: MilitaryPanel initialization check");
+            console.log("ExpeditionSystem available:", window.ExpeditionSystem !== undefined);
+            console.log("ConflictSystem available:", window.ConflictSystem !== undefined);
+            
+            if (window.ExpeditionSystem) {
+                console.log("ExpeditionSystem methods:", Object.keys(window.ExpeditionSystem));
+            }
+            
+            if (window.ConflictSystem) {
+                console.log("ConflictSystem methods:", Object.keys(window.ConflictSystem));
+            }
+            
             // Check if already initialized
             if (isInitialized) {
                 console.log("Military panel already initialized");
@@ -1142,6 +1195,9 @@ const MilitaryPanel = (function() {
         }
     };
 })();
+
+// Expose MilitaryPanel to the window object for global access
+window.MilitaryPanel = MilitaryPanel;
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {

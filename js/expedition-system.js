@@ -1,6 +1,8 @@
 /**
  * Viking Legacy - Expedition System
  * Manages creating armies, moving them between regions, and coordinating warfare
+ * 
+ * Version 2: Fixed bugs with returning expeditions and days active counter
  */
 
 const ExpeditionSystem = (function() {
@@ -51,8 +53,23 @@ const ExpeditionSystem = (function() {
         siegeProgress: 0,     // Progress on current siege (0-100)
         movementProgress: 0,  // Progress on current movement (0-100)
         daysActive: 0,        // Total days active
-        fame: 0               // Fame earned from this expedition
+        fame: 0,              // Fame earned from this expedition
+        debugInfo: {}         // For debugging expedition issues
     };
+    
+    // Debug flag
+    const DEBUG = true;
+    
+    /**
+     * Debug log to console
+     * @param {string} message - Message to log
+     * @param {*} data - Optional data to log
+     */
+    function debugLog(message, data) {
+        if (DEBUG) {
+            console.log(`[ExpeditionSystem] ${message}`, data || '');
+        }
+    }
     
     /**
      * Calculate base expedition strength
@@ -167,14 +184,19 @@ const ExpeditionSystem = (function() {
             warriors: options.warriors || 0,
             strength: calculateStrength(options.warriors, options.bonuses),
             originRegion: options.regionId,
-            currentRegion: options.regionId
+            currentRegion: options.regionId,
+            debugInfo: { 
+                created: new Date().toISOString(),
+                lastStateChange: null,
+                stateHistory: []
+            }
         });
         
         // Add to expeditions list
         expeditions.push(expedition);
         
         // Log expedition creation
-        console.log(`Created expedition ${expedition.name} with ${expedition.warriors} warriors`);
+        debugLog(`Created expedition ${expedition.name} with ${expedition.warriors} warriors`, expedition);
         
         return expedition;
     }
@@ -195,8 +217,17 @@ const ExpeditionSystem = (function() {
         // Update any additional status data
         Object.assign(expedition, statusData);
         
+        // Add state change to debug history
+        expedition.debugInfo.lastStateChange = new Date().toISOString();
+        expedition.debugInfo.stateHistory.push({
+            timestamp: expedition.debugInfo.lastStateChange,
+            from: oldStatus,
+            to: status,
+            data: { ...statusData }
+        });
+        
         // Log status change
-        console.log(`Expedition ${expedition.name} status changed from ${oldStatus} to ${status}`);
+        debugLog(`Expedition ${expedition.name} status changed from ${oldStatus} to ${status}`, statusData);
         
         // Handle status-specific logic
         switch (status) {
@@ -208,6 +239,12 @@ const ExpeditionSystem = (function() {
             case EXPEDITION_STATUS.SIEGING:
                 // Reset siege progress when starting a siege
                 expedition.siegeProgress = 0;
+                break;
+                
+            case EXPEDITION_STATUS.RETURNING:
+                // Reset movement progress and ensure targetRegion is set to originRegion
+                expedition.movementProgress = 0;
+                expedition.targetRegion = expedition.originRegion;
                 break;
                 
             case EXPEDITION_STATUS.DISBANDED:
@@ -222,17 +259,19 @@ const ExpeditionSystem = (function() {
      * @param {Object} expedition - The disbanding expedition
      */
     function handleExpeditionDisbanding(expedition) {
+        debugLog(`Disbanding expedition ${expedition.name}`, expedition);
+        
         // If this is the player's expedition, return warriors to the settlement
         if (expedition.ownerType === 'player') {
             const playerSettlement = WorldMap.getPlayerSettlement();
             
             if (playerSettlement && typeof PopulationManager !== 'undefined') {
                 // Calculate warriors returning (total minus casualties)
-                const returningWarriors = Math.max(0, expedition.warriors - expedition.casualties);
+                const returningWarriors = Math.max(0, expedition.warriors);
                 
                 // Add warriors back to population
                 if (typeof PopulationManager.addAnonymousPopulation === 'function') {
-                    PopulationManager.addAnonymousPopulation('worker', returningWarriors);
+                    PopulationManager.addAnonymousPopulation('warrior', returningWarriors);
                     Utils.log(`${returningWarriors} warriors have returned from ${expedition.name}.`);
                 }
                 
@@ -260,6 +299,7 @@ const ExpeditionSystem = (function() {
             const index = expeditions.findIndex(e => e.id === expedition.id);
             if (index !== -1) {
                 expeditions.splice(index, 1);
+                debugLog(`Removed expedition ${expedition.name} from list`);
             }
         }, 5000); // Remove after 5 seconds
     }
@@ -284,6 +324,9 @@ const ExpeditionSystem = (function() {
         // Progress as percentage
         const progressIncrement = (tickSize / totalDays) * 100;
         expedition.movementProgress += progressIncrement;
+        
+        debugLog(`Expedition ${expedition.name} movement progress: ${expedition.movementProgress.toFixed(1)}%`, 
+                 { from: expedition.currentRegion, to: expedition.targetRegion, tickSize });
         
         // If movement complete
         if (expedition.movementProgress >= 100) {
@@ -429,7 +472,8 @@ const ExpeditionSystem = (function() {
                         }
                         
                         updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.RETURNING, {
-                            targetRegion: expedition.originRegion
+                            targetRegion: expedition.originRegion,
+                            path: [] // Clear any existing path
                         });
                     }
                 }
@@ -444,7 +488,8 @@ const ExpeditionSystem = (function() {
                     }
                     
                     updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.RETURNING, {
-                        targetRegion: expedition.originRegion
+                        targetRegion: expedition.originRegion,
+                        path: [] // Clear any existing path
                     });
                 }
             }
@@ -486,6 +531,9 @@ const ExpeditionSystem = (function() {
         // Update siege progress
         expedition.siegeProgress += siegeProgressIncrement;
         
+        debugLog(`Expedition ${expedition.name} siege progress: ${expedition.siegeProgress.toFixed(1)}%`, 
+                 { settlement: settlement.name, tickSize });
+        
         // Log progress for player expeditions
         if (expedition.ownerType === 'player' && Math.floor(expedition.siegeProgress / 20) > Math.floor((expedition.siegeProgress - siegeProgressIncrement) / 20)) {
             const progressPhase = Math.floor(expedition.siegeProgress / 20);
@@ -503,13 +551,59 @@ const ExpeditionSystem = (function() {
             }
         }
         
-        // Siege complete when progress reaches 100
+        // Chance for casualties
+        if (Utils.chanceOf(15 * tickSize)) {
+            // Calculate casualties based on defense strength and phase
+            let casualtyFactor;
+            
+            if (expedition.siegeProgress < 25) {
+                casualtyFactor = 0.01; // Encirclement phase
+            } else if (expedition.siegeProgress < 75) {
+                casualtyFactor = 0.03; // Bombardment phase
+            } else {
+                casualtyFactor = 0.08; // Assault phase
+            }
+            
+            // Adjust by defense strength (stronger defenses = more casualties)
+            casualtyFactor *= (1 + (defenseStrength / 100));
+            
+            // Calculate and apply casualties
+            const casualties = Math.ceil(expedition.warriors * casualtyFactor * Utils.randomBetween(0.7, 1.3));
+            
+            expedition.casualties = (expedition.casualties || 0) + casualties;
+            expedition.warriors = Math.max(0, expedition.warriors - casualties);
+            expedition.strength = expedition.warriors; // Simplified strength calculation
+            
+            // Log casualties for player
+            if (expedition.ownerType === 'player') {
+                Utils.log(`Your forces suffered ${casualties} casualties during the siege.`, 'danger');
+            }
+            
+            // Check if expedition has too many losses to continue
+            if (expedition.casualties > expedition.warriors * 1.5 || expedition.warriors <= 0) {
+                // Too many losses, abandon siege
+                
+                if (expedition.ownerType === 'player') {
+                    Utils.log(`Having suffered heavy losses, your forces abandon the siege of ${settlement.name}.`, 'danger');
+                }
+                
+                // Remember to set the target region for returning
+                updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.RETURNING, {
+                    targetRegion: expedition.originRegion,
+                    path: [] // Clear any existing path
+                });
+                
+                return;
+            }
+        }
+        
+        // Siege concludes when progress reaches 100
         if (expedition.siegeProgress >= 100) {
             // Settlement captured!
             settlement.isCaptured = true;
             
             // Calculate loot based on settlement size and type
-            const lootMultiplier = settlement.population * (
+            const lootMultiplier = Math.max(1, settlement.population || 10) * (
                 1 + (settlement.rank || 0) * 0.5
             );
             
@@ -566,39 +660,13 @@ const ExpeditionSystem = (function() {
             
             // After successful siege, start returning home
             updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.RETURNING, {
-                targetRegion: expedition.originRegion
+                targetRegion: expedition.originRegion,
+                path: [] // Clear any existing path
             });
             
             // Notify conflict system if it exists
             if (window.ConflictSystem && typeof ConflictSystem.onSettlementCaptured === 'function') {
                 ConflictSystem.onSettlementCaptured(settlement.id, expedition.id);
-            }
-        }
-        
-        // Chance for casualties during siege
-        if (Utils.chanceOf(10 * tickSize)) {
-            // Defenders sortie - casualties
-            const casualtyCount = Math.ceil(expedition.warriors * 0.03 * Utils.randomBetween(1, 4));
-            
-            if (casualtyCount > 0) {
-                expedition.casualties += casualtyCount;
-                expedition.warriors -= casualtyCount;
-                expedition.strength = calculateStrength(expedition.warriors);
-                
-                if (expedition.ownerType === 'player') {
-                    Utils.log(`The defenders launched a sortie! You lost ${casualtyCount} warriors in the fighting.`, 'danger');
-                }
-                
-                // If too many casualties or not enough strength, might abandon siege
-                if (expedition.casualties > expedition.warriors / 2 || expedition.strength < defenderStrength * 0.7) {
-                    if (expedition.ownerType === 'player') {
-                        Utils.log(`With mounting losses, your forces have abandoned the siege of ${settlement.name}.`, 'danger');
-                    }
-                    
-                    updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.RETURNING, {
-                        targetRegion: expedition.originRegion
-                    });
-                }
             }
         }
     }
@@ -611,24 +679,70 @@ const ExpeditionSystem = (function() {
     function processReturning(expedition, tickSize) {
         if (expedition.status !== EXPEDITION_STATUS.RETURNING) return;
         
+        // Double check that target region is set to origin region
+        if (!expedition.targetRegion) {
+            debugLog(`Fixed: Returning expedition ${expedition.name} had no target`, expedition);
+            expedition.targetRegion = expedition.originRegion;
+        }
+        
         // If already in origin region, disband
         if (expedition.currentRegion === expedition.originRegion) {
+            // Log return of expedition
             if (expedition.ownerType === 'player') {
                 Utils.log(`Your expedition has returned home.`, 'important');
             }
             
+            // Disband the expedition
             updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.DISBANDED);
             return;
         }
         
-        // If no path established yet
-        if (!expedition.targetRegion) {
-            // Set path back to origin
-            expedition.targetRegion = expedition.originRegion;
-        }
+        // Process movement like normal - calculate days needed
+        const totalDays = calculateMovementDays(expedition.currentRegion, expedition.targetRegion);
         
-        // Process movement like normal
-        processMovement(expedition, tickSize);
+        // Progress as percentage
+        const progressIncrement = (tickSize / totalDays) * 100;
+        expedition.movementProgress += progressIncrement;
+        
+        debugLog(`Returning expedition ${expedition.name} movement progress: ${expedition.movementProgress.toFixed(1)}%`, 
+                 { from: expedition.currentRegion, to: expedition.targetRegion, tickSize });
+        
+        // If movement complete
+        if (expedition.movementProgress >= 100) {
+            // Update current region
+            expedition.currentRegion = expedition.targetRegion;
+            
+            // Check if we've reached home
+            if (expedition.currentRegion === expedition.originRegion) {
+                if (expedition.ownerType === 'player') {
+                    Utils.log(`Your expedition has returned home.`, 'important');
+                }
+                
+                // Disband the expedition
+                updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.DISBANDED);
+            } else {
+                // Not at origin yet, continue moving
+                debugLog(`Expedition ${expedition.name} continuing return journey`, 
+                    { current: expedition.currentRegion, origin: expedition.originRegion });
+                
+                // Find path to origin region
+                const adjacentRegions = findAdjacentRegions(expedition.currentRegion);
+                let nextRegion = expedition.originRegion;
+                
+                // If origin region is not adjacent, find a region that is adjacent and closer
+                if (!adjacentRegions.includes(expedition.originRegion)) {
+                    // Just pick the first adjacent region for simplicity
+                    // A better implementation would use pathfinding
+                    if (adjacentRegions.length > 0) {
+                        nextRegion = adjacentRegions[0];
+                    }
+                }
+                
+                // Update target and reset progress
+                expedition.targetRegion = nextRegion;
+                expedition.movementProgress = 0;
+            }
+        }
     }
     
     /**
@@ -707,8 +821,14 @@ const ExpeditionSystem = (function() {
                 // Skip disbanded expeditions
                 if (expedition.status === EXPEDITION_STATUS.DISBANDED) continue;
                 
-                // Update days active
+                // Update days active - with debug log to track the actual increment
+                const oldDaysActive = expedition.daysActive;
                 expedition.daysActive += tickSize;
+                
+                if (DEBUG && Math.abs(expedition.daysActive - oldDaysActive - tickSize) > 0.001) {
+                    debugLog(`WARNING: Days active increment mismatch for ${expedition.name}`,
+                           { old: oldDaysActive, new: expedition.daysActive, tickSize: tickSize });
+                }
                 
                 // Process based on status
                 switch (expedition.status) {
@@ -740,7 +860,7 @@ const ExpeditionSystem = (function() {
          * @returns {Object|null} - Created expedition or null if failed
          */
         createPlayerExpedition: function(options) {
-            console.log("Creating player expedition with options:", options);
+            debugLog("Creating player expedition with options:", options);
             
             // Validate required options
             if (!options.warriors || options.warriors <= 0) {
@@ -749,8 +869,14 @@ const ExpeditionSystem = (function() {
             }
             
             if (!options.regionId) {
-                console.error("Cannot create expedition: No region specified");
-                return null;
+                // Try to get player region from WorldMap
+                const playerRegion = WorldMap.getPlayerRegion();
+                if (playerRegion) {
+                    options.regionId = playerRegion.id;
+                } else {
+                    console.error("Cannot create expedition: No region specified");
+                    return null;
+                }
             }
             
             // Get player settlement
@@ -773,7 +899,7 @@ const ExpeditionSystem = (function() {
                 // Remove warriors from population
                 if (typeof PopulationManager.addAnonymousPopulation === 'function') {
                     // Use negative value to remove
-                    PopulationManager.addAnonymousPopulation('worker', -options.warriors);
+                    PopulationManager.addAnonymousPopulation('warrior', -options.warriors);
                 }
             }
             
@@ -802,6 +928,8 @@ const ExpeditionSystem = (function() {
         startExpedition: function(expeditionId, movementOptions) {
             const expedition = expeditions.find(e => e.id === expeditionId);
             if (!expedition) return false;
+            
+            debugLog(`Starting expedition ${expedition.name} journey with options:`, movementOptions);
             
             // Validate options
             if (!movementOptions.targetRegionId && !movementOptions.targetSettlementId) {
@@ -900,7 +1028,9 @@ const ExpeditionSystem = (function() {
             const expedition = expeditions.find(e => e.id === expeditionId);
             if (!expedition) return false;
             
-            // Update status to returning
+            debugLog(`Recalling expedition ${expedition.name}`, expedition);
+            
+            // Update status to returning and ensure targetRegion is set
             updateExpeditionStatus(expeditionId, EXPEDITION_STATUS.RETURNING, {
                 targetRegion: expedition.originRegion,
                 path: [] // Clear any existing path
@@ -927,9 +1057,34 @@ const ExpeditionSystem = (function() {
             updateExpeditionStatus(expeditionId, EXPEDITION_STATUS.DISBANDED);
             
             return true;
+        },
+        
+        /**
+         * Get debug information for all expeditions
+         * For debugging purposes only
+         * @returns {Array} - Array of expedition debug info
+         */
+        getDebugInfo: function() {
+            return expeditions.map(expedition => ({
+                id: expedition.id,
+                name: expedition.name,
+                status: expedition.status,
+                warriors: expedition.warriors,
+                casualties: expedition.casualties,
+                originRegion: expedition.originRegion,
+                currentRegion: expedition.currentRegion,
+                targetRegion: expedition.targetRegion,
+                daysActive: expedition.daysActive,
+                movementProgress: expedition.movementProgress,
+                siegeProgress: expedition.siegeProgress,
+                debugInfo: expedition.debugInfo
+            }));
         }
     };
 })();
+
+// Expose ExpeditionSystem to the window object for global access
+window.ExpeditionSystem = ExpeditionSystem;
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {

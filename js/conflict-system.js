@@ -449,10 +449,10 @@ const ConflictSystem = (function() {
     function handleBattleConclusion(battle) {
         // Get all involved expeditions
         const attackerExpeditions = battle.attackers.map(id => 
-            ExpeditionSystem.getExpedition && ExpeditionSystem.getExpedition(id)).filter(Boolean);
+            ExpeditionSystem && ExpeditionSystem.getExpedition && ExpeditionSystem.getExpedition(id)).filter(Boolean);
         
         const defenderExpeditions = battle.defenders.map(id => 
-            ExpeditionSystem.getExpedition && ExpeditionSystem.getExpedition(id)).filter(Boolean);
+            ExpeditionSystem && ExpeditionSystem.getExpedition && ExpeditionSystem.getExpedition(id)).filter(Boolean);
         
         // Determine if player was involved
         const playerAttacker = attackerExpeditions.some(exp => exp.ownerType === 'player');
@@ -518,7 +518,7 @@ const ConflictSystem = (function() {
             
             // Order defeated expeditions to flee
             defenderExpeditions.forEach(exp => {
-                if (exp && ExpeditionSystem.recallExpedition) {
+                if (exp && ExpeditionSystem && ExpeditionSystem.recallExpedition) {
                     ExpeditionSystem.recallExpedition(exp.id);
                 }
             });
@@ -572,7 +572,7 @@ const ConflictSystem = (function() {
             
             // Order defeated expeditions to flee
             attackerExpeditions.forEach(exp => {
-                if (exp && ExpeditionSystem.recallExpedition) {
+                if (exp && ExpeditionSystem && ExpeditionSystem.recallExpedition) {
                     ExpeditionSystem.recallExpedition(exp.id);
                 }
             });
@@ -656,7 +656,7 @@ const ConflictSystem = (function() {
         activeSieges.push(siege);
         
         // Log siege start for player
-        const expedition = ExpeditionSystem.getExpedition(siegeData.expeditionId);
+        const expedition = ExpeditionSystem && ExpeditionSystem.getExpedition && ExpeditionSystem.getExpedition(siegeData.expeditionId);
         if (expedition && expedition.ownerType === 'player') {
             Utils.log(`Your forces have begun a siege of ${settlement.name}!`, 'important');
         }
@@ -678,7 +678,7 @@ const ConflictSystem = (function() {
         siege.daysActive += tickSize;
         
         // Get expedition and settlement
-        const expedition = ExpeditionSystem.getExpedition(siege.expeditionId);
+        const expedition = ExpeditionSystem && ExpeditionSystem.getExpedition && ExpeditionSystem.getExpedition(siege.expeditionId);
         const settlement = WorldMap.getSettlement(siege.settlementId);
         
         // If expedition or settlement no longer exists, end siege
@@ -755,7 +755,7 @@ const ConflictSystem = (function() {
                 endSiege(siege, 'abandoned');
                 
                 // Order expedition to return home
-                if (ExpeditionSystem.recallExpedition) {
+                if (ExpeditionSystem && ExpeditionSystem.recallExpedition) {
                     ExpeditionSystem.recallExpedition(expedition.id);
                 }
                 
@@ -776,7 +776,7 @@ const ConflictSystem = (function() {
             }
             
             // Order expedition to return home with loot
-            if (ExpeditionSystem.recallExpedition) {
+            if (ExpeditionSystem && ExpeditionSystem.recallExpedition) {
                 ExpeditionSystem.recallExpedition(expedition.id);
             }
         }
@@ -793,7 +793,7 @@ const ConflictSystem = (function() {
         siege.log.push(generateSiegeMessage(SIEGE_PHASES.CONCLUDED, siege));
         
         // Log conclusion for player
-        const expedition = ExpeditionSystem.getExpedition(siege.expeditionId);
+        const expedition = ExpeditionSystem && ExpeditionSystem.getExpedition && ExpeditionSystem.getExpedition(siege.expeditionId);
         if (expedition && expedition.ownerType === 'player') {
             Utils.log(generateSiegeMessage(SIEGE_PHASES.CONCLUDED, siege), 
                 outcome === 'victory' ? 'success' : 'important');
@@ -929,7 +929,7 @@ const ConflictSystem = (function() {
             // to notify the conflict system about captured settlements
             
             const settlement = WorldMap.getSettlement(settlementId);
-            const expedition = ExpeditionSystem.getExpedition(expeditionId);
+            const expedition = ExpeditionSystem && ExpeditionSystem.getExpedition && ExpeditionSystem.getExpedition(expeditionId);
             
             if (!settlement || !expedition) return;
             
@@ -945,6 +945,9 @@ const ConflictSystem = (function() {
         }
     };
 })();
+
+// Expose ConflictSystem to the window object for global access
+window.ConflictSystem = ConflictSystem;
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
