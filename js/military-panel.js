@@ -114,7 +114,7 @@ const MilitaryPanel = (function() {
                         </div>
                         <div class="form-row">
                             <label for="raid-warriors">Warriors:</label>
-                            <input type="range" id="raid-warriors" min="5" max="50" value="15">
+                            <input type="range" id="raid-warriors" min="5" max="5000" value="5">
                             <span id="raid-warriors-value">15</span>
                         </div>
                         <div class="form-actions">

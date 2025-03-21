@@ -61,7 +61,7 @@ const BuildingSystem = (function() {
             maxCount: 1,
             upgradesTo: "jarls_keep",
             unlockRequirements: {
-                rank: 5 // Requires player to be at least rank 5
+                rank: 3 // Requires player to be at least rank 5
             },
             effects: {
                 housingCapacity: 0,
@@ -213,7 +213,7 @@ const BuildingSystem = (function() {
         
         HOUSE: {
             id: "house",
-            name: "House",
+            name: "Hovel",
             description: "A simple dwelling for your people.",
             category: "housing",
             tier: 1,
@@ -233,7 +233,8 @@ const BuildingSystem = (function() {
             maxCount: null, // No limit on houses
             upgradesTo: "longhouse",
             effects: {
-                housingCapacity: 5
+                housingCapacity: 5,
+                warriorCapacity: 1
             }
         },
         
@@ -328,7 +329,9 @@ const BuildingSystem = (function() {
             upgradesTo: null,
             effects: {
                 resourceProduction: {
-                    food: 3
+                    food: 3,
+                    fur: 1,
+                    leather: 1
                 }
             }
         },
@@ -488,7 +491,8 @@ const BuildingSystem = (function() {
             },
             effects: {
                 housingCapacity: 10,
-                fame: 2 // Fame bonus per month
+                fame: 2, // Fame bonus per month
+                warriorCapacity: 5, // Extra warrior housing    
             }
         },
         
@@ -679,7 +683,7 @@ const BuildingSystem = (function() {
                 stone: 200,
                 metal: 100
             },
-            constructionTime: 20,
+            constructionTime: 60,
             workerCapacity: 5,
             workersRequired: 6,
             maintenanceCost: {
@@ -720,7 +724,7 @@ const BuildingSystem = (function() {
                 stone: 230,
                 metal: 150
             },
-            constructionTime: 15,
+            constructionTime: 55,
             workerCapacity: 3, // Employs 3 workers (currently counted as miners)
             workersRequired: 3,
             maintenanceCost: {
@@ -761,7 +765,7 @@ const BuildingSystem = (function() {
                 wood: 200,
                 metal: 100
             },
-            constructionTime: 30,
+            constructionTime: 120,
             workerCapacity: 0,
             workersRequired: 8,
             maintenanceCost: {
@@ -797,7 +801,7 @@ const BuildingSystem = (function() {
                 stone: 800,
                 metal: 200
             },
-            constructionTime: 25,
+            constructionTime: 125,
             workerCapacity: 3,
             workersRequired: 8,
             maintenanceCost: {
@@ -834,7 +838,7 @@ const BuildingSystem = (function() {
                 wood: 130,
                 stone: 115
             },
-            constructionTime: 12,
+            constructionTime: 120,
             workerCapacity: 5, // Employs 5 farmers
             workersRequired: 3,
             maintenanceCost: {
@@ -871,7 +875,7 @@ const BuildingSystem = (function() {
                 stone: 200,
                 metal: 100
             },
-            constructionTime: 10,
+            constructionTime: 100,
             workerCapacity: 4, // Employs 4 woodcutters
             workersRequired: 3,
             maintenanceCost: {
@@ -913,7 +917,7 @@ const BuildingSystem = (function() {
                 wood: 500,
                 metal: 500
             },
-            constructionTime: 40,
+            constructionTime: 400,
             workerCapacity: 0,
             workersRequired: 12,
             maintenanceCost: {
@@ -950,7 +954,7 @@ const BuildingSystem = (function() {
                 wood: 1000,
                 metal: 300
             },
-            constructionTime: 35,
+            constructionTime: 350,
             workerCapacity: 4,
             workersRequired: 10,
             maintenanceCost: {
@@ -985,7 +989,7 @@ const BuildingSystem = (function() {
                 stone: 1000,
                 metal: 500
             },
-            constructionTime: 40,
+            constructionTime: 400,
             workerCapacity: 8,
             workersRequired: 12,
             maintenanceCost: {
@@ -1029,7 +1033,7 @@ const BuildingSystem = (function() {
                 stone: 3000,
                 metal: 1000
             },
-            constructionTime: 45,
+            constructionTime: 450,
             workerCapacity: 8,
             workersRequired: 15,
             maintenanceCost: {
@@ -1068,7 +1072,7 @@ const BuildingSystem = (function() {
                 stone: 4000,
                 metal: 1000
             },
-            constructionTime: 40,
+            constructionTime: 400,
             workerCapacity: 10,
             workersRequired: 12,
             maintenanceCost: {
@@ -1105,7 +1109,7 @@ const BuildingSystem = (function() {
                 stone: 5000,
                 metal: 1000
             },
-            constructionTime: 30,
+            constructionTime: 300,
             workerCapacity: 0,
             workersRequired: 10,
             maintenanceCost: {},
