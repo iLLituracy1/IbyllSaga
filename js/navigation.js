@@ -65,6 +65,13 @@ const NavigationSystem = (function() {
             panels: ['factions-panel'],
             isDefault: false
         },
+        military: {
+            id: 'military-tab',
+            title: 'Military',
+            icon: '⚔️',
+            panels: ['military-panel'],
+            isDefault: false
+        },
     };
     
     // Map of panel registration status

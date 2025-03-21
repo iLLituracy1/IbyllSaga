@@ -7,10 +7,10 @@ const ResourceManager = (function() {
     // Private variables
     let resources = {
         // Basic resources
-        food: 150,
-        wood: 130,
+        food: 300,
+        wood: 150,
         stone: 100,
-        metal: 50,
+        metal: 100,
         
         // Advanced resources
         leather: 0,

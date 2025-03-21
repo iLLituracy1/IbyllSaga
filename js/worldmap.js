@@ -335,7 +335,7 @@ const REGION_TYPES = {
                     break;
                 case SETTLEMENT_TYPES.ANGLO:
                 case SETTLEMENT_TYPES.FRANKISH:
-                    initialPopulation = Utils.randomBetween(40, 80);
+                    initialPopulation = Utils.randomBetween(60, 150);
                     initialRank = Utils.randomBetween(2, 7);
                     militaryStrength = {
                         warriors: Utils.randomBetween(3, 8),
@@ -344,7 +344,7 @@ const REGION_TYPES = {
                     };
                     break;
                 default: // Neutral
-                    initialPopulation = Utils.randomBetween(80, 150);
+                    initialPopulation = Utils.randomBetween(20, 30);
                     initialRank = Utils.randomBetween(0, 3);
                     militaryStrength = {
                         warriors: Utils.randomBetween(1, 3),
@@ -454,6 +454,10 @@ const REGION_TYPES = {
      */
     function generateWorld() {
         console.log("Generating world map...");
+
+        if (typeof MapRenderer !== 'undefined') {
+            MapRenderer.init();
+        }
         
         // Clear existing world
         worldMap.landmasses = [];
@@ -604,11 +608,11 @@ const REGION_TYPES = {
                 // 1-3 Viking settlements per region in homeland
                 createSettlements(region, Utils.randomBetween(1, 3), SETTLEMENT_TYPES.VIKING);
             } else if (landmass.type === LANDMASS_TYPES.ANGLO_LANDS) {
-                // 5-10 Anglo settlements per region
-                createSettlements(region, Utils.randomBetween(5, 10), SETTLEMENT_TYPES.ANGLO);
+                // 4-7 Anglo settlements per region
+                createSettlements(region, Utils.randomBetween(4, 7), SETTLEMENT_TYPES.ANGLO);
             } else if (landmass.type === LANDMASS_TYPES.FRANKISH_LANDS) {
-                // 10-15 Frankish settlements per region
-                createSettlements(region, Utils.randomBetween(10, 15), SETTLEMENT_TYPES.FRANKISH);
+                // 6-12 Frankish settlements per region
+                createSettlements(region, Utils.randomBetween(6, 12), SETTLEMENT_TYPES.FRANKISH);
             }
         });
         
@@ -733,6 +737,8 @@ const REGION_TYPES = {
                 }
             }
         },
+
+        
         
         /**
          * Update the world map UI elements with current data
@@ -892,6 +898,8 @@ const REGION_TYPES = {
                 return distance <= maxDistance;
             });
         },
+
+        
         
         /**
          * Process a game tick for all world entities
@@ -960,6 +968,7 @@ const REGION_TYPES = {
             });
         },
         
+        
         // Methods to be implemented in future iterations
         
         /**
@@ -1019,3 +1028,5 @@ const REGION_TYPES = {
         }
     };
 })();
+
+

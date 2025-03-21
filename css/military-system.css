@@ -1,0 +1,741 @@
+/* Military System Styles */
+
+/* Main Panel */
+.military-panel {
+    background-color: #e6d8c3;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    border: 1px solid #c9ba9b;
+    overflow-y: auto;
+    max-height: 80vh;
+}
+
+.military-panel h2 {
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    color: #5d4037;
+    border-bottom: 2px solid #a99275;
+    padding-bottom: 8px;
+    margin-bottom: 15px;
+    letter-spacing: 1px;
+    font-weight: 700;
+}
+
+.panel-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f7f0e3;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.panel-section h3 {
+    font-size: 1.1rem;
+    color: #5d4037;
+    margin-top: 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #d7cbb9;
+    padding-bottom: 5px;
+}
+
+.primary-button {
+    background-color: #8b5d33;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.primary-button:hover {
+    background-color: #a97c50;
+}
+
+.primary-button:disabled {
+    background-color: #ccbda9;
+    cursor: not-allowed;
+}
+
+.secondary-button {
+    background-color: #d7cbb9;
+    color: #5d4037;
+    border: 1px solid #c9ba9b;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.secondary-button:hover {
+    background-color: #c9ba9b;
+}
+
+/* Army List */
+.army-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.army-item {
+    background-color: #f7f0e3;
+    border-radius: 5px;
+    padding: 12px;
+    border-left: 4px solid #8b5d33;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.army-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.army-header h4 {
+    margin: 0;
+    color: #5d4037;
+    font-size: 1.05rem;
+}
+
+.army-status {
+    font-size: 0.9rem;
+    padding: 4px 8px;
+    border-radius: 12px;
+    background-color: #e0d5c1;
+    color: #5d4037;
+}
+
+.army-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.army-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.army-stat {
+    font-size: 0.9rem;
+    color: #5d4037;
+}
+
+.stat-label {
+    font-weight: 600;
+    margin-right: 5px;
+}
+
+.stat-value {
+    color: #8b5d33;
+}
+
+.army-location {
+    font-size: 0.9rem;
+    color: #5d4037;
+    font-style: italic;
+}
+
+.army-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.army-actions button {
+    padding: 5px 10px;
+    font-size: 0.9rem;
+}
+
+/* Battle List */
+.battle-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.battle-item {
+    background-color: #f7f0e3;
+    border-radius: 5px;
+    padding: 12px;
+    border-left: 4px solid #c62828; /* Red for battle */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.battle-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.battle-header h4 {
+    margin: 0;
+    color: #5d4037;
+    font-size: 1.05rem;
+}
+
+.battle-status {
+    font-size: 0.9rem;
+    padding: 4px 8px;
+    border-radius: 12px;
+    background-color: #ffcdd2; /* Light red */
+    color: #c62828;
+}
+
+.battle-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Siege List */
+.siege-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.siege-item {
+    background-color: #f7f0e3;
+    border-radius: 5px;
+    padding: 12px;
+    border-left: 4px solid #1565c0; /* Blue for siege */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.siege-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.siege-header h4 {
+    margin: 0;
+    color: #5d4037;
+    font-size: 1.05rem;
+}
+
+.siege-status {
+    font-size: 0.9rem;
+    padding: 4px 8px;
+    border-radius: 12px;
+    background-color: #bbdefb; /* Light blue */
+    color: #1565c0;
+}
+
+.siege-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Dialog Styles */
+.game-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.dialog-content {
+    background-color: #e6d8c3;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.dialog-content h3 {
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    color: #5d4037;
+    border-bottom: 2px solid #a99275;
+    padding-bottom: 8px;
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+/* Army Creation Dialog */
+.unit-section {
+    margin-bottom: 20px;
+}
+
+.unit-section h4 {
+    font-size: 1rem;
+    color: #5d4037;
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.unit-selection {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.unit-type {
+    display: grid;
+    grid-template-columns: 80px 1fr 120px;
+    align-items: center;
+    gap: 10px;
+    background-color: #f7f0e3;
+    padding: 8px 12px;
+    border-radius: 4px;
+}
+
+.unit-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.unit-controls input {
+    width: 50px;
+    padding: 4px;
+    text-align: center;
+    border: 1px solid #c9ba9b;
+    border-radius: 4px;
+    background-color: #f7f0e3;
+}
+
+.unit-controls button {
+    width: 30px;
+    height: 30px;
+    border-radius: 15px;
+    background-color: #d7cbb9;
+    color: #5d4037;
+    border: 1px solid #c9ba9b;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.unit-controls button:hover {
+    background-color: #c9ba9b;
+}
+
+.unit-cost {
+    font-size: 0.9rem;
+    color: #8b5d33;
+}
+
+.dialog-total {
+    background-color: #f7f0e3;
+    padding: 12px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+.total-cost, .total-upkeep, .total-strength {
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #5d4037;
+}
+
+/* Army Details Dialog */
+.army-overview {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.army-stat-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background-color: #f7f0e3;
+    border-radius: 4px;
+}
+
+.army-equipment {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background-color: #f7f0e3;
+    border-radius: 4px;
+}
+
+.equipment-stat {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px solid #e0d5c1;
+}
+
+.equipment-stat:last-child {
+    border-bottom: none;
+}
+
+.army-composition {
+    margin-bottom: 20px;
+}
+
+.army-composition h4 {
+    font-size: 1rem;
+    color: #5d4037;
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.unit-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+}
+
+.unit-item {
+    background-color: #f7f0e3;
+    padding: 10px;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.unit-name {
+    font-weight: 600;
+    color: #5d4037;
+}
+
+.unit-count {
+    font-weight: 700;
+    color: #8b5d33;
+}
+
+/* Move Army Dialog */
+.current-location {
+    padding: 10px;
+    background-color: #f7f0e3;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+.region-selection h4 {
+    font-size: 1rem;
+    color: #5d4037;
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.region-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.region-item {
+    background-color: #f7f0e3;
+    padding: 12px;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.region-name {
+    font-weight: 600;
+    color: #5d4037;
+}
+
+.region-type {
+    font-size: 0.9rem;
+    color: #8b5d33;
+    font-style: italic;
+}
+
+/* Raid Targets Dialog */
+.settlement-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+.settlement-item {
+    background-color: #f7f0e3;
+    padding: 12px;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.settlement-name {
+    font-weight: 600;
+    color: #5d4037;
+    font-size: 1.05rem;
+}
+
+.settlement-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: #8b5d33;
+}
+
+.settlement-type, .settlement-population, .settlement-defenses, .settlement-warriors {
+    padding: 4px 8px;
+    background-color: #f0e6d2;
+    border-radius: 4px;
+}
+
+/* Battle Details Dialog */
+.battle-details-content {
+    width: 90%;
+    max-width: 700px;
+}
+
+.battle-sides {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.battle-side {
+    flex: 1;
+    padding: 12px;
+    border-radius: 4px;
+}
+
+.battle-side.attacker {
+    background-color: #ffebee;
+    border-left: 4px solid #c62828;
+}
+
+.battle-side.defender {
+    background-color: #e8f5e9;
+    border-left: 4px solid #2e7d32;
+}
+
+.battle-side h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1rem;
+    border: none;
+    padding: 0;
+}
+
+.side-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.side-stat {
+    font-size: 0.95rem;
+}
+
+.battle-versus {
+    margin: 0 15px;
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: #5d4037;
+}
+
+.battle-status-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px;
+    background-color: #f7f0e3;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+.battle-info {
+    padding: 4px 8px;
+    background-color: #e0d5c1;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: #5d4037;
+}
+
+.battle-log {
+    margin-bottom: 15px;
+}
+
+.battle-log h4 {
+    font-size: 1rem;
+    color: #5d4037;
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.battle-log-entries {
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 12px;
+    background-color: #f7f0e3;
+    border-radius: 4px;
+}
+
+.battle-log-entry {
+    padding: 6px 0;
+    border-bottom: 1px solid #e0d5c1;
+    font-size: 0.95rem;
+}
+
+.battle-log-entry:last-child {
+    border-bottom: none;
+}
+
+/* Siege Details Dialog */
+.siege-details-content {
+    width: 90%;
+    max-width: 700px;
+}
+
+.siege-overview {
+    margin-bottom: 15px;
+}
+
+.siege-sides {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.siege-side {
+    flex: 1;
+    padding: 12px;
+    border-radius: 4px;
+}
+
+.siege-side.attacker {
+    background-color: #e3f2fd;
+    border-left: 4px solid #1565c0;
+}
+
+.siege-side.defender {
+    background-color: #fff3e0;
+    border-left: 4px solid #f57c00;
+}
+
+.siege-side h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1rem;
+    border: none;
+    padding: 0;
+}
+
+.siege-versus {
+    margin: 0 15px;
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: #5d4037;
+}
+
+.siege-status-info {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    background-color: #f7f0e3;
+    border-radius: 4px;
+}
+
+.siege-info {
+    display: inline-block;
+    padding: 4px 8px;
+    background-color: #e0d5c1;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: #5d4037;
+    margin-right: 10px;
+    margin-bottom: 5px;
+}
+
+.siege-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.progress-item {
+    display: grid;
+    grid-template-columns: 80px 1fr 40px;
+    align-items: center;
+    gap: 10px;
+}
+
+.progress-label {
+    font-size: 0.9rem;
+    color: #5d4037;
+}
+
+.progress-bar {
+    height: 10px;
+    width: 100%;
+    background-color: #e0d5c1;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: #8b5d33;
+    border-radius: 5px;
+}
+
+.progress-value {
+    font-size: 0.9rem;
+    color: #8b5d33;
+    text-align: right;
+}
+
+.siege-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .army-overview, .unit-list, .region-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .battle-sides, .siege-sides {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .battle-versus, .siege-versus {
+        margin: 10px 0;
+    }
+    
+    .unit-type {
+        grid-template-columns: 1fr;
+    }
+}

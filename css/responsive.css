@@ -328,3 +328,21 @@ header {
     color: #8b5d33;
     font-size: 1.1rem;
 }
+
+Copy.map-popup .popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.map-popup .close-popup {
+    cursor: pointer;
+    font-size: 1.5rem;
+}
+
+.map-popup .popup-actions {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+}
