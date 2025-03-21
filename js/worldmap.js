@@ -595,6 +595,11 @@ const REGION_TYPES = {
             createSettlements(playerRegion, 1, SETTLEMENT_TYPES.VIKING, true);
         }
         
+                // Mark player's region as discovered
+        if (worldMap.playerRegion) {
+            worldMap.playerRegion.discovered = true;
+        }
+
         // Create other Viking settlements
         worldMap.regions.forEach(region => {
             const landmass = worldMap.landmasses.find(lm => lm.id === region.landmass);
@@ -640,6 +645,23 @@ const REGION_TYPES = {
             
             // Generate the world data first
             generateWorld();
+
+                        // Initialize region discovery system
+            console.log("Initializing region discovery system...");
+                
+            // Ensure player's starting region is discovered
+            if (worldMap.playerRegion) {
+                worldMap.playerRegion.discovered = true;
+            }
+                
+            // Initialize all other regions as undiscovered
+            worldMap.regions.forEach(region => {
+                if (region.id !== worldMap.playerRegion?.id) {
+                    region.discovered = false;
+                }
+            });
+                
+            console.log(`Player's starting region (${worldMap.playerRegion?.name}) is discovered`);
             
             // Create the UI panel
             this.createWorldMapPanel();
@@ -967,6 +989,67 @@ const REGION_TYPES = {
                 }
             });
         },
+
+
+
+        // Add these at the bottom of the return object in WorldMap.js
+discoverRegion: function(regionId) {
+    const region = this.getRegion(regionId);
+    if (!region) return false;
+    
+    // If already discovered, no change
+    if (region.discovered) return false;
+    
+    // Mark as discovered
+    region.discovered = true;
+    
+    // Log discovery to the player
+    Utils.log(`Your expedition has discovered ${region.name}!`, "success");
+    return true;
+},
+
+isRegionDiscovered: function(regionId) {
+    const region = this.getRegion(regionId);
+    return region ? !!region.discovered : false;
+},
+
+getDiscoveredRegions: function() {
+    return worldMap.regions.filter(region => region.discovered);
+},
+
+getDiscoveredAdjacentRegions: function(regionId) {
+    // Get all adjacent regions
+    let adjacentRegions = [];
+    
+    if (window.ExpeditionSystem && ExpeditionSystem.getAdjacentRegions) {
+        adjacentRegions = ExpeditionSystem.getAdjacentRegions(regionId);
+    } else {
+        // Fallback if expedition system isn't available
+        const region = this.getRegion(regionId);
+        if (!region) return [];
+        
+        // Find regions in same landmass that are close enough to be adjacent
+        const landmassRegions = this.getRegionsByLandmass(region.landmass);
+        
+        adjacentRegions = landmassRegions
+            .filter(r => {
+                if (r.id === regionId) return false; // Skip self
+                
+                // Calculate distance
+                const dx = r.position.x - region.position.x;
+                const dy = r.position.y - region.position.y;
+                const distance = Math.sqrt(dx*dx + dy*dy);
+                
+                // Consider adjacent if within certain range
+                const adjacencyThreshold = (r.size.width + region.size.width) / 1.5;
+                return distance <= adjacencyThreshold;
+            })
+            .map(r => r.id);
+    }
+    
+    // Filter to only include discovered regions
+    return adjacentRegions.filter(regionId => this.isRegionDiscovered(regionId));
+},
         
         
         // Methods to be implemented in future iterations

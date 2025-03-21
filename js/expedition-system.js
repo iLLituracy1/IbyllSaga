@@ -379,6 +379,20 @@ const ExpeditionSystem = (function() {
      */
     function processRaiding(expedition, tickSize) {
         if (expedition.status !== EXPEDITION_STATUS.RAIDING) return;
+
+                // First, ensure the current region is discovered
+        if (WorldMap.discoverRegion(expedition.currentRegion)) {
+            // If this was a new discovery, let's also check adjacent regions
+            const adjacentRegions = ExpeditionSystem.getAdjacentRegions(expedition.currentRegion);
+            
+            // During raiding, there's a chance to discover adjacent regions
+            adjacentRegions.forEach(regionId => {
+                // Each day of raiding has a chance to discover each adjacent region
+                if (Utils.chanceOf(25 * tickSize)) {
+                    WorldMap.discoverRegion(regionId);
+                }
+            });
+        }
         
         // Chance to gather loot based on expedition strength and tick size
         const lootChance = (expedition.strength / 100) * tickSize * 10;

@@ -304,24 +304,16 @@ const MilitaryPanel = (function() {
         ownRegionOption.textContent = `${playerRegion.name} (Your Region)`;
         targetSelect.appendChild(ownRegionOption);
         
-        // Get adjacent regions
-        let adjacentRegions = [];
-        if (window.ExpeditionSystem && ExpeditionSystem.getAdjacentRegions) {
-            adjacentRegions = ExpeditionSystem.getAdjacentRegions(playerRegion.id);
-        } else {
-            // Fallback if expedition system isn't available
-            adjacentRegions = WorldMap.getRegionsByLandmass(playerRegion.landmass);
-        }
+        // Get all discovered regions
+        const discoveredRegions = WorldMap.getDiscoveredRegions()
+            .filter(region => region.id !== playerRegion.id); // Exclude player's region
         
-        // Add adjacent regions to dropdown
-        adjacentRegions.forEach(regionId => {
-            const region = WorldMap.getRegion(regionId);
-            if (region && region.id !== playerRegion.id) {
-                const option = document.createElement('option');
-                option.value = region.id;
-                option.textContent = region.name;
-                targetSelect.appendChild(option);
-            }
+        // Add discovered regions to dropdown
+        discoveredRegions.forEach(region => {
+            const option = document.createElement('option');
+            option.value = region.id;
+            option.textContent = region.name;
+            targetSelect.appendChild(option);
         });
     }
     

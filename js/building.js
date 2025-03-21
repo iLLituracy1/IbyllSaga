@@ -413,7 +413,7 @@ const BuildingSystem = (function() {
             },
             constructionTime: 30,
             workerCapacity: 30, // Employs 30 miners
-            workersRequired: 12,
+            workersRequired: 6,
             maintenanceCost: {
                 wood: 2
             },
