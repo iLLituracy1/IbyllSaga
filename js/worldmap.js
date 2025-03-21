@@ -283,121 +283,135 @@ const REGION_TYPES = {
         return region;
     }
     
+    
     /**
-     * Generate a settlement within a region
-     * @param {Object} region - Parent region
-     * @param {string} type - Settlement type
-     * @param {Object} position - Position of the settlement
-     * @param {boolean} isPlayer - Whether this is the player's settlement
-     * @returns {Object} - Generated settlement
-     */
-    function generateSettlement(region, type, position, isPlayer = false) {
-        const landmass = worldMap.landmasses.find(lm => lm.id === region.landmass);
-        
-        if (!landmass) {
-            console.error(`Landmass not found for region: ${region.id}`);
-            return null;
-        }
-        
-        // Basic resources based on region modifiers
-        const baseResources = {
-            food: Utils.randomBetween(30, 70) * region.resourceModifiers.food,
-            wood: Utils.randomBetween(20, 50) * region.resourceModifiers.wood,
-            stone: Utils.randomBetween(10, 30) * region.resourceModifiers.stone,
-            metal: Utils.randomBetween(5, 15) * region.resourceModifiers.metal
-        };
-        
-        // Initialize with random starting population based on type
-        let initialPopulation;
-        let initialRank;
-        let militaryStrength;
-        
-        if (isPlayer) {
-            // Use existing player values
-            initialPopulation = 5; // Player starts with 5
-            initialRank = 0; // Lowest rank
-            militaryStrength = {
-                warriors: 1,
-                ships: 0,
-                defenses: 0
-            };
-        } else {
-            // AI settlement - more established
-            switch (type) {
-                case SETTLEMENT_TYPES.VIKING:
-                    initialPopulation = Utils.randomBetween(15, 30);
-                    initialRank = Utils.randomBetween(0, 5);
-                    militaryStrength = {
-                        warriors: Utils.randomBetween(1, 5),
-                        ships: Utils.randomBetween(0, 2),
-                        defenses: Utils.randomBetween(0, 2)
-                    };
-                    break;
-                case SETTLEMENT_TYPES.ANGLO:
-                case SETTLEMENT_TYPES.FRANKISH:
-                    initialPopulation = Utils.randomBetween(60, 150);
-                    initialRank = Utils.randomBetween(2, 7);
-                    militaryStrength = {
-                        warriors: Utils.randomBetween(3, 8),
-                        ships: Utils.randomBetween(0, 1),
-                        defenses: Utils.randomBetween(2, 5) // Higher defenses
-                    };
-                    break;
-                default: // Neutral
-                    initialPopulation = Utils.randomBetween(20, 30);
-                    initialRank = Utils.randomBetween(0, 3);
-                    militaryStrength = {
-                        warriors: Utils.randomBetween(1, 3),
-                        ships: Utils.randomBetween(0, 1),
-                        defenses: Utils.randomBetween(1, 3)
-                    };
-            }
-        }
-        
-        const settlement = Object.assign({}, settlementTemplate, {
-            id: `settlement_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-            name: isPlayer ? "Your Settlement" : generateName(type),
-            type: type,
-            position: position,
-            region: region.id,
-            landmass: landmass.id,
-            resources: baseResources,
-            population: initialPopulation,
-            military: militaryStrength,
-            faction: type, // Simplified faction = type for now
-            rank: initialRank,
-            isPlayer: isPlayer
-        });
-        
-        // Initialize relations with random values
-        worldMap.settlements.forEach(otherSettlement => {
-            // Initial relations based on factions
-            let relationValue;
-            
-            if (settlement.faction === otherSettlement.faction) {
-                // Same faction - friendly
-                relationValue = Utils.randomBetween(50, 100);
-            } else if (
-                (settlement.faction === SETTLEMENT_TYPES.VIKING && 
-                 (otherSettlement.faction === SETTLEMENT_TYPES.ANGLO || otherSettlement.faction === SETTLEMENT_TYPES.FRANKISH)) ||
-                ((settlement.faction === SETTLEMENT_TYPES.ANGLO || settlement.faction === SETTLEMENT_TYPES.FRANKISH) && 
-                 otherSettlement.faction === SETTLEMENT_TYPES.VIKING)
-            ) {
-                // Vikings vs Anglo/Frankish - hostile
-                relationValue = Utils.randomBetween(0, 30);
-            } else {
-                // Other combinations - neutral
-                relationValue = Utils.randomBetween(30, 70);
-            }
-            
-            settlement.relations[otherSettlement.id] = relationValue;
-            
-            // Add reciprocal relation
-            otherSettlement.relations[settlement.id] = relationValue;
-        });
-        
-        return settlement;
+ * Generate a settlement within a region
+ * @param {Object} region - Parent region
+ * @param {string} type - Settlement type
+ * @param {Object} position - Position of the settlement
+ * @param {boolean} isPlayer - Whether this is the player's settlement
+ * @returns {Object} - Generated settlement
+ */
+function generateSettlement(region, type, position, isPlayer = false) {
+    const landmass = worldMap.landmasses.find(lm => lm.id === region.landmass);
+    
+    if (!landmass) {
+        console.error(`Landmass not found for region: ${region.id}`);
+        return null;
     }
+    
+    // Basic resources based on region modifiers
+    const baseResources = {
+        food: Utils.randomBetween(30, 70) * region.resourceModifiers.food,
+        wood: Utils.randomBetween(20, 50) * region.resourceModifiers.wood,
+        stone: Utils.randomBetween(10, 30) * region.resourceModifiers.stone,
+        metal: Utils.randomBetween(5, 15) * region.resourceModifiers.metal
+    };
+    
+    // Initialize with random starting population based on type
+    let initialPopulation;
+    let initialRank;
+    let militaryStrength;
+    
+    if (isPlayer) {
+        // FIXED: Get initial warrior count from Population object if it exists
+        let initialWarriors = 1; // Default fallback value
+        
+        // Check if PopulationManager is initialized and get warriors value
+        if (typeof window.PopulationManager !== 'undefined' && 
+            typeof PopulationManager.getPopulation === 'function') {
+            const pop = PopulationManager.getPopulation();
+            if (pop && typeof pop.warriors === 'number') {
+                initialWarriors = pop.warriors;
+                console.log(`Using ${initialWarriors} warriors from population for player settlement`);
+            }
+        }
+        
+        // Use existing player values with potentially customized warriors
+        initialPopulation = 5; // Player starts with 5
+        initialRank = 0; // Lowest rank
+        militaryStrength = {
+            warriors: initialWarriors,
+            ships: 0,
+            defenses: 0
+        };
+    } else {
+        // AI settlement - more established
+        switch (type) {
+            case SETTLEMENT_TYPES.VIKING:
+                initialPopulation = Utils.randomBetween(15, 30);
+                initialRank = Utils.randomBetween(0, 5);
+                militaryStrength = {
+                    warriors: Utils.randomBetween(1, 5),
+                    ships: Utils.randomBetween(0, 2),
+                    defenses: Utils.randomBetween(0, 2)
+                };
+                break;
+            case SETTLEMENT_TYPES.ANGLO:
+            case SETTLEMENT_TYPES.FRANKISH:
+                initialPopulation = Utils.randomBetween(60, 150);
+                initialRank = Utils.randomBetween(2, 7);
+                militaryStrength = {
+                    warriors: Utils.randomBetween(3, 8),
+                    ships: Utils.randomBetween(0, 1),
+                    defenses: Utils.randomBetween(2, 5) // Higher defenses
+                };
+                break;
+            default: // Neutral
+                initialPopulation = Utils.randomBetween(20, 30);
+                initialRank = Utils.randomBetween(0, 3);
+                militaryStrength = {
+                    warriors: Utils.randomBetween(1, 3),
+                    ships: Utils.randomBetween(0, 1),
+                    defenses: Utils.randomBetween(1, 3)
+                };
+        }
+    }
+    
+    const settlement = Object.assign({}, settlementTemplate, {
+        id: `settlement_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        name: isPlayer ? "Your Settlement" : generateName(type),
+        type: type,
+        position: position,
+        region: region.id,
+        landmass: landmass.id,
+        resources: baseResources,
+        population: initialPopulation,
+        military: militaryStrength,
+        faction: type, // Simplified faction = type for now
+        rank: initialRank,
+        isPlayer: isPlayer
+    });
+    
+    // Initialize relations with random values
+    worldMap.settlements.forEach(otherSettlement => {
+        // Initial relations based on factions
+        let relationValue;
+        
+        if (settlement.faction === otherSettlement.faction) {
+            // Same faction - friendly
+            relationValue = Utils.randomBetween(50, 100);
+        } else if (
+            (settlement.faction === SETTLEMENT_TYPES.VIKING && 
+             (otherSettlement.faction === SETTLEMENT_TYPES.ANGLO || otherSettlement.faction === SETTLEMENT_TYPES.FRANKISH)) ||
+            ((settlement.faction === SETTLEMENT_TYPES.ANGLO || settlement.faction === SETTLEMENT_TYPES.FRANKISH) && 
+             otherSettlement.faction === SETTLEMENT_TYPES.VIKING)
+        ) {
+            // Vikings vs Anglo/Frankish - hostile
+            relationValue = Utils.randomBetween(0, 30);
+        } else {
+            // Other combinations - neutral
+            relationValue = Utils.randomBetween(30, 70);
+        }
+        
+        settlement.relations[otherSettlement.id] = relationValue;
+        
+        // Add reciprocal relation
+        otherSettlement.relations[settlement.id] = relationValue;
+    });
+    
+    return settlement;
+}
     
     /**
      * Apply region resource modifiers to the player's resources
@@ -649,9 +663,27 @@ const REGION_TYPES = {
                         // Initialize region discovery system
             console.log("Initializing region discovery system...");
                 
+            // Ensure all regions start as undiscovered
+            worldMap.regions.forEach(region => {
+                region.discovered = false;
+            });
+                
             // Ensure player's starting region is discovered
             if (worldMap.playerRegion) {
                 worldMap.playerRegion.discovered = true;
+                console.log(`Player's starting region (${worldMap.playerRegion.name}) is discovered`);
+            }
+                
+
+            if (worldMap.playerRegion) {
+                const adjacentRegions = this.getAdjacentRegions(worldMap.playerRegion.id);
+                adjacentRegions.forEach(regionId => {
+                    const region = this.getRegion(regionId);
+                    if (region) {
+                        region.discovered = true;
+                        console.log(`Adjacent region ${region.name} is discovered`);
+                    }
+                });
             }
                 
             // Initialize all other regions as undiscovered
@@ -992,63 +1024,92 @@ const REGION_TYPES = {
 
 
 
-        // Add these at the bottom of the return object in WorldMap.js
+  /**
+ * Mark a region as discovered
+ * @param {string} regionId - ID of the region to discover
+ * @returns {boolean} - Whether the region was newly discovered (true) or already known (false)
+ */
 discoverRegion: function(regionId) {
     const region = this.getRegion(regionId);
     if (!region) return false;
     
     // If already discovered, no change
-    if (region.discovered) return false;
+    if (region.discovered === true) return false;
     
     // Mark as discovered
     region.discovered = true;
     
     // Log discovery to the player
     Utils.log(`Your expedition has discovered ${region.name}!`, "success");
+    
+    // Trigger UI update for any open panels that show regions
+    if (window.MilitaryPanel && typeof MilitaryPanel.update === 'function') {
+        MilitaryPanel.update();
+    }
+    
+    console.log(`Region discovered: ${region.name} (${regionId})`);
     return true;
 },
 
+/**
+ * Check if a region is discovered
+ * @param {string} regionId - ID of the region
+ * @returns {boolean} - Whether the region is discovered
+ */
 isRegionDiscovered: function(regionId) {
     const region = this.getRegion(regionId);
-    return region ? !!region.discovered : false;
+    return region ? (region.discovered === true) : false;
 },
 
+/**
+ * Get all discovered regions
+ * @returns {Array} - Array of discovered region objects
+ */
 getDiscoveredRegions: function() {
-    return worldMap.regions.filter(region => region.discovered);
+    return worldMap.regions.filter(region => region.discovered === true);
 },
 
+/**
+ * Get all adjacent regions to a given region 
+ * @param {string} regionId - ID of the region
+ * @returns {Array} - Array of region IDs for adjacent regions
+ */
+getAdjacentRegions: function(regionId) {
+    const region = this.getRegion(regionId);
+    if (!region) return [];
+    
+    // Find regions in same landmass that are close enough to be adjacent
+    const landmassRegions = this.getRegionsByLandmass(region.landmass);
+    
+    const adjacentRegions = landmassRegions
+        .filter(r => {
+            if (r.id === regionId) return false; // Skip self
+            
+            // Calculate distance
+            const dx = r.position.x - region.position.x;
+            const dy = r.position.y - region.position.y;
+            const distance = Math.sqrt(dx*dx + dy*dy);
+            
+            // Consider adjacent if within certain range
+            const adjacencyThreshold = (r.size.width + region.size.width) / 1.5;
+            return distance <= adjacencyThreshold;
+        })
+        .map(r => r.id);
+    
+    return adjacentRegions;
+},
+
+/**
+ * Get discovered regions that are adjacent to a given region
+ * @param {string} regionId - ID of the region
+ * @returns {Array} - Array of region IDs for discovered adjacent regions
+ */
 getDiscoveredAdjacentRegions: function(regionId) {
     // Get all adjacent regions
-    let adjacentRegions = [];
-    
-    if (window.ExpeditionSystem && ExpeditionSystem.getAdjacentRegions) {
-        adjacentRegions = ExpeditionSystem.getAdjacentRegions(regionId);
-    } else {
-        // Fallback if expedition system isn't available
-        const region = this.getRegion(regionId);
-        if (!region) return [];
-        
-        // Find regions in same landmass that are close enough to be adjacent
-        const landmassRegions = this.getRegionsByLandmass(region.landmass);
-        
-        adjacentRegions = landmassRegions
-            .filter(r => {
-                if (r.id === regionId) return false; // Skip self
-                
-                // Calculate distance
-                const dx = r.position.x - region.position.x;
-                const dy = r.position.y - region.position.y;
-                const distance = Math.sqrt(dx*dx + dy*dy);
-                
-                // Consider adjacent if within certain range
-                const adjacencyThreshold = (r.size.width + region.size.width) / 1.5;
-                return distance <= adjacencyThreshold;
-            })
-            .map(r => r.id);
-    }
+    const adjacentRegions = this.getAdjacentRegions(regionId);
     
     // Filter to only include discovered regions
-    return adjacentRegions.filter(regionId => this.isRegionDiscovered(regionId));
+    return adjacentRegions.filter(id => this.isRegionDiscovered(id));
 },
         
         

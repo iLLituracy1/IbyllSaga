@@ -84,9 +84,9 @@ const ImmigrationSystem = (function() {
             }
         },
         {
-            id: "thralls",
-            name: "Thralls",
-            description: "Captives from other settlements being sold as thralls by passing traders.",
+            id: "workers",
+            name: "Workers",
+            description: "Laborers from the countryside, looking for work in a new home.",
             minFame: 250,
             baseProbability: 15,
             skills: {
@@ -95,10 +95,6 @@ const ImmigrationSystem = (function() {
                 mining: [2, 5],
                 combat: [0, 2],
                 crafting: [1, 3]
-            },
-            requiresPayment: true,
-            costPerPerson: {
-                silver: 10
             },
             traitProbabilities: {
                 positive: 20,
@@ -418,8 +414,8 @@ const ImmigrationSystem = (function() {
         let specialMessage = "";
         if (immigrantGroup.type.id === "refugees") {
             specialMessage = "<p>They look hungry and weary from their journey. Taking them in would be a kindness.</p>";
-        } else if (immigrantGroup.type.id === "thralls") {
-            specialMessage = "<p>These captives could provide cheap labor for your settlement, though they may not be happy about their situation.</p>";
+        } else if (immigrantGroup.type.id === "workers") {
+            specialMessage = "<p>Some idle hands seeking any kind of work. Could be a useful addition to a growing settlement.</p>";
         } else if (immigrantGroup.type.id === "warriors") {
             specialMessage = "<p>These warriors have come to test their mettle and seek glory. They could be valuable defenders.</p>";
         } else if (immigrantGroup.type.id === "craftsmen") {

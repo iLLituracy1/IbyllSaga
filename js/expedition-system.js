@@ -265,13 +265,17 @@ const ExpeditionSystem = (function() {
         if (expedition.ownerType === 'player') {
             const playerSettlement = WorldMap.getPlayerSettlement();
             
-            if (playerSettlement && typeof PopulationManager !== 'undefined') {
+            if (playerSettlement) {
                 // Calculate warriors returning (total minus casualties)
                 const returningWarriors = Math.max(0, expedition.warriors);
                 
-                // Add warriors back to population
-                if (typeof PopulationManager.addAnonymousPopulation === 'function') {
-                    PopulationManager.addAnonymousPopulation('warrior', returningWarriors);
+                // Add warriors back ONLY to BuildingSystem (warriors are tracked separately from population)
+                if (typeof BuildingSystem !== 'undefined' && 
+                    typeof BuildingSystem.getWarriorData === 'function' &&
+                    typeof BuildingSystem.setWarriors === 'function') {
+                    
+                    const currentWarriors = BuildingSystem.getWarriorData().total || 0;
+                    BuildingSystem.setWarriors(currentWarriors + returningWarriors);
                     Utils.log(`${returningWarriors} warriors have returned from ${expedition.name}.`);
                 }
                 
@@ -283,7 +287,7 @@ const ExpeditionSystem = (function() {
                         .map(([resource, amount]) => `${amount} ${resource}`)
                         .join(', ');
                     
-                    Utils.log(`Expedition returned with: ${lootSummary}`, 'success');
+                    Utils.log(`Expedition returned with: ${lootSummary}`, "success");
                 }
                 
                 // Award fame for the expedition
@@ -373,26 +377,28 @@ const ExpeditionSystem = (function() {
     }
     
     /**
-     * Process raiding activities
-     * @param {Object} expedition - The expedition
-     * @param {number} tickSize - Size of the game tick in days
-     */
+ * Process raiding activities with improved region discovery
+ * @param {Object} expedition - The expedition
+ * @param {number} tickSize - Size of the game tick in days
+ */
     function processRaiding(expedition, tickSize) {
         if (expedition.status !== EXPEDITION_STATUS.RAIDING) return;
-
-                // First, ensure the current region is discovered
-        if (WorldMap.discoverRegion(expedition.currentRegion)) {
-            // If this was a new discovery, let's also check adjacent regions
-            const adjacentRegions = ExpeditionSystem.getAdjacentRegions(expedition.currentRegion);
-            
-            // During raiding, there's a chance to discover adjacent regions
-            adjacentRegions.forEach(regionId => {
-                // Each day of raiding has a chance to discover each adjacent region
-                if (Utils.chanceOf(25 * tickSize)) {
-                    WorldMap.discoverRegion(regionId);
+    
+        // Handle region discovery - new functionality
+        WorldMap.discoverRegion(expedition.currentRegion);
+        
+        // During raiding, there's a chance to discover adjacent regions
+        const adjacentRegions = WorldMap.getAdjacentRegions(expedition.currentRegion);
+        adjacentRegions.forEach(regionId => {
+            // Each day of raiding has a chance to discover each adjacent region
+            if (Utils.chanceOf(25 * tickSize)) {
+                const discovered = WorldMap.discoverRegion(regionId);
+                if (discovered && expedition.ownerType === 'player') {
+                    const regionName = WorldMap.getRegion(regionId)?.name || 'an adjacent region';
+                    Utils.log(`While raiding, your expedition scouts have discovered ${regionName}!`, 'success');
                 }
-            });
-        }
+            }
+        });
         
         // Chance to gather loot based on expedition strength and tick size
         const lootChance = (expedition.strength / 100) * tickSize * 10;
@@ -416,32 +422,35 @@ const ExpeditionSystem = (function() {
             
             // Apply regional modifiers
             for (const resource in lootAmounts) {
-                if (resourceModifiers[resource]) {
+                if (resourceModifiers && resourceModifiers[resource]) {
                     lootAmounts[resource] = Math.round(lootAmounts[resource] * resourceModifiers[resource]);
                 }
             }
             
             // Add special resources based on region
-            for (const resource in resourceModifiers) {
-                // Skip basic resources (already handled)
-                if (['food', 'wood', 'stone', 'metal'].includes(resource)) continue;
-                
-                // Add special resources if they exist in this region
-                if (resourceModifiers[resource] > 0.5) {
-                    // Amount based on modifier and expedition strength
-                    const amount = Math.round(
-                        expedition.strength / 20 * 
-                        resourceModifiers[resource] * 
-                        Utils.randomBetween(1, 3)
-                    );
+            if (resourceModifiers) {
+                for (const resource in resourceModifiers) {
+                    // Skip basic resources (already handled)
+                    if (['food', 'wood', 'stone', 'metal'].includes(resource)) continue;
                     
-                    if (amount > 0) {
-                        lootAmounts[resource] = (lootAmounts[resource] || 0) + amount;
+                    // Add special resources if they exist in this region
+                    if (resourceModifiers[resource] > 0.5) {
+                        // Amount based on modifier and expedition strength
+                        const amount = Math.round(
+                            expedition.strength / 20 * 
+                            resourceModifiers[resource] * 
+                            Utils.randomBetween(1, 3)
+                        );
+                        
+                        if (amount > 0) {
+                            lootAmounts[resource] = (lootAmounts[resource] || 0) + amount;
+                        }
                     }
                 }
             }
             
             // Add to expedition's loot
+            if (!expedition.loot) expedition.loot = {};
             for (const resource in lootAmounts) {
                 if (!expedition.loot[resource]) expedition.loot[resource] = 0;
                 expedition.loot[resource] += lootAmounts[resource];
@@ -451,7 +460,7 @@ const ExpeditionSystem = (function() {
             const fameGained = Math.ceil(
                 Object.values(lootAmounts).reduce((sum, val) => sum + val, 0) / 20
             );
-            expedition.fame += fameGained;
+            expedition.fame = (expedition.fame || 0) + fameGained;
             
             // Log for player expeditions
             if (expedition.ownerType === 'player') {
@@ -459,7 +468,7 @@ const ExpeditionSystem = (function() {
                 let lootMessage = "Your raiders have gathered: ";
                 lootMessage += Object.entries(lootAmounts)
                     .filter(([_, amount]) => amount > 0)
-                    .map(([resource, amount]) => `${amount} ${resource}`)
+                    .map(([resource, amount]) => `${Math.round(amount)} ${resource}`)
                     .join(', ');
                 
                 Utils.log(lootMessage, 'success');
@@ -471,9 +480,11 @@ const ExpeditionSystem = (function() {
                 const casualtyCount = Math.ceil(expedition.warriors * 0.05 * Utils.randomBetween(1, 3));
                 
                 if (casualtyCount > 0) {
-                    expedition.casualties += casualtyCount;
-                    expedition.warriors -= casualtyCount;
-                    expedition.strength = calculateStrength(expedition.warriors);
+                    expedition.casualties = (expedition.casualties || 0) + casualtyCount;
+                    expedition.warriors = Math.max(0, expedition.warriors - casualtyCount);
+                    
+                    // Use internal strength calculation instead of calling function directly
+                    expedition.strength = expedition.warriors; // Simple strength calculation
                     
                     if (expedition.ownerType === 'player') {
                         Utils.log(`The locals fought back! You lost ${casualtyCount} warriors in a skirmish.`, 'danger');
@@ -485,10 +496,16 @@ const ExpeditionSystem = (function() {
                             Utils.log(`Having suffered heavy losses, your expedition is returning home.`, 'important');
                         }
                         
-                        updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.RETURNING, {
-                            targetRegion: expedition.originRegion,
-                            path: [] // Clear any existing path
-                        });
+                        // Use the ExpeditionSystem's function to update status
+                        if (typeof updateExpeditionStatus === 'function') {
+                            updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.RETURNING, {
+                                targetRegion: expedition.originRegion,
+                                path: [] // Clear any existing path
+                            });
+                        } else if (typeof ExpeditionSystem.recallExpedition === 'function') {
+                            // Alternative recall method
+                            ExpeditionSystem.recallExpedition(expedition.id);
+                        }
                     }
                 }
             }
@@ -501,10 +518,16 @@ const ExpeditionSystem = (function() {
                         Utils.log(`Having gathered significant plunder, your expedition is returning home.`, 'important');
                     }
                     
-                    updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.RETURNING, {
-                        targetRegion: expedition.originRegion,
-                        path: [] // Clear any existing path
-                    });
+                    // Use the ExpeditionSystem's function to update status
+                    if (typeof updateExpeditionStatus === 'function') {
+                        updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.RETURNING, {
+                            targetRegion: expedition.originRegion,
+                            path: [] // Clear any existing path
+                        });
+                    } else if (typeof ExpeditionSystem.recallExpedition === 'function') {
+                        // Alternative recall method
+                        ExpeditionSystem.recallExpedition(expedition.id);
+                    }
                 }
             }
         }
@@ -900,22 +923,22 @@ const ExpeditionSystem = (function() {
                 return null;
             }
             
-            // Take warriors from population if we're using PopulationManager
-            if (typeof PopulationManager !== 'undefined') {
-                // Check if enough warriors are available
-                const availableWarriors = PopulationManager.getWarriors();
-                
-                if (availableWarriors < options.warriors) {
-                    console.error(`Cannot create expedition: Not enough warriors (${availableWarriors} available, ${options.warriors} requested)`);
+            // Check if enough warriors are available in BuildingSystem
+            if (typeof BuildingSystem !== 'undefined' && BuildingSystem.getWarriorData) {
+                const warriorData = BuildingSystem.getWarriorData();
+                if (warriorData.total < options.warriors) {
+                    console.error(`Cannot create expedition: Not enough warriors (${warriorData.total} available, ${options.warriors} requested)`);
+                    Utils.log(`You don't have enough warriors. Available: ${warriorData.total}, Needed: ${options.warriors}`, "important");
                     return null;
                 }
                 
-                // Remove warriors from population
-                if (typeof PopulationManager.addAnonymousPopulation === 'function') {
-                    // Use negative value to remove
-                    PopulationManager.addAnonymousPopulation('warrior', -options.warriors);
+                // Decrease warrior count in BuildingSystem
+                if (BuildingSystem.setWarriors) {
+                    BuildingSystem.setWarriors(warriorData.total - options.warriors);
                 }
             }
+            
+            // IMPORTANT: DO NOT modify general population counts, as warriors are separate
             
             // Create the expedition
             const expedition = createExpedition({

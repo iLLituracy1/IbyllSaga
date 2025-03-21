@@ -1134,7 +1134,7 @@ const BuildingSystem = (function() {
     let warriors = {
         total: 0,
         training: [],
-        capacity: 5, // Initial capacity from starter hall
+        capacity: 15, // Initial capacity from starter hall
         trainingTime: 10 // Base days to train a warrior
     };
     
@@ -2833,6 +2833,12 @@ function updateWarriorManagementUI() {
             
             // Initialize warrior capacity
             updateWarriorCapacity();
+            
+            // Set initial warrior count (can be adjusted in settings)
+            const initialWarriors = 15; // Change this value to set initial warriors
+            warriors.total = initialWarriors;
+            
+            console.log(`Initialized BuildingSystem with ${warriors.total} warriors`);
             
             // Create UI
             createBuildingUI();

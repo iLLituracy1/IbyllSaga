@@ -284,38 +284,40 @@ const MilitaryPanel = (function() {
     }
     
     /**
-     * Populate the target regions dropdown
-     */
-    function populateTargetRegions() {
-        const targetSelect = document.getElementById('expedition-target');
-        
-        // Clear existing options
-        while (targetSelect.options.length > 1) {
-            targetSelect.remove(1);
-        }
-        
-        // Get player region
-        const playerRegion = WorldMap.getPlayerRegion();
-        if (!playerRegion) return;
-        
-        // Add player's own region
-        const ownRegionOption = document.createElement('option');
-        ownRegionOption.value = playerRegion.id;
-        ownRegionOption.textContent = `${playerRegion.name} (Your Region)`;
-        targetSelect.appendChild(ownRegionOption);
-        
-        // Get all discovered regions
-        const discoveredRegions = WorldMap.getDiscoveredRegions()
-            .filter(region => region.id !== playerRegion.id); // Exclude player's region
-        
-        // Add discovered regions to dropdown
-        discoveredRegions.forEach(region => {
-            const option = document.createElement('option');
-            option.value = region.id;
-            option.textContent = region.name;
-            targetSelect.appendChild(option);
-        });
+ * Populate the target regions dropdown with discovered regions
+ */
+function populateTargetRegions() {
+    const targetSelect = document.getElementById('expedition-target');
+    
+    // Clear existing options
+    while (targetSelect.options.length > 1) {
+        targetSelect.remove(1);
     }
+    
+    // Get player region
+    const playerRegion = WorldMap.getPlayerRegion();
+    if (!playerRegion) return;
+    
+    // Add player's own region
+    const ownRegionOption = document.createElement('option');
+    ownRegionOption.value = playerRegion.id;
+    ownRegionOption.textContent = `${playerRegion.name} (Your Region)`;
+    targetSelect.appendChild(ownRegionOption);
+    
+    // Get all discovered regions
+    const discoveredRegions = WorldMap.getDiscoveredRegions()
+        .filter(region => region.id !== playerRegion.id); // Exclude player's region
+    
+    console.log(`Found ${discoveredRegions.length} discovered regions to add to dropdown`);
+    
+    // Add discovered regions to dropdown
+    discoveredRegions.forEach(region => {
+        const option = document.createElement('option');
+        option.value = region.id;
+        option.textContent = region.name;
+        targetSelect.appendChild(option);
+    });
+}
     
     /**
      * Launch a new expedition
@@ -518,6 +520,8 @@ const MilitaryPanel = (function() {
             }
         });
     }
+
+    
     
     /**
      * Launch a new raid
@@ -1152,6 +1156,25 @@ const MilitaryPanel = (function() {
             
             isInitialized = true;
             console.log("Military Panel initialized successfully");
+        },
+
+                /**
+         * Debug function to check region discovery status
+         */
+        debugCheckDiscovery: function() {
+            console.group("Region Discovery Debug");
+            
+            const allRegions = WorldMap.getWorldMap().regions;
+            console.log(`Total regions: ${allRegions.length}`);
+            
+            const discoveredRegions = WorldMap.getDiscoveredRegions();
+            console.log(`Discovered regions: ${discoveredRegions.length}`);
+            
+            discoveredRegions.forEach(region => {
+                console.log(`- ${region.name} (${region.id})`);
+            });
+            
+            console.groupEnd();
         },
         
         /**

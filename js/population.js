@@ -12,7 +12,7 @@ const PopulationManager = (function() {
     let population = {
         total: 9,         // Total population count
         workers: 5,       // Available adult workers
-        warriors: 0,      // Warriors (specialized workers)
+        warriors: 15,      // Warriors (specialized workers)
         children: 3,      // Children who will grow into workers
         elders: 1         // Elders (non-working)
     };
@@ -181,19 +181,25 @@ const PopulationManager = (function() {
      * Update the population UI
      */
     function updatePopulationUI() {
+        // Update regular population counts (excluding warriors)
         Utils.updateElement('population-total', population.total);
         Utils.updateElement('population-workers', population.workers);
-        Utils.updateElement('population-warriors', population.warriors);
         Utils.updateElement('population-children', population.children);
+        Utils.updateElement('population-elders', population.elders);
         
         // Update worker assignments display if elements exist
         for (const type in workerAssignments) {
             Utils.updateElement(`${type}-count`, workerAssignments[type]);
         }
-
-        // Update warriors
-        const warriorCount = typeof PopulationManager.getWarriors === 'function' ? 
-            PopulationManager.getWarriors() : 0;
+        
+        // Get warrior count from BuildingSystem if possible (more accurate)
+        let warriorCount = population.warriors;
+        if (typeof BuildingSystem !== 'undefined' && 
+            typeof BuildingSystem.getWarriorData === 'function') {
+            warriorCount = BuildingSystem.getWarriorData().total;
+        }
+        
+        // Update warriors display separately from population
         Utils.updateElement('population-warriors', warriorCount);
         
         // Update dynasty info
@@ -465,6 +471,17 @@ const PopulationManager = (function() {
             workerAssignments.woodcutters = 0;
             workerAssignments.miners = 0;
             
+            // FIXED: Synchronize warrior count with player settlement
+            const playerSettlement = typeof WorldMap !== 'undefined' && WorldMap.getPlayerSettlement ? 
+            WorldMap.getPlayerSettlement() : null;
+            
+            if (playerSettlement && playerSettlement.military && 
+                typeof playerSettlement.military.warriors === 'number') {
+                // Set the population.warriors to match the settlement's warriors
+                population.warriors = playerSettlement.military.warriors;
+                console.log(`Initialized population with ${population.warriors} warriors from player settlement`);
+            }
+            
             // Update UI
             updatePopulationUI();
             
@@ -517,12 +534,14 @@ const PopulationManager = (function() {
          * @returns {number} - Current warrior count
          */
         getWarriors: function() {
-            // Safe check if BuildingSystem exists and has the getWarriorData function
+            // Always defer to BuildingSystem for warrior counts if available
             if (typeof BuildingSystem !== 'undefined' && 
                 typeof BuildingSystem.getWarriorData === 'function') {
                 return BuildingSystem.getWarriorData().total || 0;
             }
-            return 0;
+            
+            // Fallback to population.warriors
+            return population.warriors || 0;
         },
         
         /**
@@ -1146,41 +1165,99 @@ const PopulationManager = (function() {
          * @returns {boolean} - Success flag
          */
         addAnonymousPopulation: function(role, amount) {
-            if (amount <= 0) return false;
+            // For zero amounts, just return
+            if (amount === 0) return true;
             
-            // Check housing capacity
-            const housingCapacity = this.getHousingCapacity();
-            if (population.total + amount > housingCapacity) {
-                console.warn(`Cannot add population: At capacity (${population.total}/${housingCapacity})`);
-                return false;
+            // Special case for warriors - they don't count toward total population
+            if (role === 'warrior') {
+                // Simply update the warrior count without affecting total population
+                if (amount > 0) {
+                    population.warriors += amount;
+                } else {
+                    // For negative amounts, check if we have enough
+                    if (population.warriors < Math.abs(amount)) {
+                        console.warn(`Not enough warriors. Available: ${population.warriors}, Trying to remove: ${Math.abs(amount)}`);
+                        return false;
+                    }
+                    population.warriors = Math.max(0, population.warriors - Math.abs(amount));
+                }
+                
+                // Log and update UI
+                console.log(`${amount > 0 ? "Added" : "Removed"} ${Math.abs(amount)} warriors`);
+                updatePopulationUI();
+                return true;
             }
             
-            // Update population based on role
-            switch (role) {
-                case 'child':
-                    population.children += amount;
-                    break;
-                case 'worker':
-                    population.workers += amount;
-                    workerAssignments.unassigned += amount; // Add to unassigned workers
-                    break;
-                case 'elder':
-                    population.elders += amount;
-                    break;
-                case 'thrall':
-                    population.thralls += amount;
-                    break;
-                default:
-                    console.warn(`Unknown role: ${role}, defaulting to worker`);
-                    population.workers += amount;
-                    workerAssignments.unassigned += amount;
-                    break;
-            }
+            // For other roles (not warriors)...
             
-            population.total += amount;
+            // If adding population
+            if (amount > 0) {
+                // Check housing capacity
+                const housingCapacity = this.getHousingCapacity();
+                if (population.total + amount > housingCapacity) {
+                    console.warn(`Cannot add population: At capacity (${population.total}/${housingCapacity})`);
+                    return false;
+                }
+                
+                // Update population based on role
+                switch (role) {
+                    case 'child':
+                        population.children += amount;
+                        break;
+                    case 'worker':
+                        population.workers += amount;
+                        workerAssignments.unassigned += amount; // Add to unassigned workers
+                        break;
+                    case 'elder':
+                        population.elders += amount;
+                        break;
+                    case 'thrall':
+                        population.thralls += amount;
+                        break;
+                    default:
+                        console.warn(`Unknown role: ${role}, defaulting to worker`);
+                        population.workers += amount;
+                        workerAssignments.unassigned += amount;
+                        break;
+                }
+                
+                // Update total population
+                population.total += amount;
+            } 
+            // If removing population
+            else {
+                const absAmount = Math.abs(amount);
+                
+                // Check if we have enough population of this role
+                switch (role) {
+                    case 'child':
+                        if (population.children < absAmount) return false;
+                        population.children -= absAmount;
+                        break;
+                    case 'worker':
+                        if (population.workers < absAmount) return false;
+                        population.workers -= absAmount;
+                        workerAssignments.unassigned = Math.max(0, workerAssignments.unassigned - absAmount);
+                        break;
+                    case 'elder':
+                        if (population.elders < absAmount) return false;
+                        population.elders -= absAmount;
+                        break;
+                    case 'thrall':
+                        if (population.thralls < absAmount) return false;
+                        population.thralls -= absAmount;
+                        break;
+                    default:
+                        console.warn(`Unknown role for removal: ${role}`);
+                        return false;
+                }
+                
+                // Update total population
+                population.total -= absAmount;
+            }
             
             // Log the operation
-            console.log(`Added ${amount} anonymous population members as ${role}`);
+            console.log(`${amount > 0 ? "Added" : "Removed"} ${Math.abs(amount)} anonymous population members as ${role}`);
             console.log("Updated population:", {...population});
             
             // Update UI
@@ -1232,6 +1309,28 @@ const PopulationManager = (function() {
             console.log("Character counts:", characterCounts);
             console.log("Population counts:", {...population});
             
+            // ADDED: Sync warriors with player settlement if available
+            const playerSettlement = window.WorldMap && typeof WorldMap.getPlayerSettlement === 'function' ? 
+                WorldMap.getPlayerSettlement() : null;
+            
+            if (playerSettlement && playerSettlement.military) {
+                // If there's a mismatch between population warriors and settlement warriors
+                if (population.warriors !== playerSettlement.military.warriors) {
+                    console.log(`Warriors mismatch - Population: ${population.warriors}, Settlement: ${playerSettlement.military.warriors}`);
+                    
+                    // Sync in both directions to ensure consistency
+                    if (population.warriors > 0) {
+                        // Population has warriors, update settlement
+                        playerSettlement.military.warriors = population.warriors;
+                        console.log(`Updated player settlement warriors to ${population.warriors}`);
+                    } else if (playerSettlement.military.warriors > 0) {
+                        // Settlement has warriors, update population
+                        population.warriors = playerSettlement.military.warriors;
+                        console.log(`Updated population warriors to ${playerSettlement.military.warriors}`);
+                    }
+                }
+            }
+            
             // Check dynasty members
             const dynastyMembers = getDynastyMembers();
             console.log(`Dynasty members: ${dynastyMembers.length}`);
@@ -1265,9 +1364,6 @@ const PopulationManager = (function() {
                 // Update UI
                 Utils.updateElement('leader-name', dynastyLeader.name);
             }
-            
-            // No need to create characters for every population member
-            // That was the old approach we're moving away from
             
             // Update UI
             updatePopulationUI();
