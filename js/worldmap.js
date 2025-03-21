@@ -985,7 +985,7 @@ function generateSettlement(region, type, position, isPlayer = false) {
                     const region = this.getRegion(settlement.region);
                     if (region) {
                         // Base production rates * population * region modifier
-                        const foodProduced = 0.8 * settlement.population * region.resourceModifiers.food * tickSize;
+                        const foodProduced = 1 * settlement.population * region.resourceModifiers.food * tickSize;
                         const woodProduced = 0.3 * settlement.population * region.resourceModifiers.wood * tickSize;
                         const stoneProduced = 0.2 * settlement.population * region.resourceModifiers.stone * tickSize;
                         const metalProduced = 0.1 * settlement.population * region.resourceModifiers.metal * tickSize;
