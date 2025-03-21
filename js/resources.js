@@ -55,11 +55,11 @@ const ResourceManager = (function() {
         herbs: 25,
         
         // Wealth resources - small capacity (valuable items)
-        silver: 25,
-        gold: 10,
-        amber: 10,
-        ivory: 10,
-        jewels: 10,
+        silver: 2500,
+        gold: 1000,
+        amber: 100,
+        ivory: 100,
+        jewels: 100,
         
         // Environmental resources - medium capacity
         peat: 50,
@@ -110,9 +110,9 @@ const ResourceManager = (function() {
         metal: 0.5, // Metal per miner per day
         
         // Advanced resources - will be enabled by buildings/upgrades later
-        leather: 0,
-        fur: 0,
-        cloth: 0,
+        leather: 1,
+        fur: 1,
+        cloth: 1,
         clay: 0,
         pitch: 0,
         salt: 0,

@@ -65,7 +65,7 @@ const BuildingSystem = (function() {
             },
             effects: {
                 housingCapacity: 0,
-                warriorCapacity: 30,
+                warriorCapacity: 50,
                 fame: 2 // Fame bonus per month
             }
         },
@@ -84,7 +84,7 @@ const BuildingSystem = (function() {
                 wood: 1200,
                 metal: 250
             },
-            constructionTime: 20,
+            constructionTime: 200,
             workerCapacity: 0,
             workersRequired: 8,
             maintenanceCost: {
@@ -119,7 +119,7 @@ const BuildingSystem = (function() {
                 stone: 3500,
                 metal: 500
             },
-            constructionTime: 30,
+            constructionTime: 300,
             workerCapacity: 0,
             workersRequired: 12,
             maintenanceCost: {
@@ -154,7 +154,7 @@ const BuildingSystem = (function() {
                 stone: 6000,
                 metal: 1200
             },
-            constructionTime: 40,
+            constructionTime: 400,
             workerCapacity: 0,
             workersRequired: 15,
             maintenanceCost: {
@@ -189,7 +189,7 @@ const BuildingSystem = (function() {
                 stone: 10000,
                 metal: 2000
             },
-            constructionTime: 60,
+            constructionTime: 600,
             workerCapacity: 0,
             workersRequired: 20,
             maintenanceCost: {
@@ -661,6 +661,43 @@ const BuildingSystem = (function() {
             effects: {
                 defenseBonus: 1.3, // 30% defense bonus
                 fame: 2
+            }
+        },
+
+        WEAVER: {
+            id: "weaver",
+            name: "Weavery",
+            description: "Processes fabrics into usable cloths.",
+            category: "production",
+            tier: 2,
+            landRequirement: {
+                type: "settlement",
+                amount: 1
+            },
+            constructionCost: {
+                wood: 125,
+                metal: 50
+            },
+            constructionTime: 8,
+            workerCapacity: 2, // Employs 2 workers
+            workersRequired: 2,
+            maintenanceCost: {
+                wood: 1,
+                metal: 1
+            },
+            maxCount: function(gameState) {
+                // Can have 1 per 30 population
+                const population = PopulationManager.getPopulation().total;
+                return Math.ceil(population / 30);
+            },
+            unlockRequirements: {
+                rank: 4,
+                tier: 2
+            },
+            effects: {
+                resourceProduction: {
+                    cloth: 2
+                },
             }
         },
         
@@ -1248,6 +1285,13 @@ const BuildingSystem = (function() {
         const warriorLodgeType = getBuildingTypeById("warrior_lodge");
         if (warriorLodgeType && warriorLodgeType.effects.warriorCapacity) {
             capacity += warriorLodgeCount * warriorLodgeType.effects.warriorCapacity;
+        }
+
+            // Add capacity from houses/hovels
+        const houseCount = buildings.built.house || 0;
+        const houseType = getBuildingTypeById("house");
+        if (houseType && houseType.effects.warriorCapacity) {
+            capacity += houseCount * houseType.effects.warriorCapacity;
         }
         
         // Update capacity
@@ -2789,10 +2833,11 @@ function updateWarriorManagementUI() {
             sawmill: "woodcutters",
             quarry: "miners",
             mine: "miners",
-            smithy: "miners",
-            forge: "miners",
+            smithy: "crafters",
+            forge: "crafters",
             hunting_lodge: "hunters",
-            fishing_hut: "fishermen"
+            fishing_hut: "fishermen",
+            weaver: "crafters"
         };
         
         // Calculate capacity for each building type

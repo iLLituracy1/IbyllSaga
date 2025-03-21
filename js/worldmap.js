@@ -339,7 +339,7 @@ function generateSettlement(region, type, position, isPlayer = false) {
         // AI settlement - more established
         switch (type) {
             case SETTLEMENT_TYPES.VIKING:
-                initialPopulation = Utils.randomBetween(15, 30);
+                initialPopulation = Utils.randomBetween(15, 45);
                 initialRank = Utils.randomBetween(0, 5);
                 militaryStrength = {
                     warriors: Utils.randomBetween(1, 5),
@@ -347,18 +347,26 @@ function generateSettlement(region, type, position, isPlayer = false) {
                     defenses: Utils.randomBetween(0, 2)
                 };
                 break;
-            case SETTLEMENT_TYPES.ANGLO:
+                case SETTLEMENT_TYPES.ANGLO:
+                    initialPopulation = Utils.randomBetween(60, 120);
+                    initialRank = Utils.randomBetween(0, 5);
+                    militaryStrength = {
+                        warriors: Utils.randomBetween(10, 15),
+                        ships: Utils.randomBetween(0, 2),
+                        defenses: Utils.randomBetween(2, 3) // Somewhat defensive
+                    };
+                    break;
             case SETTLEMENT_TYPES.FRANKISH:
-                initialPopulation = Utils.randomBetween(60, 150);
+                initialPopulation = Utils.randomBetween(160, 250);
                 initialRank = Utils.randomBetween(2, 7);
                 militaryStrength = {
-                    warriors: Utils.randomBetween(3, 8),
+                    warriors: Utils.randomBetween(10, 20),
                     ships: Utils.randomBetween(0, 1),
-                    defenses: Utils.randomBetween(2, 5) // Higher defenses
+                    defenses: Utils.randomBetween(5, 10) // Higher defenses
                 };
                 break;
             default: // Neutral
-                initialPopulation = Utils.randomBetween(20, 30);
+                initialPopulation = Utils.randomBetween(20, 50);
                 initialRank = Utils.randomBetween(0, 3);
                 militaryStrength = {
                     warriors: Utils.randomBetween(1, 3),
@@ -989,7 +997,7 @@ function generateSettlement(region, type, position, isPlayer = false) {
                         settlement.resources.metal += metalProduced;
                         
                         // Consumption
-                        const foodConsumed = settlement.population * 0.8 * tickSize;
+                        const foodConsumed = settlement.population * 0.7 * tickSize;
                         settlement.resources.food = Math.max(0, settlement.resources.food - foodConsumed);
                     }
                     
