@@ -722,8 +722,17 @@ function generateSettlement(region, type, position, isPlayer = false) {
     fromRegion.discovered = true;
     toRegion.discovered = true;
     
-    // Log discovery
-    Utils.log(`Your sailors have discovered a sea route from ${fromRegion.name} to ${toRegion.name}!`, "success");
+   // Enhanced notification with more prominent messaging
+if (expedition && expedition.ownerType === 'player') {
+    // Use a more exciting message that's harder to miss
+    Utils.log(`DISCOVERY! Your sailors have found a sea route from ${fromRegion.name} to ${toRegion.name}!`, "success");
+    
+    // Add a second message about the new landmass to emphasize importance
+    const toLandmass = worldMap.landmasses.find(lm => lm.id === toRegion.landmass);
+    if (toLandmass && toLandmass.id !== fromRegion.landmass) {
+        Utils.log(`Your expedition has discovered a route to ${toLandmass.name}, opening new lands for exploration!`, "important");
+    }
+}
     
     return true;
 }
@@ -1234,7 +1243,7 @@ discoverRegion: function(regionId) {
                     return false;
                 },
 
-                
+
                 /**
          * Helper function to estimate sea distance between regions
          * @param {Object} region1 - First region object
@@ -1352,6 +1361,7 @@ discoverRegion: function(regionId) {
                     
                     return true;
                 },
+
 
         /**
          * Get all discovered sea lanes
@@ -1484,6 +1494,87 @@ discoverRegion: function(regionId) {
                 return distance <= maxDistance;
             });
         },
+
+        
+/**
+ * Process sea lane discovery for a coastal region
+ * This function is now exposed in the public API
+ * @param {string} regionId - ID of the coastal region
+ */
+discoverPotentialSeaLanes: function(regionId) {
+    const region = this.getRegion(regionId);
+    if (!region) return false;
+    
+    console.log(`Checking potential sea lanes for ${region.name}`);
+    
+    // Check if region is coastal
+    const isCoastal = region.type === 'COASTAL' || region.type === 'FJORD';
+    if (!isCoastal) {
+        console.log(`Region ${region.name} is not coastal, skipping sea lane discovery`);
+        return false;
+    }
+    
+    // HIGH CHANCE (35%) TO DISCOVER A NEW LANDMASS
+    // This is the key fix to break the catch-22 problem
+    if (Math.random() < 0.35) {
+        console.log("Attempting to discover a new coastal region on another landmass");
+        const newRegion = discoverCoastalRegionOnNewLandmass();
+        
+        if (newRegion) {
+            // Create a sea lane between our coastal region and the newly discovered one
+            this.discoverSeaLane(region.id, newRegion.id);
+            return true;
+        }
+    }
+    
+    // Find other discovered coastal regions
+    const discoveredCoastalRegions = this.getDiscoveredRegions().filter(r => 
+        r.id !== regionId && 
+        (r.type === 'COASTAL' || r.type === 'FJORD')
+    );
+    
+    console.log(`Found ${discoveredCoastalRegions.length} discovered coastal regions`);
+    
+    // If no other coastal regions are discovered, nothing to do
+    if (discoveredCoastalRegions.length === 0) {
+        console.log("No other coastal regions discovered, can't create sea lanes yet");
+        return false;
+    }
+    
+    // Usually only discover nearest lanes first
+    let lanesToDiscover = 1;
+    if (Math.random() < 0.4) lanesToDiscover = 2; // 40% chance for 2 lanes (increased from 30%)
+    
+    // Sort by distance (closest first)
+    const sortedByDistance = discoveredCoastalRegions.sort((a, b) => {
+        const distA = Math.sqrt(
+            Math.pow(a.position.x - region.position.x, 2) + 
+            Math.pow(a.position.y - region.position.y, 2)
+        );
+        const distB = Math.sqrt(
+            Math.pow(b.position.x - region.position.x, 2) + 
+            Math.pow(b.position.y - region.position.y, 2)
+        );
+        return distA - distB;
+    });
+    
+    console.log(`Will discover up to ${lanesToDiscover} sea lanes`);
+    
+    // Discover nearest lanes
+    const nearestRegions = sortedByDistance.slice(0, lanesToDiscover);
+    let lanesDiscovered = 0;
+    
+    nearestRegions.forEach(nearRegion => {
+        // Prioritize creating lanes to different landmasses
+        if (nearRegion.landmass !== region.landmass) {
+            const success = this.discoverSeaLane(region.id, nearRegion.id);
+            if (success) lanesDiscovered++;
+        }
+    });
+    
+    console.log(`Discovered ${lanesDiscovered} new sea lanes`);
+    return lanesDiscovered > 0;
+},
 
         
         

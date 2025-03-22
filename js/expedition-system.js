@@ -421,19 +421,19 @@ function calculateMovementDays(fromRegionId, toRegionId) {
         }
     }
     
-    /**
+ /**
  * Process raiding activities with improved region discovery
  * @param {Object} expedition - The expedition
  * @param {number} tickSize - Size of the game tick in days
  */
-    function processRaiding(expedition, tickSize) {
-        if (expedition.status !== EXPEDITION_STATUS.RAIDING) return;
+function processRaiding(expedition, tickSize) {
+    if (expedition.status !== EXPEDITION_STATUS.RAIDING) return;
 
-        // Handle region discovery - new functionality
-        WorldMap.discoverRegion(expedition.currentRegion);
+    // Handle region discovery - new functionality
+    WorldMap.discoverRegion(expedition.currentRegion);
 
-        const settlementsInRegion = WorldMap.getSettlementsByRegion(expedition.currentRegion)
-        .filter(s => !s.isPlayer && !WorldMap.isSettlementDiscovered(s.id));
+    const settlementsInRegion = WorldMap.getSettlementsByRegion(expedition.currentRegion)
+    .filter(s => !s.isPlayer && !WorldMap.isSettlementDiscovered(s.id));
     
     // Chance to discover settlements increases with raid duration
     if (settlementsInRegion.length > 0 && Utils.chanceOf(35 * tickSize)) {
@@ -443,149 +443,133 @@ function calculateMovementDays(fromRegionId, toRegionId) {
         
         if (settlement) {
             WorldMap.discoverSettlement(settlement.id);
-            
         }
     }
 
-   // Chance to discover additional sea lanes while raiding in coastal regions
-const region = WorldMap.getRegion(expedition.currentRegion);
-if (region && (region.type === 'COASTAL' || region.type === 'FJORD')) {
-    // Increased chance of sea lane discovery from 15% to 30% per day for expeditions actively raiding
-    if (Utils.chanceOf(30 * tickSize)) {
-        // We pass the region ID to WorldMap's discoverPotentialSeaLanes function
-        // which will handle discovering regions on other landmasses and creating sea lanes
-        WorldMap.discoverRegion(expedition.currentRegion); // This will trigger the sea lane discovery logic
+       // Chance to discover additional sea lanes while raiding in coastal regions
+       const region = WorldMap.getRegion(expedition.currentRegion);
+       if (region && (region.type === 'COASTAL' || region.type === 'FJORD')) {
+           // Increased chance of sea lane discovery from 15% to 30% per day for expeditions actively raiding
+           if (Utils.chanceOf(30 * tickSize)) {
+               // Call the sea lane discovery function
+               WorldMap.discoverPotentialSeaLanes(expedition.currentRegion);
+               
+               // PUT THE ANTI-SPAM NOTIFICATION RIGHT HERE
+               if (expedition.ownerType === 'player') {
+                   // Only notify sometimes to avoid spam
+                   if (Math.random() < 0.3) {
+                       Utils.log(`Your sailors scan the horizon from ${region.name}, searching for new lands across the sea.`, "normal");
+                   }
+               }
+           }
+       }
+    
         
-        if (expedition.ownerType === 'player') {
-            console.log(`Expedition ${expedition.name} searching for sea lanes from ${region.name}`);
+    // During raiding, there's a chance to discover adjacent regions
+    const adjacentRegions = WorldMap.getAdjacentRegions(expedition.currentRegion);
+    adjacentRegions.forEach(regionId => {
+        // Each day of raiding has a chance to discover each adjacent region
+        if (Utils.chanceOf(15 * tickSize)) {
+            const discovered = WorldMap.discoverRegion(regionId);
+            if (discovered && expedition.ownerType === 'player') {
+                const regionName = WorldMap.getRegion(regionId)?.name || 'an adjacent region';
+            }
         }
-    }
-}
+    });
+    
+    // Chance to gather loot based on expedition strength and tick size
+    const lootChance = (expedition.strength / 100) * tickSize * 10;
+    
+    if (Utils.chanceOf(lootChance)) {
+        // Get region data
+        const region = WorldMap.getRegion(expedition.currentRegion);
+        if (!region) return;
         
-        // During raiding, there's a chance to discover adjacent regions
-        const adjacentRegions = WorldMap.getAdjacentRegions(expedition.currentRegion);
-        adjacentRegions.forEach(regionId => {
-            // Each day of raiding has a chance to discover each adjacent region
-            if (Utils.chanceOf(15 * tickSize)) {
-                const discovered = WorldMap.discoverRegion(regionId);
-                if (discovered && expedition.ownerType === 'player') {
-                    const regionName = WorldMap.getRegion(regionId)?.name || 'an adjacent region';
-                }
-            }
-        });
+        // Determine loot based on region type
+        const regionType = region.type;
+        const resourceModifiers = region.resourceModifiers;
         
-        // Chance to gather loot based on expedition strength and tick size
-        const lootChance = (expedition.strength / 100) * tickSize * 10;
+        // Base loot amounts
+        const lootAmounts = {
+            food: Utils.randomBetween(5, 15) * tickSize,
+            wood: Utils.randomBetween(3, 10) * tickSize,
+            stone: Utils.randomBetween(2, 8) * tickSize,
+            metal: Utils.randomBetween(1, 5) * tickSize
+        };
         
-        if (Utils.chanceOf(lootChance)) {
-            // Get region data
-            const region = WorldMap.getRegion(expedition.currentRegion);
-            if (!region) return;
-            
-            // Determine loot based on region type
-            const regionType = region.type;
-            const resourceModifiers = region.resourceModifiers;
-            
-            // Base loot amounts
-            const lootAmounts = {
-                food: Utils.randomBetween(5, 15) * tickSize,
-                wood: Utils.randomBetween(3, 10) * tickSize,
-                stone: Utils.randomBetween(2, 8) * tickSize,
-                metal: Utils.randomBetween(1, 5) * tickSize
-            };
-            
-            // Apply regional modifiers
-            for (const resource in lootAmounts) {
-                if (resourceModifiers && resourceModifiers[resource]) {
-                    lootAmounts[resource] = Math.round(lootAmounts[resource] * resourceModifiers[resource]);
-                }
+        // Apply regional modifiers
+        for (const resource in lootAmounts) {
+            if (resourceModifiers && resourceModifiers[resource]) {
+                lootAmounts[resource] = Math.round(lootAmounts[resource] * resourceModifiers[resource]);
             }
-            
-            // Add special resources based on region
-            if (resourceModifiers) {
-                for (const resource in resourceModifiers) {
-                    // Skip basic resources (already handled)
-                    if (['food', 'wood', 'stone', 'metal'].includes(resource)) continue;
-                    
-                    // Add special resources if they exist in this region
-                    if (resourceModifiers[resource] > 0.5) {
-                        // Amount based on modifier and expedition strength
-                        const amount = Math.round(
-                            expedition.strength / 20 * 
-                            resourceModifiers[resource] * 
-                            Utils.randomBetween(1, 3)
-                        );
-                        
-                        if (amount > 0) {
-                            lootAmounts[resource] = (lootAmounts[resource] || 0) + amount;
-                        }
-                    }
-                }
-            }
-            
-            // Add to expedition's loot
-            if (!expedition.loot) expedition.loot = {};
-            for (const resource in lootAmounts) {
-                if (!expedition.loot[resource]) expedition.loot[resource] = 0;
-                expedition.loot[resource] += lootAmounts[resource];
-            }
-            
-            // Calculate fame gained
-            const fameGained = Math.ceil(
-                Object.values(lootAmounts).reduce((sum, val) => sum + val, 0) / 20
-            );
-            expedition.fame = (expedition.fame || 0) + fameGained;
-            
-            // Log for player expeditions
-            if (expedition.ownerType === 'player') {
-                // Create loot message
-                let lootMessage = "Your raiders have gathered: ";
-                lootMessage += Object.entries(lootAmounts)
-                    .filter(([_, amount]) => amount > 0)
-                    .map(([resource, amount]) => `${Math.round(amount)} ${resource}`)
-                    .join(', ');
+        }
+        
+        // Add special resources based on region
+        if (resourceModifiers) {
+            for (const resource in resourceModifiers) {
+                // Skip basic resources (already handled)
+                if (['food', 'wood', 'stone', 'metal'].includes(resource)) continue;
                 
-                Utils.log(lootMessage, 'success');
-            }
-            
-            // Chance of negative events during raiding
-            if (Utils.chanceOf(5 * tickSize)) {
-                // Defenders fight back - casualties
-                const casualtyCount = Math.ceil(expedition.warriors * 0.05 * Utils.randomBetween(1, 3));
-                
-                if (casualtyCount > 0) {
-                    // IMPROVED: Properly track casualties
-                    expedition.casualties = (expedition.casualties || 0) + casualtyCount;
-                    expedition.warriors = Math.max(0, expedition.warriors - casualtyCount);
+                // Add special resources if they exist in this region
+                if (resourceModifiers[resource] > 0.5) {
+                    // Amount based on modifier and expedition strength
+                    const amount = Math.round(
+                        expedition.strength / 20 * 
+                        resourceModifiers[resource] * 
+                        Utils.randomBetween(1, 3)
+                    );
                     
-                    // Use internal strength calculation instead of calling function directly
-                    expedition.strength = expedition.warriors; // Simple strength calculation
-                    
-                    if (expedition.ownerType === 'player') {
-                        Utils.log(`The locals fought back! You lost ${casualtyCount} warriors in a skirmish.`, 'danger');
-                    }
-                    
-                    // If too many casualties, expedition might return home
-                    if (expedition.warriors <= 0 || expedition.casualties > expedition.initialWarriors / 2) {
-                        if (expedition.ownerType === 'player') {
-                            Utils.log(`Having suffered heavy losses, your expedition is returning home.`, 'important');
-                        }
-                        
-                        // Use the ExpeditionSystem's function to update status
-                        updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.RETURNING, {
-                            targetRegion: expedition.originRegion,
-                            path: [] // Clear any existing path
-                        });
+                    if (amount > 0) {
+                        lootAmounts[resource] = (lootAmounts[resource] || 0) + amount;
                     }
                 }
             }
+        }
+        
+        // Add to expedition's loot
+        if (!expedition.loot) expedition.loot = {};
+        for (const resource in lootAmounts) {
+            if (!expedition.loot[resource]) expedition.loot[resource] = 0;
+            expedition.loot[resource] += lootAmounts[resource];
+        }
+        
+        // Calculate fame gained
+        const fameGained = Math.ceil(
+            Object.values(lootAmounts).reduce((sum, val) => sum + val, 0) / 20
+        );
+        expedition.fame = (expedition.fame || 0) + fameGained;
+        
+        // Log for player expeditions
+        if (expedition.ownerType === 'player') {
+            // Create loot message
+            let lootMessage = "Your raiders have gathered: ";
+            lootMessage += Object.entries(lootAmounts)
+                .filter(([_, amount]) => amount > 0)
+                .map(([resource, amount]) => `${Math.round(amount)} ${resource}`)
+                .join(', ');
             
-            // Chance to end raiding if we've gathered plenty of loot
-            const totalLoot = Object.values(expedition.loot).reduce((sum, val) => sum + val, 0);
-            if (totalLoot > expedition.warriors * 20) {
-                if (Utils.chanceOf(20 * tickSize)) {
+            Utils.log(lootMessage, 'success');
+        }
+        
+        // Chance of negative events during raiding
+        if (Utils.chanceOf(5 * tickSize)) {
+            // Defenders fight back - casualties
+            const casualtyCount = Math.ceil(expedition.warriors * 0.05 * Utils.randomBetween(1, 3));
+            
+            if (casualtyCount > 0) {
+                expedition.casualties = (expedition.casualties || 0) + casualtyCount;
+                expedition.warriors = Math.max(0, expedition.warriors - casualtyCount);
+                
+                expedition.strength = expedition.warriors; // Simple strength calculation
+                
+                if (expedition.ownerType === 'player') {
+                    Utils.log(`The locals fought back! You lost ${casualtyCount} warriors in a skirmish.`, 'danger');
+                }
+                
+                // If too many casualties, expedition might return home
+                if (expedition.warriors <= 0 || expedition.casualties > expedition.initialWarriors / 2) {
                     if (expedition.ownerType === 'player') {
-                        Utils.log(`Having gathered significant plunder, your expedition is returning home.`, 'important');
+                        Utils.log(`Having suffered heavy losses, your expedition is returning home.`, 'important');
                     }
                     
                     // Use the ExpeditionSystem's function to update status
@@ -596,7 +580,24 @@ if (region && (region.type === 'COASTAL' || region.type === 'FJORD')) {
                 }
             }
         }
+        
+        // Chance to end raiding if we've gathered plenty of loot
+        const totalLoot = Object.values(expedition.loot).reduce((sum, val) => sum + val, 0);
+        if (totalLoot > expedition.warriors * 20) {
+            if (Utils.chanceOf(20 * tickSize)) {
+                if (expedition.ownerType === 'player') {
+                    Utils.log(`Having gathered significant plunder, your expedition is returning home.`, 'important');
+                }
+                
+                // Use the ExpeditionSystem's function to update status
+                updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.RETURNING, {
+                    targetRegion: expedition.originRegion,
+                    path: [] // Clear any existing path
+                });
+            }
+        }
     }
+}
     
     /**
      * Process siege activities
