@@ -14,8 +14,9 @@
 const FactionArmySystem = (function() {
     // Private variables
     let factionArmies = [];
-    let nextArmyCheck = 0;
-    const ARMY_CHECK_INTERVAL = 5; // Days between checking for creating new armies
+    let nextArmyCheck = 0; // This was uninitialized - fix by setting to 0
+    const ARMY_CHECK_INTERVAL = 3; // Reduced from 5 days to 3 for more frequent checks
+    const DEBUG = true; // Enable debug logging
     
     // Faction army template
     const factionArmyTemplate = {
@@ -38,9 +39,9 @@ const FactionArmySystem = (function() {
     
     // Probability settings
     const RESPONSE_CHANCE_SETTINGS = {
-        EXPEDITION_IN_TERRITORY: 0.7,   // Chance to respond to player expedition in territory
-        EXPEDITION_NEAR_TERRITORY: 0.4, // Chance to respond to player expedition near territory
-        SIEGE_RESPONSE: 0.9,            // Chance to respond to a player siege
+        EXPEDITION_IN_TERRITORY: 0.8,   // Increased from 0.7 - higher chance to respond
+        EXPEDITION_NEAR_TERRITORY: 0.5, // Increased from 0.4 - higher chance to respond
+        SIEGE_RESPONSE: 0.95,           // Increased from 0.9 - higher chance to respond
         MAX_ACTIVE_ARMIES_PER_FACTION: 3 // Maximum armies a faction can have active at once
     };
     
@@ -55,6 +56,21 @@ const FactionArmySystem = (function() {
     
     // Base days to move between regions (same as ExpeditionSystem for consistency)
     const BASE_MOVEMENT_DAYS = 5;
+    
+    /**
+     * Debug logging function
+     * @param {string} message - Message to log
+     * @param {any} data - Optional data to include
+     */
+    function debugLog(message, data = null) {
+        if (DEBUG) {
+            if (data) {
+                console.log(`[FactionArmySystem] ${message}`, data);
+            } else {
+                console.log(`[FactionArmySystem] ${message}`);
+            }
+        }
+    }
     
     /**
      * Calculate movement days between regions
@@ -95,6 +111,8 @@ const FactionArmySystem = (function() {
      * @returns {Array} - Array of region IDs forming the path, or empty if no path
      */
     function findPath(startRegionId, targetRegionId) {
+        debugLog(`Finding path from ${startRegionId} to ${targetRegionId}`);
+        
         // If already in target region, return empty path
         if (startRegionId === targetRegionId) return [];
         
@@ -108,6 +126,7 @@ const FactionArmySystem = (function() {
             
             // Get adjacent regions
             const adjacentRegions = WorldMap.getAdjacentRegions(regionId);
+            debugLog(`Region ${regionId} has ${adjacentRegions.length} adjacent regions: ${adjacentRegions.join(', ')}`);
             
             for (const adjRegionId of adjacentRegions) {
                 // If already visited, skip
@@ -118,6 +137,7 @@ const FactionArmySystem = (function() {
                 
                 // If this is the target, return the path
                 if (adjRegionId === targetRegionId) {
+                    debugLog(`Path found: ${newPath.join(' -> ')}`);
                     return newPath;
                 }
                 
@@ -127,8 +147,9 @@ const FactionArmySystem = (function() {
             }
         }
         
-        // No path found
-        return [];
+        // No path found, fallback to direct path
+        debugLog(`No path found from ${startRegionId} to ${targetRegionId}, using direct path`);
+        return [targetRegionId]; // Fallback: Just include the target as next step
     }
     
     /**
@@ -165,6 +186,7 @@ const FactionArmySystem = (function() {
         );
         
         if (factionActiveArmies.length >= RESPONSE_CHANCE_SETTINGS.MAX_ACTIVE_ARMIES_PER_FACTION) {
+            debugLog(`Faction ${faction.name} already has maximum armies (${factionActiveArmies.length})`);
             return false;
         }
         
@@ -179,8 +201,13 @@ const FactionArmySystem = (function() {
             factionModifier = 1.5; // Franks even more likely to defend
         }
         
-        // Random check
-        return Math.random() < (responseChance * factionModifier);
+        const finalChance = responseChance * factionModifier;
+        const roll = Math.random();
+        const willRespond = roll < finalChance;
+        
+        debugLog(`Faction ${faction.name} response check: chance=${finalChance.toFixed(2)}, roll=${roll.toFixed(2)}, will respond: ${willRespond}`);
+        
+        return willRespond;
     }
     
     /**
@@ -191,9 +218,12 @@ const FactionArmySystem = (function() {
      */
     function getFactionSettlementsInRegion(factionId, regionId) {
         const worldData = WorldMap.getWorldMap();
-        return worldData.settlements
+        const settlements = worldData.settlements
             .filter(s => s.factionId === factionId && s.region === regionId)
             .map(s => s.id);
+        
+        debugLog(`Faction ${factionId} has ${settlements.length} settlements in region ${regionId}`);
+        return settlements;
     }
     
     /**
@@ -206,9 +236,12 @@ const FactionArmySystem = (function() {
         
         // Get all settlements controlled by this faction
         const factionSettlements = worldData.settlements.filter(s => s.factionId === factionId);
+        debugLog(`Faction ${factionId} has ${factionSettlements.length} settlements total`);
         
         // Return unique region IDs
-        return [...new Set(factionSettlements.map(s => s.region))];
+        const territories = [...new Set(factionSettlements.map(s => s.region))];
+        debugLog(`Faction ${factionId} controls ${territories.length} territories: ${territories.join(', ')}`);
+        return territories;
     }
     
     /**
@@ -223,6 +256,8 @@ const FactionArmySystem = (function() {
         // For each territory, find adjacent ones
         ownedTerritories.forEach(regionId => {
             const adjacent = WorldMap.getAdjacentRegions(regionId);
+            debugLog(`Region ${regionId} has ${adjacent.length} adjacent regions`);
+            
             adjacent.forEach(adjRegionId => {
                 // Only add if not already owned
                 if (!ownedTerritories.includes(adjRegionId)) {
@@ -231,7 +266,9 @@ const FactionArmySystem = (function() {
             });
         });
         
-        return Array.from(adjacentTerritories);
+        const result = Array.from(adjacentTerritories);
+        debugLog(`Faction ${factionId} has ${result.length} adjacent territories: ${result.join(', ')}`);
+        return result;
     }
     
     /**
@@ -242,13 +279,13 @@ const FactionArmySystem = (function() {
      * @returns {Object} - The created army or null if creation failed
      */
     function musterFactionArmy(faction, targetRegionId, targetExpeditionId = null) {
-        console.log(`Faction ${faction.name} mustering army to defend region ${targetRegionId}`);
+        debugLog(`Faction ${faction.name} (${faction.id}) mustering army to defend region ${targetRegionId}`);
         
         // Determine where to muster from (closest region with faction settlements)
         const factionTerritories = getFactionTerritories(faction.id);
         
         if (factionTerritories.length === 0) {
-            console.warn(`Faction ${faction.name} has no territories to muster from`);
+            debugLog(`Faction ${faction.name} has no territories to muster from`);
             return null;
         }
         
@@ -257,17 +294,19 @@ const FactionArmySystem = (function() {
         let musterRegionId;
         if (factionTerritories.includes(targetRegionId)) {
             musterRegionId = targetRegionId;
+            debugLog(`Mustering in target region ${targetRegionId} (faction territory)`);
         } else {
-            // Find closest territory (simplified - just take the first one for now)
+            // Find closest territory - for now just use the first one
             // In a full implementation, we would calculate distances between regions
             musterRegionId = factionTerritories[0];
+            debugLog(`Mustering in region ${musterRegionId} (closest to target)`);
         }
         
         // Get settlements in the muster region
         const settlementIds = getFactionSettlementsInRegion(faction.id, musterRegionId);
         
         if (settlementIds.length === 0) {
-            console.warn(`No settlements found for faction ${faction.name} in region ${musterRegionId}`);
+            debugLog(`No settlements found for faction ${faction.name} in region ${musterRegionId}`);
             return null;
         }
         
@@ -275,11 +314,31 @@ const FactionArmySystem = (function() {
         let totalWarriors = 0;
         const settlements = settlementIds.map(id => WorldMap.getSettlement(id)).filter(Boolean);
         
+        // Debug log settlement military data
         settlements.forEach(settlement => {
+            debugLog(`Settlement ${settlement.name} (${settlement.id}) military: `, settlement.military || "none");
+        });
+        
+        settlements.forEach(settlement => {
+            // Ensure settlement has military data
+            if (!settlement.military) {
+                settlement.military = { warriors: Math.ceil(settlement.population * 0.2) || 5 };
+                debugLog(`Created missing military data for settlement ${settlement.name}`);
+            }
+            
             // Each settlement contributes a portion of its warriors
             const contributionRatio = Math.random() * 0.3 + 0.4; // 40-70% of warriors
-            const warriors = Math.floor((settlement.military?.warriors || 0) * contributionRatio);
+            const availableWarriors = settlement.military.warriors || 0;
             
+            // Calculate how many warriors to contribute
+            let warriors = Math.floor(availableWarriors * contributionRatio);
+            
+            // Ensure at least 1 warrior from each settlement if they have any
+            if (availableWarriors > 0 && warriors === 0) {
+                warriors = 1;
+            }
+            
+            debugLog(`Settlement ${settlement.name} contributing ${warriors}/${availableWarriors} warriors`);
             totalWarriors += warriors;
             
             // Reduce the settlement's warrior count
@@ -289,10 +348,10 @@ const FactionArmySystem = (function() {
             }
         });
         
-        // If no warriors available, can't create army
+        // If very few warriors available, create a minimal army anyway (at least 3 warriors)
         if (totalWarriors <= 0) {
-            console.warn(`Faction ${faction.name} couldn't muster any warriors`);
-            return null;
+            debugLog(`No warriors available, creating minimal garrison`);
+            totalWarriors = 3; // Minimal force
         }
         
         // Create the army
@@ -315,15 +374,18 @@ const FactionArmySystem = (function() {
         // If target is the same as current region, set status to defending
         if (musterRegionId === targetRegionId) {
             army.status = "defending";
+            debugLog(`Army ${armyName} set to defending in current region`);
         } else {
             // Find path to target region
             army.path = findPath(musterRegionId, targetRegionId);
             
             if (army.path.length > 0) {
                 army.status = "marching";
+                debugLog(`Army ${armyName} set to marching along path: ${army.path.join(' -> ')}`);
             } else {
                 // No path found, stay on defense
                 army.status = "defending";
+                debugLog(`No path found for army ${armyName}, set to defending`);
             }
         }
         
@@ -337,6 +399,7 @@ const FactionArmySystem = (function() {
             Utils.log(`A force from ${faction.name} has begun marching toward your expedition.`, "important");
         }
         
+        debugLog(`Created army ${armyName} with ${totalWarriors} warriors in ${musterRegionId}`);
         return army;
     }
     
@@ -358,6 +421,8 @@ const FactionArmySystem = (function() {
         const progressIncrement = (tickSize / totalDays) * 100;
         army.movementProgress += progressIncrement;
         
+        debugLog(`Army ${army.name} moving: ${army.movementProgress.toFixed(1)}% to ${nextRegionId}`);
+        
         // If movement complete
         if (army.movementProgress >= 100) {
             // Update current region
@@ -371,11 +436,13 @@ const FactionArmySystem = (function() {
             if (army.currentRegionId === army.targetRegionId) {
                 // We've reached the target region, now defending/searching
                 army.status = "defending";
+                debugLog(`Army ${army.name} reached target region ${army.targetRegionId}, now defending`);
             } else if (army.path.length === 0) {
                 // No more path but not at target, something's wrong
                 // Default to defending current region
                 army.status = "defending";
                 army.targetRegionId = army.currentRegionId;
+                debugLog(`Army ${army.name} has no more path steps but not at target, now defending current region`);
             }
         }
     }
@@ -400,6 +467,8 @@ const FactionArmySystem = (function() {
         // If no player expeditions, nothing to do
         if (playerExpeditions.length === 0) return;
         
+        debugLog(`Army ${army.name} found ${playerExpeditions.length} player expeditions in region ${army.currentRegionId}`);
+        
         // Get region info
         const region = WorldMap.getRegion(army.currentRegionId);
         const regionName = region ? region.name : "Unknown Region";
@@ -407,22 +476,19 @@ const FactionArmySystem = (function() {
         const factionName = faction ? faction.name : "Enemy";
         
         // Check if there's already a battle in this region
-        const activeBattles = ConflictSystem.getActiveBattles();
-        const existingBattle = activeBattles.find(battle => 
-            battle.regionId === army.currentRegionId && battle.phase !== "concluded"
-        );
-        
-        if (existingBattle) {
-            // If battle exists and we're not part of it, join it
-            if (!existingBattle.attackers.includes(army.id) && !existingBattle.defenders.includes(army.id)) {
-                console.log(`Faction army ${army.id} joining existing battle in ${regionName}`);
-                
-                // In a full implementation, we would add ourselves to the battle
-                // But since ConflictSystem doesn't have a joinBattle method, we'll have to wait
-                // for the next battle to trigger
-                return;
+        if (typeof ConflictSystem !== 'undefined' && typeof ConflictSystem.getActiveBattles === 'function') {
+            const activeBattles = ConflictSystem.getActiveBattles();
+            const existingBattle = activeBattles.find(battle => 
+                battle.regionId === army.currentRegionId && battle.phase !== "concluded"
+            );
+            
+            if (existingBattle) {
+                // If battle exists and we're not part of it, join it
+                if (!existingBattle.attackers.includes(army.id) && !existingBattle.defenders.includes(army.id)) {
+                    debugLog(`Army ${army.id} found existing battle in ${regionName}, but joining not implemented`);
+                }
+                return; // Already in battle
             }
-            return; // Already in battle
         }
         
         // Determine if expedition is sieging (defender) or raiding (attacker)
@@ -471,6 +537,8 @@ const FactionArmySystem = (function() {
             battleData.aiExpeditions = [factionArmy];
         }
         
+        debugLog(`Initiating battle in ${regionName} between faction army and player expeditions`, battleData);
+        
         // Initiate battle using conflict system
         if (window.ConflictSystem && typeof ConflictSystem.initiateBattle === 'function') {
             const battle = ConflictSystem.initiateBattle(battleData);
@@ -478,7 +546,12 @@ const FactionArmySystem = (function() {
             // Update army status
             if (battle) {
                 army.status = "battling";
+                debugLog(`Battle initiated, army ${army.name} status set to battling`);
+            } else {
+                debugLog(`Failed to initiate battle through ConflictSystem`);
             }
+        } else {
+            debugLog(`ConflictSystem not available for battle initiation`);
         }
     }
     
@@ -490,6 +563,13 @@ const FactionArmySystem = (function() {
         if (army.status !== "battling") return;
         
         // Check if still in active battle
+        if (typeof ConflictSystem === 'undefined' || typeof ConflictSystem.getActiveBattles !== 'function') {
+            debugLog(`ConflictSystem not available to check battle status`);
+            // Default to defending if we can't check
+            army.status = "defending";
+            return;
+        }
+        
         const activeBattles = ConflictSystem.getActiveBattles();
         const inBattle = activeBattles.some(battle => 
             battle.phase !== "concluded" && 
@@ -517,14 +597,17 @@ const FactionArmySystem = (function() {
                 if (armyWon) {
                     // Army won, continue defending/pursuing
                     army.status = "defending";
+                    debugLog(`Army ${army.name} won battle, now defending`);
                 } else {
                     // Army lost, retreat or disband
                     // For simplicity, just disband
                     army.status = "disbanding";
+                    debugLog(`Army ${army.name} lost battle, now disbanding`);
                 }
             } else {
                 // No battle found, resume defending
                 army.status = "defending";
+                debugLog(`No battle record found for army ${army.name}, resuming defense`);
             }
         }
     }
@@ -535,6 +618,8 @@ const FactionArmySystem = (function() {
      * @param {number} tickSize - Size of the game tick in days
      */
     function processArmies(gameState, tickSize) {
+        debugLog(`Processing ${factionArmies.length} faction armies`);
+        
         // Process each army
         for (let i = factionArmies.length - 1; i >= 0; i--) {
             const army = factionArmies[i];
@@ -563,6 +648,7 @@ const FactionArmySystem = (function() {
                     if (army.daysActive > army.expirationDays) {
                         // Return any remaining warriors to home settlements
                         returnWarriorsToSettlements(army);
+                        debugLog(`Removing disbanded army ${army.name} after ${army.daysActive.toFixed(1)} days`);
                         factionArmies.splice(i, 1);
                     }
                     break;
@@ -570,6 +656,7 @@ const FactionArmySystem = (function() {
             
             // Check for automatic disbanding after expiration days
             if (army.daysActive > army.expirationDays && army.status !== "disbanding") {
+                debugLog(`Army ${army.name} reached expiration (${army.daysActive.toFixed(1)} days), disbanding`);
                 army.status = "disbanding";
             }
         }
@@ -587,19 +674,28 @@ const FactionArmySystem = (function() {
             .map(id => WorldMap.getSettlement(id))
             .filter(Boolean);
         
-        if (settlements.length === 0) return;
+        if (settlements.length === 0) {
+            debugLog(`No settlements found to return warriors for army ${army.name}`);
+            return;
+        }
         
         // Distribute warriors evenly
         const warriorsPerSettlement = Math.floor(army.warriors / settlements.length);
         const remainder = army.warriors % settlements.length;
         
+        debugLog(`Returning ${army.warriors} warriors to ${settlements.length} settlements`);
+        
         settlements.forEach((settlement, index) => {
             let returnedWarriors = warriorsPerSettlement;
             if (index === 0) returnedWarriors += remainder; // Add remainder to first settlement
             
-            if (settlement.military) {
-                settlement.military.warriors = (settlement.military.warriors || 0) + returnedWarriors;
+            // Ensure settlement has military data
+            if (!settlement.military) {
+                settlement.military = { warriors: 0, defenses: 0 };
             }
+            
+            settlement.military.warriors = (settlement.military.warriors || 0) + returnedWarriors;
+            debugLog(`Returned ${returnedWarriors} warriors to settlement ${settlement.name}`);
         });
         
         // Clear army warriors
@@ -617,14 +713,30 @@ const FactionArmySystem = (function() {
         // Set next check time
         nextArmyCheck = gameState.date.day + ARMY_CHECK_INTERVAL;
         
+        debugLog(`Checking for player expeditions at game day ${gameState.date.day}, next check at day ${nextArmyCheck}`);
+        
+        // Ensure FactionIntegration is available
+        if (typeof FactionIntegration === 'undefined' || !FactionIntegration.getFactionData) {
+            debugLog(`FactionIntegration not available for expedition check`);
+            return;
+        }
+        
+        // Ensure ExpeditionSystem is available
+        if (typeof ExpeditionSystem === 'undefined' || !ExpeditionSystem.getExpeditions) {
+            debugLog(`ExpeditionSystem not available for expedition check`);
+            return;
+        }
+        
         // Get all active player expeditions
         const playerExpeditions = ExpeditionSystem.getExpeditions('player');
+        debugLog(`Found ${playerExpeditions.length} player expeditions`);
         
         // No player expeditions, nothing to do
         if (playerExpeditions.length === 0) return;
         
         // Get all factions
         const factions = FactionIntegration.getFactionData().factions;
+        debugLog(`Found ${factions.length} factions to check`);
         
         // Process each player expedition
         playerExpeditions.forEach(expedition => {
@@ -637,7 +749,12 @@ const FactionArmySystem = (function() {
             
             // Get the region the expedition is in
             const regionId = expedition.currentRegion;
-            if (!regionId) return;
+            if (!regionId) {
+                debugLog(`Expedition ${expedition.id} has no current region`);
+                return;
+            }
+            
+            debugLog(`Processing player expedition ${expedition.name} in region ${regionId}`);
             
             // Check each faction
             factions.forEach(faction => {
@@ -648,7 +765,10 @@ const FactionArmySystem = (function() {
                     army.status !== "disbanding"
                 );
                 
-                if (hasArmyTargeting) return;
+                if (hasArmyTargeting) {
+                    debugLog(`Faction ${faction.name} already has an army targeting expedition ${expedition.id}`);
+                    return;
+                }
                 
                 // Get faction territories
                 const territories = getFactionTerritories(faction.id);
@@ -656,50 +776,77 @@ const FactionArmySystem = (function() {
                 
                 // Check if expedition is in faction territory
                 if (territories.includes(regionId)) {
+                    debugLog(`Expedition ${expedition.name} is in faction ${faction.name} territory`);
+                    
                     // Expedition is in faction territory - high chance to respond
                     if (shouldFactionRespond(faction, "EXPEDITION_IN_TERRITORY")) {
-                        musterFactionArmy(faction, regionId, expedition.id);
+                        const army = musterFactionArmy(faction, regionId, expedition.id);
+                        if (army) {
+                            debugLog(`Faction ${faction.name} created army ${army.name} to respond to expedition in their territory`);
+                        }
                     }
                 } 
                 // Check if expedition is adjacent to faction territory
                 else if (adjacentTerritories.includes(regionId)) {
+                    debugLog(`Expedition ${expedition.name} is near faction ${faction.name} territory`);
+                    
                     // Expedition is near faction territory - medium chance to respond
                     if (shouldFactionRespond(faction, "EXPEDITION_NEAR_TERRITORY")) {
-                        musterFactionArmy(faction, regionId, expedition.id);
+                        const army = musterFactionArmy(faction, regionId, expedition.id);
+                        if (army) {
+                            debugLog(`Faction ${faction.name} created army ${army.name} to respond to expedition near their territory`);
+                        }
                     }
                 }
             });
         });
         
         // Also check for player sieges
-        const activeSieges = ConflictSystem.getActiveSieges();
-        
-        activeSieges.forEach(siege => {
-            // Skip concluded sieges
-            if (siege.phase === "concluded") return;
+        if (typeof ConflictSystem !== 'undefined' && typeof ConflictSystem.getActiveSieges === 'function') {
+            const activeSieges = ConflictSystem.getActiveSieges();
+            debugLog(`Found ${activeSieges.length} active sieges`);
             
-            // Get the settlement being sieged
-            const settlement = WorldMap.getSettlement(siege.settlementId);
-            if (!settlement) return;
-            
-            // Get the faction that owns this settlement
-            const faction = FactionIntegration.getFactionById(settlement.factionId);
-            if (!faction) return;
-            
-            // Skip if faction already has an army defending this region
-            const hasDefendingArmy = factionArmies.some(army => 
-                army.factionId === faction.id && 
-                army.targetRegionId === siege.regionId &&
-                army.status !== "disbanding"
-            );
-            
-            if (hasDefendingArmy) return;
-            
-            // High chance to respond to siege
-            if (shouldFactionRespond(faction, "SIEGE_RESPONSE")) {
-                musterFactionArmy(faction, siege.regionId);
-            }
-        });
+            activeSieges.forEach(siege => {
+                // Skip concluded sieges
+                if (siege.phase === "concluded") return;
+                
+                // Get the settlement being sieged
+                const settlement = WorldMap.getSettlement(siege.settlementId);
+                if (!settlement) {
+                    debugLog(`Settlement ${siege.settlementId} not found for siege`);
+                    return;
+                }
+                
+                // Get the faction that owns this settlement
+                const faction = FactionIntegration.getFactionById(settlement.factionId);
+                if (!faction) {
+                    debugLog(`Faction not found for settlement ${settlement.name}`);
+                    return;
+                }
+                
+                debugLog(`Processing siege on ${settlement.name} (faction: ${faction.name})`);
+                
+                // Skip if faction already has an army defending this region
+                const hasDefendingArmy = factionArmies.some(army => 
+                    army.factionId === faction.id && 
+                    army.targetRegionId === siege.regionId &&
+                    army.status !== "disbanding"
+                );
+                
+                if (hasDefendingArmy) {
+                    debugLog(`Faction ${faction.name} already has an army defending region ${siege.regionId}`);
+                    return;
+                }
+                
+                // High chance to respond to siege
+                if (shouldFactionRespond(faction, "SIEGE_RESPONSE")) {
+                    const army = musterFactionArmy(faction, siege.regionId);
+                    if (army) {
+                        debugLog(`Faction ${faction.name} created army ${army.name} to respond to siege`);
+                    }
+                }
+            });
+        }
     }
     
     // Public API
@@ -710,9 +857,15 @@ const FactionArmySystem = (function() {
         init: function() {
             console.log("Initializing Faction Army System...");
             
+            // Initialize nextArmyCheck to process on first tick
+            nextArmyCheck = 0;
+            
             // Register with game engine if available
             if (typeof GameEngine !== 'undefined' && typeof GameEngine.registerTickProcessor === 'function') {
                 GameEngine.registerTickProcessor(this.processTick);
+                console.log("Registered FactionArmySystem with GameEngine tick processor");
+            } else {
+                console.error("GameEngine.registerTickProcessor not available - FactionArmySystem may not function");
             }
             
             console.log("Faction Army System initialized");
@@ -728,6 +881,8 @@ const FactionArmySystem = (function() {
             if (!window.FactionIntegration || !window.ExpeditionSystem || !window.ConflictSystem) {
                 return;
             }
+            
+            debugLog(`Processing tick: day ${gameState.date.day}, tick size ${tickSize}`);
             
             // Check for player expeditions and create faction responses
             checkPlayerExpeditions(gameState);
@@ -791,6 +946,30 @@ const FactionArmySystem = (function() {
             
             army.status = "disbanding";
             return true;
+        },
+        
+        /**
+         * Get debug information about the faction army system
+         * @returns {Object} - Debug information
+         */
+        getDebugInfo: function() {
+            return {
+                armiesCount: factionArmies.length,
+                nextArmyCheck: nextArmyCheck,
+                armies: factionArmies.map(army => ({
+                    id: army.id,
+                    name: army.name,
+                    faction: army.factionId, 
+                    status: army.status,
+                    warriors: army.warriors,
+                    originRegion: army.originRegionId,
+                    currentRegion: army.currentRegionId,
+                    targetRegion: army.targetRegionId,
+                    targetExpedition: army.targetExpeditionId,
+                    daysActive: army.daysActive,
+                    path: army.path
+                }))
+            };
         }
     };
 })();
