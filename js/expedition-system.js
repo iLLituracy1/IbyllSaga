@@ -104,12 +104,19 @@ const ExpeditionSystem = (function() {
         return `${prefix} ${adjective} ${noun}`;
     }
     
-    /**
+  /**
  * Find adjacent regions to a given region
  * @param {string} regionId - ID of the region
  * @returns {Array} - Array of adjacent region IDs
  */
 function findAdjacentRegions(regionId) {
+    // Use WorldMap's consolidated adjacent regions function
+    // This includes both land adjacency and sea lanes
+    if (typeof WorldMap.getAdjacentRegions === 'function') {
+        return WorldMap.getAdjacentRegions(regionId);
+    }
+    
+    // Fallback implementation if WorldMap function doesn't exist
     const worldData = WorldMap.getWorldMap();
     const region = worldData.regions.find(r => r.id === regionId);
     
@@ -127,36 +134,13 @@ function findAdjacentRegions(regionId) {
         const dy = r.position.y - region.position.y;
         const distance = Math.sqrt(dx*dx + dy*dy);
         
-        // Consider adjacent if within certain range 
-        // (this is a simplification - ideally would use proper adjacency mapping)
+        // Consider adjacent if within certain range
         const adjacencyThreshold = (r.size.width + region.size.width) / 1.5;
         return distance <= adjacencyThreshold;
     });
     
-    // Get land-adjacent region IDs
-    const adjacentRegionIds = adjacentRegions.map(r => r.id);
-    
-    // Add sea lane connections if WorldMap has the function
-    if (typeof WorldMap.getRegionSeaLanes === 'function') {
-        const seaLanes = WorldMap.getRegionSeaLanes(regionId);
-        
-        seaLanes.forEach(lane => {
-            // Get the connected region ID (the "other end" of the lane)
-            const connectedRegionId = lane.fromRegionId === regionId ? 
-                lane.toRegionId : lane.fromRegionId;
-            
-            // Only add if not already in list and sea lane is discovered
-            if (!adjacentRegionIds.includes(connectedRegionId) && 
-                // Only use this check if the function exists
-                (typeof WorldMap.isSeaLaneDiscovered !== 'function' || 
-                 WorldMap.isSeaLaneDiscovered(regionId, connectedRegionId))) {
-                
-                adjacentRegionIds.push(connectedRegionId);
-            }
-        });
-    }
-    
-    return adjacentRegionIds;
+    // Return just the IDs
+    return adjacentRegions.map(r => r.id);
 }
 
     

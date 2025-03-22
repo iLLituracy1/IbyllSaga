@@ -672,6 +672,9 @@ function generateSettlement(region, type, position, isPlayer = false) {
 
                 /**
          * Discover a sea lane between two coastal regions
+         * @param {string} fromRegionId - Origin region ID
+         * @param {string} toRegionId - Destination region ID
+         * @returns {boolean} - Whether the sea lane was newly discovered
          */
         function discoverSeaLane(fromRegionId, toRegionId) {
             const seaLaneId = createSeaLaneId(fromRegionId, toRegionId);
@@ -694,6 +697,11 @@ function generateSettlement(region, type, position, isPlayer = false) {
             
             // Mark as discovered
             discoveredSeaLanes.add(seaLaneId);
+            
+            // Also automatically discover both connected regions
+            // This ensures when you find a sea lane, you know where it leads
+            fromRegion.discovered = true;
+            toRegion.discovered = true;
             
             // Log discovery to the player
             Utils.log(`Your sailors have discovered a sea route from ${fromRegion.name} to ${toRegion.name}!`, "success");
@@ -1458,7 +1466,7 @@ getDiscoveredRegions: function() {
 },
 
 /**
- * Get all adjacent regions to a given region 
+ * Get all adjacent regions to a given region including sea lanes 
  * @param {string} regionId - ID of the region
  * @returns {Array} - Array of region IDs for adjacent regions
  */
@@ -1484,20 +1492,76 @@ getAdjacentRegions: function(regionId) {
         })
         .map(r => r.id);
     
+    // Add regions connected by sea lanes (if function exists and coastal/fjord region)
+    if ((region.type === 'COASTAL' || region.type === 'FJORD') && 
+        typeof this.getRegionSeaLanes === 'function') {
+        
+        const seaLanes = this.getRegionSeaLanes(regionId);
+        
+        seaLanes.forEach(lane => {
+            // Get the other end of the sea lane
+            const connectedRegionId = lane.fromRegionId === regionId ? 
+                lane.toRegionId : lane.fromRegionId;
+            
+            // Add to adjacent regions if not already included
+            if (!adjacentRegions.includes(connectedRegionId)) {
+                adjacentRegions.push(connectedRegionId);
+            }
+        });
+    }
+    
     return adjacentRegions;
 },
 
 /**
- * Get discovered regions that are adjacent to a given region
+ * Get all regions adjacent to a given region (by land or sea)
  * @param {string} regionId - ID of the region
- * @returns {Array} - Array of region IDs for discovered adjacent regions
+ * @param {boolean} onlyDiscoveredSeaLanes - Only include sea lanes that are marked as discovered
+ * @returns {Array} - Array of region IDs for adjacent regions
  */
-getDiscoveredAdjacentRegions: function(regionId) {
-    // Get all adjacent regions
-    const adjacentRegions = this.getAdjacentRegions(regionId);
+getAdjacentRegions: function(regionId, onlyDiscoveredSeaLanes = true) {
+    const region = this.getRegion(regionId);
+    if (!region) return [];
     
-    // Filter to only include discovered regions
-    return adjacentRegions.filter(id => this.isRegionDiscovered(id));
+    // Find regions in same landmass that are close enough to be adjacent
+    const landmassRegions = this.getRegionsByLandmass(region.landmass);
+    
+    const adjacentRegions = landmassRegions
+        .filter(r => {
+            if (r.id === regionId) return false; // Skip self
+            
+            // Calculate distance
+            const dx = r.position.x - region.position.x;
+            const dy = r.position.y - region.position.y;
+            const distance = Math.sqrt(dx*dx + dy*dy);
+            
+            // Consider adjacent if within certain range
+            const adjacencyThreshold = (r.size.width + region.size.width) / 1.5;
+            return distance <= adjacencyThreshold;
+        })
+        .map(r => r.id);
+    
+    // Add sea lane connections if appropriate
+    if (typeof this.getRegionSeaLanes === 'function') {
+        const seaLanes = this.getRegionSeaLanes(regionId);
+        
+        seaLanes.forEach(lane => {
+            // Get the connected region ID (the "other end" of the lane)
+            const connectedRegionId = lane.fromRegionId === regionId ? 
+                lane.toRegionId : lane.fromRegionId;
+            
+            // Only add if not already in list and checking discovery status if needed
+            if (!adjacentRegions.includes(connectedRegionId) && 
+                (!onlyDiscoveredSeaLanes || 
+                 !this.isSeaLaneDiscovered || 
+                 this.isSeaLaneDiscovered(regionId, connectedRegionId))) {
+                
+                adjacentRegions.push(connectedRegionId);
+            }
+        });
+    }
+    
+    return adjacentRegions;
 },
         
         
