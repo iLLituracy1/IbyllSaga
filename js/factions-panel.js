@@ -3672,27 +3672,6 @@ const FactionsPanel = (function() {
                     isDefault: false
                 };
                 
-                // Add the politics tab to navigation
-                const navContainer = document.getElementById('game-navigation');
-                if (navContainer) {
-                    const politicsTab = document.createElement('div');
-                    politicsTab.className = 'nav-tab';
-                    politicsTab.dataset.tab = 'politics';
-                    politicsTab.id = 'politics-tab';
-                    politicsTab.innerHTML = `
-                        <span class="tab-icon">👑</span>
-                        <span class="tab-text">Politics</span>
-                    `;
-                    
-                    navContainer.appendChild(politicsTab);
-                    
-                    // Add event listener to the new tab
-                    politicsTab.addEventListener('click', function() {
-                        if (typeof NavigationSystem.switchTab === 'function') {
-                            NavigationSystem.switchTab('politics');
-                        }
-                    });
-                }
             }
             
             console.log("Enhanced Factions Panel initialized");

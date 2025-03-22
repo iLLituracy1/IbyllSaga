@@ -260,53 +260,70 @@ const ExpeditionSystem = (function() {
      */
     function handleExpeditionDisbanding(expedition) {
         debugLog(`Disbanding expedition ${expedition.name}`, expedition);
+    
+    // If this is the player's expedition, return warriors to the settlement
+    if (expedition.ownerType === 'player') {
+        const playerSettlement = WorldMap.getPlayerSettlement();
         
-        // If this is the player's expedition, return warriors to the settlement
-        if (expedition.ownerType === 'player') {
-            const playerSettlement = WorldMap.getPlayerSettlement();
+        if (playerSettlement) {
+            // Calculate warriors returning (total minus casualties)
+            const returningWarriors = Math.max(0, expedition.warriors);
             
-            if (playerSettlement) {
-                // Calculate warriors returning (total minus casualties)
-                const returningWarriors = Math.max(0, expedition.warriors);
+            // Add warriors back ONLY to BuildingSystem (warriors are tracked separately from population)
+            if (typeof BuildingSystem !== 'undefined' && 
+                typeof BuildingSystem.getWarriorData === 'function') {
                 
-                // Add warriors back ONLY to BuildingSystem (warriors are tracked separately from population)
-                if (typeof BuildingSystem !== 'undefined' && 
-                    typeof BuildingSystem.getWarriorData === 'function' &&
-                    typeof BuildingSystem.setWarriors === 'function') {
-                    
-                    const currentWarriors = BuildingSystem.getWarriorData().total || 0;
-                    BuildingSystem.setWarriors(currentWarriors + returningWarriors);
-                    Utils.log(`${returningWarriors} warriors have returned from ${expedition.name}.`);
+                const currentWarriors = BuildingSystem.getWarriors();
+                debugLog(`Currently have ${currentWarriors} warriors at settlement, returning ${returningWarriors} from expedition`);
+                
+                // Use setWarriors to properly set the new total
+                if (typeof BuildingSystem.addWarriors === 'function') {
+                    BuildingSystem.addWarriors(returningWarriors);
                 }
                 
-                // Add any loot to resources
-                if (Object.keys(expedition.loot).length > 0 && typeof ResourceManager !== 'undefined') {
-                    ResourceManager.addResources(expedition.loot);
-                    
-                    const lootSummary = Object.entries(expedition.loot)
-                        .map(([resource, amount]) => `${amount} ${resource}`)
-                        .join(', ');
-                    
-                    Utils.log(`Expedition returned with: ${lootSummary}`, "success");
+                // Only log if we actually have warriors returning
+                if (returningWarriors > 0) {
+                    Utils.log(`${returningWarriors} warriors have returned from ${expedition.name}.`, "important");
                 }
                 
-                // Award fame for the expedition
-                if (expedition.fame > 0 && typeof RankManager !== 'undefined') {
-                    RankManager.addFame(expedition.fame, `Successful expedition`);
+                // Check if there were casualties and log them clearly
+                if (expedition.casualties && expedition.casualties > 0) {
+                    Utils.log(`${expedition.casualties} warriors were lost during the expedition.`, "danger");
                 }
+            } else {
+                console.error("BuildingSystem warrior functions not available for expedition return");
+            }
+            
+            // Add any loot to resources
+            if (Object.keys(expedition.loot).length > 0 && typeof ResourceManager !== 'undefined') {
+                ResourceManager.addResources(expedition.loot);
+                
+                const lootSummary = Object.entries(expedition.loot)
+                    .filter(([_, amount]) => amount > 0)
+                    .map(([resource, amount]) => `${amount} ${resource}`)
+                    .join(', ');
+                
+                Utils.log(`Expedition returned with: ${lootSummary}`, "success");
+            }
+            
+            // Award fame for the expedition
+            if (expedition.fame > 0 && typeof RankManager !== 'undefined') {
+                RankManager.addFame(expedition.fame, `Successful expedition`);
             }
         }
-        
-        // Eventually remove the expedition from the list
-        // (we keep it for a while for record-keeping)
-        setTimeout(() => {
-            const index = expeditions.findIndex(e => e.id === expedition.id);
-            if (index !== -1) {
-                expeditions.splice(index, 1);
-                debugLog(`Removed expedition ${expedition.name} from list`);
-            }
-        }, 5000); // Remove after 5 seconds
     }
+    
+    // Eventually remove the expedition from the list
+    // (we keep it for a while for record-keeping)
+    setTimeout(() => {
+        const index = expeditions.findIndex(e => e.id === expedition.id);
+        if (index !== -1) {
+            expeditions.splice(index, 1);
+            debugLog(`Removed expedition ${expedition.name} from list`);
+        }
+    }, 5000); // Remove after 5 seconds
+}
+
     
     /**
      * Process expedition movement
@@ -383,7 +400,7 @@ const ExpeditionSystem = (function() {
  */
     function processRaiding(expedition, tickSize) {
         if (expedition.status !== EXPEDITION_STATUS.RAIDING) return;
-    
+
         // Handle region discovery - new functionality
         WorldMap.discoverRegion(expedition.currentRegion);
         
@@ -480,6 +497,7 @@ const ExpeditionSystem = (function() {
                 const casualtyCount = Math.ceil(expedition.warriors * 0.05 * Utils.randomBetween(1, 3));
                 
                 if (casualtyCount > 0) {
+                    // IMPROVED: Properly track casualties
                     expedition.casualties = (expedition.casualties || 0) + casualtyCount;
                     expedition.warriors = Math.max(0, expedition.warriors - casualtyCount);
                     
@@ -491,21 +509,16 @@ const ExpeditionSystem = (function() {
                     }
                     
                     // If too many casualties, expedition might return home
-                    if (expedition.casualties > expedition.warriors / 2) {
+                    if (expedition.warriors <= 0 || expedition.casualties > expedition.initialWarriors / 2) {
                         if (expedition.ownerType === 'player') {
                             Utils.log(`Having suffered heavy losses, your expedition is returning home.`, 'important');
                         }
                         
                         // Use the ExpeditionSystem's function to update status
-                        if (typeof updateExpeditionStatus === 'function') {
-                            updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.RETURNING, {
-                                targetRegion: expedition.originRegion,
-                                path: [] // Clear any existing path
-                            });
-                        } else if (typeof ExpeditionSystem.recallExpedition === 'function') {
-                            // Alternative recall method
-                            ExpeditionSystem.recallExpedition(expedition.id);
-                        }
+                        updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.RETURNING, {
+                            targetRegion: expedition.originRegion,
+                            path: [] // Clear any existing path
+                        });
                     }
                 }
             }
@@ -519,15 +532,10 @@ const ExpeditionSystem = (function() {
                     }
                     
                     // Use the ExpeditionSystem's function to update status
-                    if (typeof updateExpeditionStatus === 'function') {
-                        updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.RETURNING, {
-                            targetRegion: expedition.originRegion,
-                            path: [] // Clear any existing path
-                        });
-                    } else if (typeof ExpeditionSystem.recallExpedition === 'function') {
-                        // Alternative recall method
-                        ExpeditionSystem.recallExpedition(expedition.id);
-                    }
+                    updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.RETURNING, {
+                        targetRegion: expedition.originRegion,
+                        path: [] // Clear any existing path
+                    });
                 }
             }
         }
@@ -540,7 +548,7 @@ const ExpeditionSystem = (function() {
      */
     function processSiege(expedition, tickSize) {
         if (expedition.status !== EXPEDITION_STATUS.SIEGING) return;
-        
+    
         // Get target settlement
         const settlement = WorldMap.getSettlement(expedition.targetSettlement);
         if (!settlement) {
@@ -607,30 +615,33 @@ const ExpeditionSystem = (function() {
             // Calculate and apply casualties
             const casualties = Math.ceil(expedition.warriors * casualtyFactor * Utils.randomBetween(0.7, 1.3));
             
-            expedition.casualties = (expedition.casualties || 0) + casualties;
-            expedition.warriors = Math.max(0, expedition.warriors - casualties);
-            expedition.strength = expedition.warriors; // Simplified strength calculation
-            
-            // Log casualties for player
-            if (expedition.ownerType === 'player') {
-                Utils.log(`Your forces suffered ${casualties} casualties during the siege.`, 'danger');
-            }
-            
-            // Check if expedition has too many losses to continue
-            if (expedition.casualties > expedition.warriors * 1.5 || expedition.warriors <= 0) {
-                // Too many losses, abandon siege
+            if (casualties > 0) {
+                // FIXED: Properly track casualties
+                expedition.casualties = (expedition.casualties || 0) + casualties;
+                expedition.warriors = Math.max(0, expedition.warriors - casualties);
+                expedition.strength = expedition.warriors; // Simplified strength calculation
                 
+                // Log casualties for player
                 if (expedition.ownerType === 'player') {
-                    Utils.log(`Having suffered heavy losses, your forces abandon the siege of ${settlement.name}.`, 'danger');
+                    Utils.log(`Your forces suffered ${casualties} casualties during the siege.`, 'danger');
                 }
                 
-                // Remember to set the target region for returning
-                updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.RETURNING, {
-                    targetRegion: expedition.originRegion,
-                    path: [] // Clear any existing path
-                });
-                
-                return;
+                // Check if expedition has too many losses to continue
+                if (expedition.warriors <= 0 || expedition.casualties > expedition.initialWarriors * 0.75) {
+                    // Too many losses, abandon siege
+                    
+                    if (expedition.ownerType === 'player') {
+                        Utils.log(`Having suffered heavy losses, your forces abandon the siege of ${settlement.name}.`, 'danger');
+                    }
+                    
+                    // Remember to set the target region for returning
+                    updateExpeditionStatus(expedition.id, EXPEDITION_STATUS.RETURNING, {
+                        targetRegion: expedition.originRegion,
+                        path: [] // Clear any existing path
+                    });
+                    
+                    return;
+                }
             }
         }
         
@@ -898,7 +909,7 @@ const ExpeditionSystem = (function() {
          */
         createPlayerExpedition: function(options) {
             debugLog("Creating player expedition with options:", options);
-            
+    
             // Validate required options
             if (!options.warriors || options.warriors <= 0) {
                 console.error("Cannot create expedition: No warriors assigned");
@@ -924,17 +935,19 @@ const ExpeditionSystem = (function() {
             }
             
             // Check if enough warriors are available in BuildingSystem
-            if (typeof BuildingSystem !== 'undefined' && BuildingSystem.getWarriorData) {
-                const warriorData = BuildingSystem.getWarriorData();
-                if (warriorData.total < options.warriors) {
-                    console.error(`Cannot create expedition: Not enough warriors (${warriorData.total} available, ${options.warriors} requested)`);
-                    Utils.log(`You don't have enough warriors. Available: ${warriorData.total}, Needed: ${options.warriors}`, "important");
+            if (typeof BuildingSystem !== 'undefined') {
+                // Get warrior count from BuildingSystem directly
+                const totalWarriors = BuildingSystem.getWarriors();
+                
+                if (totalWarriors < options.warriors) {
+                    console.error(`Cannot create expedition: Not enough warriors (${totalWarriors} available, ${options.warriors} requested)`);
+                    Utils.log(`You don't have enough warriors. Available: ${totalWarriors}, Needed: ${options.warriors}`, "important");
                     return null;
                 }
                 
-                // Decrease warrior count in BuildingSystem
-                if (BuildingSystem.setWarriors) {
-                    BuildingSystem.setWarriors(warriorData.total - options.warriors);
+                // Decrease warrior count in BuildingSystem - use removeWarriors
+                if (typeof BuildingSystem.removeWarriors === 'function') {
+                    BuildingSystem.removeWarriors(options.warriors, "expedition");
                 }
             }
             
@@ -946,6 +959,7 @@ const ExpeditionSystem = (function() {
                 ownerId: playerSettlement.id,
                 ownerType: 'player',
                 warriors: options.warriors,
+                initialWarriors: options.warriors, // Track initial count for casualty calculations
                 regionId: playerSettlement.region,
                 bonuses: options.bonuses || {}
             });

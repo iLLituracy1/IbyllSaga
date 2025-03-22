@@ -82,8 +82,8 @@ const MilitaryPanel = (function() {
                         </div>
                         <div class="form-row">
                             <label for="expedition-warriors">Warriors:</label>
-                            <input type="range" id="expedition-warriors" min="1" max="50" value="10">
-                            <span id="expedition-warriors-value">10</span>
+                            <input type="number" id="expedition-warriors" min="1" max="5000" value="10" class="warrior-input">
+                            <span class="warrior-input-hint">Enter number of warriors (1-5000)</span>
                         </div>
                         <div class="form-row">
                             <label for="expedition-target">Target:</label>
@@ -114,8 +114,8 @@ const MilitaryPanel = (function() {
                         </div>
                         <div class="form-row">
                             <label for="raid-warriors">Warriors:</label>
-                            <input type="range" id="raid-warriors" min="5" max="5000" value="5">
-                            <span id="raid-warriors-value">15</span>
+                            <input type="number" id="raid-warriors" min="5" max="5000" value="15" class="warrior-input">
+                            <span class="warrior-input-hint">Enter number of warriors (5-5000)</span>
                         </div>
                         <div class="form-actions">
                             <button id="btn-launch-raid">Launch Raid</button>
@@ -170,16 +170,7 @@ const MilitaryPanel = (function() {
         document.getElementById('btn-launch-raid').addEventListener('click', launchRaid);
         document.getElementById('btn-cancel-raid').addEventListener('click', hideRaidPlanner);
         
-        // Sliders
-        const expeditionWarriorsSlider = document.getElementById('expedition-warriors');
-        expeditionWarriorsSlider.addEventListener('input', () => {
-            document.getElementById('expedition-warriors-value').textContent = expeditionWarriorsSlider.value;
-        });
-        
-        const raidWarriorsSlider = document.getElementById('raid-warriors');
-        raidWarriorsSlider.addEventListener('input', () => {
-            document.getElementById('raid-warriors-value').textContent = raidWarriorsSlider.value;
-        });
+        // No slider listeners needed anymore - using direct number inputs
     }
     
     /**
@@ -187,6 +178,10 @@ const MilitaryPanel = (function() {
      * @param {string} view - The view to switch to
      */
     function switchView(view) {
+        // First hide any open creation forms to prevent UI locking
+        hideExpeditionCreation();
+        hideRaidPlanner();
+        
         // Update current view
         currentView = view;
         
@@ -221,6 +216,56 @@ const MilitaryPanel = (function() {
         } else if (view === 'battles') {
             updateBattlesList();
         }
+        
+        // Check if we should show the raid planner
+        if (view === 'raids') {
+            // Check if there's an active siege
+            const hasActiveSiege = hasPlayerSiege();
+            
+            if (hasActiveSiege) {
+                // Don't show the raid planner, show a message instead
+                showSiegeActiveMessage();
+            }
+        }
+    }
+    
+    /**
+     * Check if player has an active siege
+     * @returns {boolean} - Whether player has an active siege
+     */
+    function hasPlayerSiege() {
+        if (!window.ExpeditionSystem || !ExpeditionSystem.getExpeditions) {
+            return false;
+        }
+        
+        const playerExpeditions = ExpeditionSystem.getExpeditions('player');
+        return playerExpeditions.some(exp => exp.status === 'sieging');
+    }
+    
+    /**
+     * Show a message about active siege in raids panel
+     */
+    function showSiegeActiveMessage() {
+        const raidsList = document.getElementById('raids-list');
+        if (!raidsList) return;
+        
+        // Remove any existing message
+        const existingMessage = raidsList.querySelector('.siege-active-message');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+        
+        // Add new message
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'siege-active-message';
+        messageDiv.innerHTML = `
+            <div class="notification warning">
+                <p>You have an active siege in progress. New raids cannot be planned until the siege is concluded.</p>
+                <p>You can switch to the Battles tab to view siege progress.</p>
+            </div>
+        `;
+        
+        raidsList.appendChild(messageDiv);
     }
     
     /**
@@ -280,7 +325,10 @@ const MilitaryPanel = (function() {
      * Hide the expedition creation form
      */
     function hideExpeditionCreation() {
-        document.getElementById('expedition-create').style.display = 'none';
+        const form = document.getElementById('expedition-create');
+        if (form) {
+            form.style.display = 'none';
+        }
     }
     
     /**
@@ -469,6 +517,15 @@ function populateTargetRegions() {
      * Show the raid planner
      */
     function showRaidPlanner() {
+        // Check for active sieges first
+        if (hasPlayerSiege()) {
+            // Switch to raids view to show the message
+            switchView('raids');
+            // Show message about active siege
+            showSiegeActiveMessage();
+            return;
+        }
+        
         // Switch to raids view
         switchView('raids');
         
@@ -483,7 +540,10 @@ function populateTargetRegions() {
      * Hide the raid planner
      */
     function hideRaidPlanner() {
-        document.getElementById('raid-planner').style.display = 'none';
+        const planner = document.getElementById('raid-planner');
+        if (planner) {
+            planner.style.display = 'none';
+        }
     }
     
     /**
@@ -527,6 +587,13 @@ function populateTargetRegions() {
      * Launch a new raid
      */
     function launchRaid() {
+        // Check for active sieges first
+        if (hasPlayerSiege()) {
+            Utils.log("You cannot start a new raid while you have an active siege.", "danger");
+            hideRaidPlanner();
+            return;
+        }
+        
         // Get form values
         const warriors = parseInt(document.getElementById('raid-warriors').value);
         const targetSettlementId = document.getElementById('raid-target').value;
@@ -612,6 +679,12 @@ function populateTargetRegions() {
             
             if (raids.length === 0) {
                 raidsList.innerHTML = '<div class="empty-list">No active raids.</div>';
+                
+                // Check if there's an active siege to show a message
+                if (hasPlayerSiege()) {
+                    showSiegeActiveMessage();
+                }
+                
                 return;
             }
             
@@ -669,6 +742,12 @@ function populateTargetRegions() {
             });
             
             raidsList.innerHTML = raidsHTML;
+            
+            // If there's an active siege, show warning about not being able to start new raids
+            if (raids.some(raid => raid.status === 'sieging')) {
+                showSiegeActiveMessage();
+            }
+            
         } catch (error) {
             console.error("Error updating raids list:", error);
             raidsList.innerHTML = '<div class="empty-list">Error loading raids.</div>';
@@ -943,9 +1022,20 @@ function populateTargetRegions() {
                 border-radius: 4px;
             }
             
-            .form-row input[type="range"] {
-                width: 80%;
-                vertical-align: middle;
+            .warrior-input {
+                width: 100px;
+                text-align: center;
+                padding: 8px;
+                border: 1px solid #c9ba9b;
+                border-radius: 4px;
+                font-size: 1rem;
+            }
+            
+            .warrior-input-hint {
+                margin-left: 10px;
+                font-size: 0.9rem;
+                color: #8b7355;
+                font-style: italic;
             }
             
             .form-actions {
@@ -1098,6 +1188,32 @@ function populateTargetRegions() {
             
             .advantage-neutral {
                 color: #8b7355;
+            }
+            
+            /* Notification for active siege */
+            .notification {
+                padding: 15px;
+                border-radius: 6px;
+                margin: 15px 0;
+            }
+            
+            .notification.warning {
+                background-color: #fff3e0;
+                border-left: 4px solid #ff8f00;
+                color: #e65100;
+            }
+            
+            .notification p {
+                margin: 5px 0;
+            }
+            
+            .siege-active-message {
+                margin-top: 15px;
+            }
+            
+            /* Make sure all panel sections are interactive */
+            .panel-section {
+                pointer-events: auto;
             }
         `;
         

@@ -2949,6 +2949,36 @@ function updateWarriorManagementUI() {
                 }))
             };
         },
+
+                /**
+         * Debug function to verify warrior accounting
+         * This will help identify any discrepancies
+         */
+        debugWarriorAccounting: function() {
+            console.log("=== WARRIOR ACCOUNTING DEBUG ===");
+            console.log(`Current warriors in settlement: ${warriors.total}`);
+            console.log(`Warriors in training: ${warriors.training.length}`);
+            console.log(`Warrior capacity: ${warriors.capacity}`);
+            
+            // Check warriors on expeditions
+            if (typeof ExpeditionSystem !== 'undefined' && typeof ExpeditionSystem.getExpeditions === 'function') {
+                const expeditions = ExpeditionSystem.getExpeditions('player');
+                let expeditionWarriors = 0;
+                let expeditionCasualties = 0;
+                
+                expeditions.forEach(expedition => {
+                    expeditionWarriors += expedition.warriors || 0;
+                    expeditionCasualties += expedition.casualties || 0;
+                    console.log(`Expedition "${expedition.name}": ${expedition.warriors} warriors, ${expedition.casualties || 0} casualties`);
+                });
+                
+                console.log(`Total warriors on ${expeditions.length} expeditions: ${expeditionWarriors}`);
+                console.log(`Total casualties: ${expeditionCasualties}`);
+                console.log(`Total accounted warriors: ${warriors.total + expeditionWarriors}`);
+            }
+            
+            console.log("===============================");
+        },
         
         /**
          * Get information about a specific building type
@@ -3001,6 +3031,14 @@ function updateWarriorManagementUI() {
         getWarriorData: function() {
             return { ...warriors };
         },
+
+                /**
+         * Get the current number of warriors
+         * @returns {number} - Current warrior count
+         */
+        getWarriors: function() {
+            return warriors.total;
+        },
         
         /**
          * Train a new warrior
@@ -3008,6 +3046,77 @@ function updateWarriorManagementUI() {
          */
         trainWarrior: function() {
             return startWarriorTraining(GameEngine.getGameState());
+        },
+
+                /* Set absolute warrior count (use with caution)
+        * @param {number} count - New warrior count
+        * @returns {number} - Updated warrior count
+        */
+        setWarriors: function(count) {
+            // Ensure we have a valid number
+            count = Math.max(0, Math.floor(count));
+            console.log(`Setting warrior count to ${count} (was ${warriors.total})`);
+            warriors.total = count;
+            
+            // Update UI
+            Utils.updateElement('warrior-count', warriors.total);
+            Utils.updateElement('warrior-upkeep-food', warriors.total);
+            Utils.updateElement('warrior-upkeep-wood', (warriors.total * 0.05).toFixed(1));
+            Utils.updateElement('warrior-upkeep-metal', (warriors.total * 0.05).toFixed(1));
+            
+            return warriors.total;
+        },
+
+                /**
+         * Add warriors to the settlement
+         * @param {number} count - Number of warriors to add
+         * @returns {number} - New warrior count
+         */
+        addWarriors: function(count) {
+            if (!count || count <= 0) return warriors.total;
+            
+            // Ensure we're adding a whole number
+            count = Math.floor(count);
+            console.log(`Adding ${count} warriors to ${warriors.total}`);
+            
+            // Update warrior count
+            warriors.total += count;
+            
+            // Update UI
+            Utils.updateElement('warrior-count', warriors.total);
+            Utils.updateElement('warrior-upkeep-food', warriors.total);
+            Utils.updateElement('warrior-upkeep-wood', (warriors.total * 0.05).toFixed(1));
+            Utils.updateElement('warrior-upkeep-metal', (warriors.total * 0.05).toFixed(1));
+            
+            return warriors.total;
+        },
+
+                /**
+         * Remove warriors from the settlement
+         * @param {number} count - Number of warriors to remove
+         * @param {string} [reason] - Optional reason for removal
+         * @returns {number} - New warrior count
+         */
+        removeWarriors: function(count, reason) {
+            if (!count || count <= 0) return warriors.total;
+            
+            // Ensure we're removing a whole number
+            count = Math.floor(count);
+            console.log(`Removing ${count} warriors from ${warriors.total}${reason ? ` due to ${reason}` : ''}`);
+            
+            // Make sure we don't go negative
+            count = Math.min(count, warriors.total);
+            
+            // Update warrior count
+            warriors.total -= count;
+            
+            // Update UI
+            Utils.updateElement('warrior-count', warriors.total);
+            Utils.updateElement('warrior-upkeep-food', warriors.total);
+            Utils.updateElement('warrior-upkeep-wood', (warriors.total * 0.05).toFixed(1));
+            Utils.updateElement('warrior-upkeep-metal', (warriors.total * 0.05).toFixed(1));
+            
+            return warriors.total;
         },
         
         /**
@@ -3028,4 +3137,5 @@ function updateWarriorManagementUI() {
 if (typeof NavigationSystem !== 'undefined') {
     NavigationSystem.switchToTab('buildings');
 }
+
 

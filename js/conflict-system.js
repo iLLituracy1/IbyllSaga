@@ -274,7 +274,7 @@ const ConflictSystem = (function() {
      */
     function applyExpeditionCasualties(expeditionIds, casualties) {
         if (!window.ExpeditionSystem || !ExpeditionSystem.getExpedition) return;
-        
+    
         // Get all expeditions
         const expeditions = expeditionIds.map(id => ExpeditionSystem.getExpedition(id))
             .filter(exp => exp !== undefined);
@@ -297,6 +297,11 @@ const ConflictSystem = (function() {
             if (typeof expedition.strength === 'number') {
                 // Simplified recalculation of strength
                 expedition.strength = expedition.warriors;
+            }
+            
+            // Log casualties for player expeditions
+            if (expedition.ownerType === 'player' && expeditionCasualties > 0) {
+                Utils.log(`Your forces suffered ${expeditionCasualties} casualties in battle.`, "danger");
             }
         });
     }
