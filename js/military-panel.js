@@ -557,27 +557,35 @@ function populateTargetRegions() {
             targetSelect.remove(1);
         }
         
-        // Get player region
-        const playerRegion = WorldMap.getPlayerRegion();
-        if (!playerRegion) return;
+        // Get all discovered settlements
+        let raidableSettlements = [];
         
-        // Get nearby settlements
-        const playerSettlement = WorldMap.getPlayerSettlement();
-        if (!playerSettlement) return;
-        
-        let nearbySettlements = [];
-        if (WorldMap.getNearbySettlements) {
-            nearbySettlements = WorldMap.getNearbySettlements(playerSettlement.id);
+        if (WorldMap.getDiscoveredSettlements) {
+            raidableSettlements = WorldMap.getDiscoveredSettlements()
+                .filter(s => !s.isPlayer);
+        } else {
+            // Fallback to old behavior if function not available
+            const playerSettlement = WorldMap.getPlayerSettlement();
+            if (playerSettlement && WorldMap.getNearbySettlements) {
+                raidableSettlements = WorldMap.getNearbySettlements(playerSettlement.id)
+                    .filter(s => !s.isPlayer);
+            }
         }
         
-        // Add nearby settlements to dropdown
-        nearbySettlements.forEach(settlement => {
-            if (!settlement.isPlayer) {
-                const option = document.createElement('option');
-                option.value = settlement.id;
-                option.textContent = `${settlement.name} (${settlement.type})`;
-                targetSelect.appendChild(option);
+        // Add discovered settlements to dropdown
+        raidableSettlements.forEach(settlement => {
+            const option = document.createElement('option');
+            option.value = settlement.id;
+            
+            // Get region name if available
+            let regionName = "Unknown Region";
+            if (settlement.region) {
+                const region = WorldMap.getRegion(settlement.region);
+                if (region) regionName = region.name;
             }
+            
+            option.textContent = `${settlement.name} (${settlement.type}) - ${regionName}`;
+            targetSelect.appendChild(option);
         });
     }
 

@@ -945,7 +945,7 @@ const ConflictSystem = (function() {
             
             // For player expeditions, add log entry
             if (expedition.ownerType === 'player') {
-                Utils.log(`Your forces have captured ${settlement.name}!`, 'success');
+                Utils.log(`Your forces have pillaged ${settlement.name}!`, 'success');
             }
         }
     };

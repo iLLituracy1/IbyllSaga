@@ -339,10 +339,10 @@ function generateSettlement(region, type, position, isPlayer = false) {
         // AI settlement - more established
         switch (type) {
             case SETTLEMENT_TYPES.VIKING:
-                initialPopulation = Utils.randomBetween(15, 45);
+                initialPopulation = Utils.randomBetween(45, 55);
                 initialRank = Utils.randomBetween(0, 5);
                 militaryStrength = {
-                    warriors: Utils.randomBetween(1, 5),
+                    warriors: Utils.randomBetween(40, 45),
                     ships: Utils.randomBetween(0, 2),
                     defenses: Utils.randomBetween(0, 2)
                 };
@@ -470,6 +470,8 @@ function generateSettlement(region, type, position, isPlayer = false) {
             }
         }
     }
+
+  
     
     /**
      * Generate a complete world map
@@ -564,9 +566,9 @@ function generateSettlement(region, type, position, isPlayer = false) {
         };
         
         // Create regions for each landmass
-        createRegionsForLandmass(vikingLandmass, 8);  // More regions in Viking homeland
-        createRegionsForLandmass(angloLandmass, 14);   // Anglo lands
-        createRegionsForLandmass(frankishLandmass, 22); // Frankish lands
+        createRegionsForLandmass(vikingLandmass, 4);  // More regions in Viking homeland
+        createRegionsForLandmass(angloLandmass, 6);   // Anglo lands
+        createRegionsForLandmass(frankishLandmass, 8); // Frankish lands
         
         // 3. Generate settlements
         
@@ -633,13 +635,16 @@ function generateSettlement(region, type, position, isPlayer = false) {
             
             if (landmass.type === LANDMASS_TYPES.VIKING_HOMELAND) {
                 // 1-3 Viking settlements per region in homeland
-                createSettlements(region, Utils.randomBetween(1, 3), SETTLEMENT_TYPES.VIKING);
+                createSettlements(region, Utils.randomBetween(1, 1), SETTLEMENT_TYPES.VIKING);
+                createSettlements(region, Utils.randomBetween(1, 2), SETTLEMENT_TYPES.NEUTRAL);
             } else if (landmass.type === LANDMASS_TYPES.ANGLO_LANDS) {
                 // 4-7 Anglo settlements per region
-                createSettlements(region, Utils.randomBetween(4, 7), SETTLEMENT_TYPES.ANGLO);
+                createSettlements(region, Utils.randomBetween(2, 2), SETTLEMENT_TYPES.ANGLO);
+                createSettlements(region, Utils.randomBetween(1, 5), SETTLEMENT_TYPES.NEUTRAL);
             } else if (landmass.type === LANDMASS_TYPES.FRANKISH_LANDS) {
                 // 6-12 Frankish settlements per region
-                createSettlements(region, Utils.randomBetween(6, 12), SETTLEMENT_TYPES.FRANKISH);
+                createSettlements(region, Utils.randomBetween(3, 3), SETTLEMENT_TYPES.FRANKISH);
+                createSettlements(region, Utils.randomBetween(1, 5), SETTLEMENT_TYPES.NEUTRAL);
             }
         });
         
@@ -649,6 +654,130 @@ function generateSettlement(region, type, position, isPlayer = false) {
         console.log(`Created ${worldMap.settlements.length} settlements`);
     }
     
+        
+
+
+
+            // Track discovered sea lanes as pairs of region IDs
+        let discoveredSeaLanes = new Set();
+
+        /**
+         * Create a unique ID for a sea lane between two regions
+         */
+        function createSeaLaneId(regionId1, regionId2) {
+            // Sort IDs to ensure the same lane ID regardless of order
+            const sortedIds = [regionId1, regionId2].sort();
+            return `sea_lane_${sortedIds[0]}_${sortedIds[1]}`;
+        }
+
+                /**
+         * Discover a sea lane between two coastal regions
+         */
+        function discoverSeaLane(fromRegionId, toRegionId) {
+            const seaLaneId = createSeaLaneId(fromRegionId, toRegionId);
+            
+            // If already discovered, no change
+            if (discoveredSeaLanes.has(seaLaneId)) return false;
+            
+            // Get region info
+            const fromRegion = worldMap.regions.find(r => r.id === fromRegionId);
+            const toRegion = worldMap.regions.find(r => r.id === toRegionId);
+            
+            if (!fromRegion || !toRegion) return false;
+            
+            // Check if both regions are coastal
+            const isFromCoastal = fromRegion.type === 'COASTAL' || fromRegion.type === 'FJORD';
+            const isToCoastal = toRegion.type === 'COASTAL' || toRegion.type === 'FJORD';
+            
+            // Only coastal regions can have sea lanes
+            if (!isFromCoastal || !isToCoastal) return false;
+            
+            // Mark as discovered
+            discoveredSeaLanes.add(seaLaneId);
+            
+            // Log discovery to the player
+            Utils.log(`Your sailors have discovered a sea route from ${fromRegion.name} to ${toRegion.name}!`, "success");
+            
+            return true;
+        }
+
+                /**
+         * Get all discovered sea lanes
+         */
+        function getDiscoveredSeaLanes() {
+            const lanes = [];
+            
+            discoveredSeaLanes.forEach(seaLaneId => {
+                // Extract region IDs from sea lane ID
+                const match = seaLaneId.match(/sea_lane_(.*)_(.*)/);
+                if (match && match.length === 3) {
+                    const regionId1 = match[1];
+                    const regionId2 = match[2];
+                    
+                    const region1 = worldMap.regions.find(r => r.id === regionId1);
+                    const region2 = worldMap.regions.find(r => r.id === regionId2);
+                    
+                    if (region1 && region2) {
+                        lanes.push({
+                            id: seaLaneId,
+                            regionId1: regionId1,
+                            regionId2: regionId2,
+                            region1Name: region1.name,
+                            region2Name: region2.name
+                        });
+                    }
+                }
+            });
+            
+            return lanes;
+        }
+
+                /**
+         * Discover potential sea lanes when discovering a coastal region
+         */
+        function discoverPotentialSeaLanes(regionId) {
+            const region = worldMap.regions.find(r => r.id === regionId);
+            if (!region) return;
+            
+            // Check if region is coastal
+            const isCoastal = region.type === 'COASTAL' || region.type === 'FJORD';
+            if (!isCoastal) return;
+            
+            // Find other discovered coastal regions
+            const discoveredCoastalRegions = worldMap.regions.filter(r => 
+                r.id !== regionId && 
+                r.discovered === true && 
+                (r.type === 'COASTAL' || r.type === 'FJORD')
+            );
+            
+            // Usually only discover nearest lanes first
+            let lanesToDiscover = 1;
+            if (Math.random() < 0.3) lanesToDiscover = 2; // 30% chance for 2 lanes
+            
+            // Sort by distance
+            const sortedByDistance = discoveredCoastalRegions.sort((a, b) => {
+                const distA = Math.sqrt(
+                    Math.pow(a.position.x - region.position.x, 2) + 
+                    Math.pow(a.position.y - region.position.y, 2)
+                );
+                const distB = Math.sqrt(
+                    Math.pow(b.position.x - region.position.x, 2) + 
+                    Math.pow(b.position.y - region.position.y, 2)
+                );
+                return distA - distB;
+            });
+            
+            // Discover nearest lanes
+            const nearestRegions = sortedByDistance.slice(0, lanesToDiscover);
+            nearestRegions.forEach(nearRegion => {
+                // Only create lanes to different landmasses
+                if (nearRegion.landmass !== region.landmass) {
+                    discoverSeaLane(region.id, nearRegion.id);
+                }
+            });
+        }
+
+/**
     /**
      * Find the player's settlement
      * @returns {Object|null} - Player settlement or null if not found
@@ -656,6 +785,33 @@ function generateSettlement(region, type, position, isPlayer = false) {
     function getPlayerSettlement() {
         return worldMap.settlements.find(s => s.isPlayer);
     }
+
+    /**
+ * Track discovered settlements separately from regions
+ */
+let discoveredSettlements = new Set();
+
+/**
+ * Discover a settlement - make it visible and raidable
+ * @param {string} settlementId - ID of the settlement to discover
+ * @returns {boolean} - Whether the settlement was newly discovered
+ */
+function discoverSettlement(settlementId) {
+    // If already discovered, no change
+    if (discoveredSettlements.has(settlementId)) return false;
+    
+    // Mark as discovered
+    discoveredSettlements.add(settlementId);
+    
+    // Get settlement info
+    const settlement = worldMap.settlements.find(s => s.id === settlementId);
+    if (!settlement) return false;
+    
+    // Log discovery to the player
+    Utils.log(`Your scouts have discovered ${settlement.name}!`, "success");
+    
+    return true;
+}
     
     // Public API
     return {
@@ -726,6 +882,67 @@ function generateSettlement(region, type, position, isPlayer = false) {
             
             console.log("World Map system initialized");
         },
+
+        /**
+         * Get all discovered settlements
+         * @returns {Array} - Array of discovered settlement objects
+         */
+        getDiscoveredSettlements: function() {
+            return worldMap.settlements.filter(s => discoveredSettlements.has(s.id));
+        },
+
+        /**
+         * Check if a settlement is discovered
+         * @param {string} settlementId - ID of the settlement
+         * @returns {boolean} - Whether the settlement is discovered
+         */
+        isSettlementDiscovered: function(settlementId) {
+            return discoveredSettlements.has(settlementId);
+        },
+
+/**
+ * Mark a region as discovered
+ * @param {string} regionId - ID of the region to discover
+ * @returns {boolean} - Whether the region was newly discovered (true) or already known (false)
+ */
+discoverRegion: function(regionId) {
+    const region = this.getRegion(regionId);
+    if (!region) return false;
+    
+    // If already discovered, no change
+    if (region.discovered === true) return false;
+    
+    // Mark as discovered
+    region.discovered = true;
+    
+    // Discover settlements in this region
+    const settlementsInRegion = this.getSettlementsByRegion(regionId);
+    if (settlementsInRegion && settlementsInRegion.length > 0) {
+        // Discover a random settlement initially
+        const randomIndex = Math.floor(Math.random() * settlementsInRegion.length);
+        const initialSettlement = settlementsInRegion[randomIndex];
+        
+        if (initialSettlement) {
+            discoverSettlement(initialSettlement.id);
+        }
+    }
+    
+    // DISCOVER SEA LANES: If this is a coastal region, discover potential sea lanes
+    if (region.type === 'COASTAL' || region.type === 'FJORD') {
+        discoverPotentialSeaLanes(regionId);
+    }
+    
+    // Log discovery to the player
+    Utils.log(`While raiding, your expedition scouts have discovered ${region.name}!`, "success");
+    
+    // Trigger UI update
+    if (window.MilitaryPanel && typeof MilitaryPanel.update === 'function') {
+        MilitaryPanel.update();
+    }
+    
+    console.log(`Region discovered: ${region.name} (${regionId})`);
+    return true;
+},
         
         /**
          * Create the world map panel
@@ -856,6 +1073,169 @@ function generateSettlement(region, type, position, isPlayer = false) {
                 }
             }
         },
+
+                        /**
+                 * Check if a sea lane between two regions is discovered
+                 */
+                /**
+         * Check if a sea lane between two regions has been discovered
+         * @param {string} fromRegionId - Origin region ID
+         * @param {string} toRegionId - Destination region ID
+         * @returns {boolean} - Whether the sea lane has been discovered
+         */
+        isSeaLaneDiscovered: function(fromRegionId, toRegionId) {
+            // First check if both regions exist
+            const fromRegion = this.getRegion(fromRegionId);
+            const toRegion = this.getRegion(toRegionId);
+            
+            if (!fromRegion || !toRegion) {
+                return false;
+            }
+            
+            // Check if we're tracking sea lanes
+            if (!worldMap.seaLanes) {
+                worldMap.seaLanes = {}; // Initialize if not existing
+            }
+            
+            // Create a consistent key for this sea lane (sort IDs to ensure same key regardless of direction)
+            const laneKey = [fromRegionId, toRegionId].sort().join('_');
+            
+            // If the sea lane is explicitly tracked, return its status
+            if (worldMap.seaLanes[laneKey] !== undefined) {
+                return worldMap.seaLanes[laneKey].discovered || false;
+            }
+            
+            // Default case: 
+            // If both regions are discovered, assume the sea lane is discovered
+            if (fromRegion.discovered && toRegion.discovered) {
+                // If regions are on different landmasses, it's a sea lane
+                if (fromRegion.landmass !== toRegion.landmass) {
+                    // Create the sea lane entry in our tracking
+                    worldMap.seaLanes[laneKey] = {
+                        fromRegionId: fromRegionId,
+                        toRegionId: toRegionId,
+                        discovered: true, // Default to discovered if both regions are known
+                        distance: estimateSeaDistance(fromRegion, toRegion)
+                    };
+                }
+                return true;
+            }
+            
+            return false;
+        },
+
+                /**
+         * Helper function to estimate sea distance between regions
+         * @param {Object} region1 - First region object
+         * @param {Object} region2 - Second region object
+         * @returns {number} - Estimated distance
+         */
+        estimateSeaDistance: function(region1, region2) {
+            // If regions don't have position data, return a default
+            if (!region1.position || !region2.position) {
+                return 10; // Default distance
+            }
+            
+            // Calculate direct distance
+            const dx = region1.position.x - region2.position.x;
+            const dy = region1.position.y - region2.position.y;
+            const directDistance = Math.sqrt(dx*dx + dy*dy);
+            
+            // Sea travel is typically longer than direct distance
+            return directDistance * 1.5;
+        },
+
+                /**
+         * Get all sea lanes connected to a region
+         * @param {string} regionId - ID of the region
+         * @returns {Array} - Array of sea lane objects
+         */
+        getRegionSeaLanes: function(regionId) {
+            if (!worldMap.seaLanes) {
+                return [];
+            }
+            
+            const regionSeaLanes = [];
+            
+            // Check all sea lanes for connections to this region
+            for (const key in worldMap.seaLanes) {
+                const lane = worldMap.seaLanes[key];
+                
+                // If this lane connects to our region and is discovered
+                if ((lane.fromRegionId === regionId || lane.toRegionId === regionId) && 
+                    lane.discovered) {
+                    
+                    regionSeaLanes.push(lane);
+                }
+            }
+
+            return regionSeaLanes;
+        },
+
+                /**
+         * Discover a sea lane between two regions
+         * @param {string} fromRegionId - Origin region ID
+         * @param {string} toRegionId - Destination region ID
+         * @returns {boolean} - Whether discovery was successful
+         */
+        discoverSeaLane: function(fromRegionId, toRegionId) {
+            // Ensure regions exist
+            const fromRegion = this.getRegion(fromRegionId);
+            const toRegion = this.getRegion(toRegionId);
+            
+            if (!fromRegion || !toRegion) {
+                return false;
+            }
+            
+            // Initialize sea lanes if needed
+            if (!worldMap.seaLanes) {
+                worldMap.seaLanes = {};
+            }
+            
+            // Create lane key
+            const laneKey = [fromRegionId, toRegionId].sort().join('_');
+            
+            // Create or update sea lane
+            worldMap.seaLanes[laneKey] = {
+                fromRegionId: fromRegionId,
+                toRegionId: toRegionId,
+                discovered: true,
+                distance: this.estimateSeaDistance(fromRegion, toRegion)
+            };
+            
+            // Log discovery
+            Utils.log(`Your expedition has discovered a sea route from ${fromRegion.name} to ${toRegion.name}!`, "success");
+            
+            return true;
+        },
+
+        /**
+         * Get all discovered sea lanes
+         */
+        getDiscoveredSeaLanes: function() {
+            return getDiscoveredSeaLanes();
+        },
+
+        /**
+         * Get all discovered settlements
+         */
+        getDiscoveredSettlements: function() {
+            return worldMap.settlements.filter(s => discoveredSettlements.has(s.id));
+        },
+
+        /**
+         * Check if a settlement is discovered
+         */
+        isSettlementDiscovered: function(settlementId) {
+            return discoveredSettlements.has(settlementId);
+        },
+
+        /**
+         * Discover a settlement by ID
+         */
+        discoverSettlement: function(settlementId) {
+            return discoverSettlement(settlementId);
+        },
         
         /**
          * Get the world map data
@@ -985,7 +1365,7 @@ function generateSettlement(region, type, position, isPlayer = false) {
                     const region = this.getRegion(settlement.region);
                     if (region) {
                         // Base production rates * population * region modifier
-                        const foodProduced = 1 * settlement.population * region.resourceModifiers.food * tickSize;
+                        const foodProduced = 0.6 * settlement.population * region.resourceModifiers.food * tickSize;
                         const woodProduced = 0.3 * settlement.population * region.resourceModifiers.wood * tickSize;
                         const stoneProduced = 0.2 * settlement.population * region.resourceModifiers.stone * tickSize;
                         const metalProduced = 0.1 * settlement.population * region.resourceModifiers.metal * tickSize;
@@ -997,7 +1377,7 @@ function generateSettlement(region, type, position, isPlayer = false) {
                         settlement.resources.metal += metalProduced;
                         
                         // Consumption
-                        const foodConsumed = settlement.population * 0.7 * tickSize;
+                        const foodConsumed = settlement.population * 0.8 * tickSize;
                         settlement.resources.food = Math.max(0, settlement.resources.food - foodConsumed);
                     }
                     

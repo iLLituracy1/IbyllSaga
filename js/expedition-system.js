@@ -105,68 +105,112 @@ const ExpeditionSystem = (function() {
     }
     
     /**
-     * Find adjacent regions to a given region
-     * @param {string} regionId - ID of the region
-     * @returns {Array} - Array of adjacent region IDs
-     */
-    function findAdjacentRegions(regionId) {
-        const worldData = WorldMap.getWorldMap();
-        const region = worldData.regions.find(r => r.id === regionId);
+ * Find adjacent regions to a given region
+ * @param {string} regionId - ID of the region
+ * @returns {Array} - Array of adjacent region IDs
+ */
+function findAdjacentRegions(regionId) {
+    const worldData = WorldMap.getWorldMap();
+    const region = worldData.regions.find(r => r.id === regionId);
+    
+    if (!region) return [];
+    
+    // Get all regions in same landmass (land connections)
+    const regionsInLandmass = worldData.regions.filter(r => r.landmass === region.landmass);
+    
+    // Find land-adjacent regions (simplified using distance)
+    const adjacentRegions = regionsInLandmass.filter(r => {
+        if (r.id === regionId) return false; // Skip self
         
-        if (!region) return [];
+        // Calculate distance
+        const dx = r.position.x - region.position.x;
+        const dy = r.position.y - region.position.y;
+        const distance = Math.sqrt(dx*dx + dy*dy);
         
-        // Get all regions in same landmass
-        const regionsInLandmass = worldData.regions.filter(r => r.landmass === region.landmass);
+        // Consider adjacent if within certain range 
+        // (this is a simplification - ideally would use proper adjacency mapping)
+        const adjacencyThreshold = (r.size.width + region.size.width) / 1.5;
+        return distance <= adjacencyThreshold;
+    });
+    
+    // Get land-adjacent region IDs
+    const adjacentRegionIds = adjacentRegions.map(r => r.id);
+    
+    // Add sea lane connections if WorldMap has the function
+    if (typeof WorldMap.getRegionSeaLanes === 'function') {
+        const seaLanes = WorldMap.getRegionSeaLanes(regionId);
         
-        // Find adjacent regions (simplified using distance)
-        const adjacentRegions = regionsInLandmass.filter(r => {
-            if (r.id === regionId) return false; // Skip self
+        seaLanes.forEach(lane => {
+            // Get the connected region ID (the "other end" of the lane)
+            const connectedRegionId = lane.fromRegionId === regionId ? 
+                lane.toRegionId : lane.fromRegionId;
             
-            // Calculate distance
-            const dx = r.position.x - region.position.x;
-            const dy = r.position.y - region.position.y;
-            const distance = Math.sqrt(dx*dx + dy*dy);
-            
-            // Consider adjacent if within certain range 
-            // (this is a simplification - ideally would use proper adjacency mapping)
-            const adjacencyThreshold = (r.size.width + region.size.width) / 1.5;
-            return distance <= adjacencyThreshold;
+            // Only add if not already in list and sea lane is discovered
+            if (!adjacentRegionIds.includes(connectedRegionId) && 
+                // Only use this check if the function exists
+                (typeof WorldMap.isSeaLaneDiscovered !== 'function' || 
+                 WorldMap.isSeaLaneDiscovered(regionId, connectedRegionId))) {
+                
+                adjacentRegionIds.push(connectedRegionId);
+            }
         });
-        
-        return adjacentRegions.map(r => r.id);
     }
     
+    return adjacentRegionIds;
+}
+
+    
     /**
-     * Calculate the movement cost between two regions
-     * @param {string} fromRegionId - Origin region ID
-     * @param {string} toRegionId - Destination region ID
-     * @returns {number} - Days required for movement
-     */
-    function calculateMovementDays(fromRegionId, toRegionId) {
-        const worldData = WorldMap.getWorldMap();
-        const fromRegion = worldData.regions.find(r => r.id === fromRegionId);
-        const toRegion = worldData.regions.find(r => r.id === toRegionId);
-        
-        if (!fromRegion || !toRegion) return BASE_MOVEMENT_DAYS;
-        
-        // Apply region type modifier
-        let movementDays = BASE_MOVEMENT_DAYS;
-        
-        // Apply destination region type modifier
-        if (MOVEMENT_MODIFIERS[toRegion.type]) {
-            movementDays /= MOVEMENT_MODIFIERS[toRegion.type];
+ * Calculate the movement cost between two regions
+ * @param {string} fromRegionId - Origin region ID
+ * @param {string} toRegionId - Destination region ID
+ * @returns {number} - Days required for movement
+ */
+function calculateMovementDays(fromRegionId, toRegionId) {
+    const worldData = WorldMap.getWorldMap();
+    const fromRegion = worldData.regions.find(r => r.id === fromRegionId);
+    const toRegion = worldData.regions.find(r => r.id === toRegionId);
+    
+    if (!fromRegion || !toRegion) return BASE_MOVEMENT_DAYS;
+    
+    // Check if this is sea travel
+    const isSeatravel = fromRegion.landmass !== toRegion.landmass;
+    
+    // For sea travel, sea lanes must be discovered
+    if (isSeatravel) {
+        // Safely check if sea lane is discovered
+        const isDiscovered = typeof WorldMap.isSeaLaneDiscovered === 'function' ?
+            WorldMap.isSeaLaneDiscovered(fromRegionId, toRegionId) : true;
+            
+        if (!isDiscovered) {
+            // Sea lane not discovered, cannot travel
+            return Infinity; // Infinite cost means can't travel
         }
         
-        // Check if regions are adjacent
-        const adjacentRegions = findAdjacentRegions(fromRegionId);
-        if (!adjacentRegions.includes(toRegionId)) {
-            // Non-adjacent movement is much slower
-            movementDays *= 3;
-        }
-        
-        // Return the calculated days (min 1 day)
-        return Math.max(1, Math.round(movementDays));
+        // Sea travel takes longer
+        return BASE_MOVEMENT_DAYS * 2;
     }
+    
+    // Land travel from here
+    
+    // Apply region type modifier
+    let movementDays = BASE_MOVEMENT_DAYS;
+    
+    // Apply destination region type modifier
+    if (MOVEMENT_MODIFIERS[toRegion.type]) {
+        movementDays /= MOVEMENT_MODIFIERS[toRegion.type];
+    }
+    
+    // Check if regions are adjacent
+    const adjacentRegions = findAdjacentRegions(fromRegionId);
+    if (!adjacentRegions.includes(toRegionId)) {
+        // Non-adjacent movement is much slower
+        movementDays *= 3;
+    }
+    
+    // Return the calculated days (min 1 day)
+    return Math.max(1, Math.round(movementDays));
+}
     
     /**
      * Create a new expedition
@@ -403,16 +447,60 @@ const ExpeditionSystem = (function() {
 
         // Handle region discovery - new functionality
         WorldMap.discoverRegion(expedition.currentRegion);
+
+        const settlementsInRegion = WorldMap.getSettlementsByRegion(expedition.currentRegion)
+        .filter(s => !s.isPlayer && !WorldMap.isSettlementDiscovered(s.id));
+    
+    // Chance to discover settlements increases with raid duration
+    if (settlementsInRegion.length > 0 && Utils.chanceOf(35 * tickSize)) {
+        // Pick a random undiscovered settlement
+        const randomIndex = Math.floor(Math.random() * settlementsInRegion.length);
+        const settlement = settlementsInRegion[randomIndex];
+        
+        if (settlement) {
+            WorldMap.discoverSettlement(settlement.id);
+            
+        }
+    }
+
+    //  Chance to discover additional sea lanes while raiding in coastal regions
+const region = WorldMap.getRegion(expedition.currentRegion);
+if (region && (region.type === 'COASTAL' || region.type === 'FJORD') && 
+    Utils.chanceOf(15 * tickSize)) {
+    
+    // Find potential coastal regions for sea lanes
+    const discoveredRegions = WorldMap.getDiscoveredRegions();
+    const potentialSeaLaneRegions = discoveredRegions.filter(r => 
+        r.id !== expedition.currentRegion && 
+        (r.type === 'COASTAL' || r.type === 'FJORD') &&
+        r.landmass !== region.landmass &&
+        !WorldMap.isSeaLaneDiscovered(expedition.currentRegion, r.id)
+    );
+    
+    if (potentialSeaLaneRegions.length > 0) {
+        // Pick a random undiscovered sea lane destination
+        const randomIndex = Math.floor(Math.random() * potentialSeaLaneRegions.length);
+        const targetRegion = potentialSeaLaneRegions[randomIndex];
+        
+        // Discover the sea lane
+        if (targetRegion) {
+            WorldMap.discoverSeaLane(expedition.currentRegion, targetRegion.id);
+            
+            if (expedition.ownerType === 'player') {
+                Utils.log(`Your sailors have charted a sea route to ${targetRegion.name}!`, 'success');
+            }
+        }
+    }
+}
         
         // During raiding, there's a chance to discover adjacent regions
         const adjacentRegions = WorldMap.getAdjacentRegions(expedition.currentRegion);
         adjacentRegions.forEach(regionId => {
             // Each day of raiding has a chance to discover each adjacent region
-            if (Utils.chanceOf(25 * tickSize)) {
+            if (Utils.chanceOf(15 * tickSize)) {
                 const discovered = WorldMap.discoverRegion(regionId);
                 if (discovered && expedition.ownerType === 'player') {
                     const regionName = WorldMap.getRegion(regionId)?.name || 'an adjacent region';
-                    Utils.log(`While raiding, your expedition scouts have discovered ${regionName}!`, 'success');
                 }
             }
         });
@@ -694,8 +782,6 @@ const ExpeditionSystem = (function() {
             expedition.fame += fameGained;
             
             if (expedition.ownerType === 'player') {
-                Utils.log(`Your forces have successfully captured ${settlement.name}!`, 'success');
-                
                 // Create loot message
                 let lootMessage = "You've plundered: ";
                 lootMessage += Object.entries(loot)
