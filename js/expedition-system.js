@@ -447,32 +447,17 @@ function calculateMovementDays(fromRegionId, toRegionId) {
         }
     }
 
-    //  Chance to discover additional sea lanes while raiding in coastal regions
+   // Chance to discover additional sea lanes while raiding in coastal regions
 const region = WorldMap.getRegion(expedition.currentRegion);
-if (region && (region.type === 'COASTAL' || region.type === 'FJORD') && 
-    Utils.chanceOf(15 * tickSize)) {
-    
-    // Find potential coastal regions for sea lanes
-    const discoveredRegions = WorldMap.getDiscoveredRegions();
-    const potentialSeaLaneRegions = discoveredRegions.filter(r => 
-        r.id !== expedition.currentRegion && 
-        (r.type === 'COASTAL' || r.type === 'FJORD') &&
-        r.landmass !== region.landmass &&
-        !WorldMap.isSeaLaneDiscovered(expedition.currentRegion, r.id)
-    );
-    
-    if (potentialSeaLaneRegions.length > 0) {
-        // Pick a random undiscovered sea lane destination
-        const randomIndex = Math.floor(Math.random() * potentialSeaLaneRegions.length);
-        const targetRegion = potentialSeaLaneRegions[randomIndex];
+if (region && (region.type === 'COASTAL' || region.type === 'FJORD')) {
+    // Increased chance of sea lane discovery from 15% to 30% per day for expeditions actively raiding
+    if (Utils.chanceOf(30 * tickSize)) {
+        // We pass the region ID to WorldMap's discoverPotentialSeaLanes function
+        // which will handle discovering regions on other landmasses and creating sea lanes
+        WorldMap.discoverRegion(expedition.currentRegion); // This will trigger the sea lane discovery logic
         
-        // Discover the sea lane
-        if (targetRegion) {
-            WorldMap.discoverSeaLane(expedition.currentRegion, targetRegion.id);
-            
-            if (expedition.ownerType === 'player') {
-                Utils.log(`Your sailors have charted a sea route to ${targetRegion.name}!`, 'success');
-            }
+        if (expedition.ownerType === 'player') {
+            console.log(`Expedition ${expedition.name} searching for sea lanes from ${region.name}`);
         }
     }
 }
