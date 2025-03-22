@@ -32,7 +32,7 @@ const ExpeditionSystem = (function() {
     };
     
     // Base days to move between adjacent regions
-    const BASE_MOVEMENT_DAYS = 5;
+    const BASE_MOVEMENT_DAYS = 15;
     
     // Expedition template
     const expeditionTemplate = {
@@ -172,7 +172,7 @@ function calculateMovementDays(fromRegionId, toRegionId) {
         }
         
         // Sea travel takes longer
-        return BASE_MOVEMENT_DAYS * 2;
+        return BASE_MOVEMENT_DAYS * 4;
     }
     
     // Land travel from here
