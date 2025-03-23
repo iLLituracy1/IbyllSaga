@@ -15,18 +15,18 @@ const FactionArmySystem = (function() {
     
     // Configuration
     const CONFIG = {
-        CHECK_INTERVAL: 0.5, // Check twice per day (was 5 in original)
+        CHECK_INTERVAL: 1, // Check twice per day (was 5 in original)
         RESPONSE_CHANCE: 0.9, // Very high chance (was 0.7 in original)
         NEAR_TERRITORY_RESPONSE_CHANCE: 0.7, // High chance (was 0.4 in original)
         SIEGE_RESPONSE_CHANCE: 0.98, // Almost guaranteed response (was 0.9 in original)
         MAX_ARMIES_PER_FACTION: 4, // Allow more armies
         MOVEMENT_DAYS: {
-            SAME_REGION: 0.5, // Half a day if already in same region
-            ADJACENT_REGION: 1.5, // 1.5 days if in adjacent region
+            SAME_REGION: 1, // Half a day if already in same region
+            ADJACENT_REGION: 2, // 1.5 days if in adjacent region
             DISTANT_REGION: 3 // 3 days if further away
         },
         DEBUG: true, // Enable debug logging
-        FORCE_RESPONSE: false // Set to true to force factions to always respond (for testing)
+        FORCE_RESPONSE: true // Set to true to force factions to always respond (for testing)
     };
     
     // Army template
@@ -72,11 +72,9 @@ const FactionArmySystem = (function() {
         // Get all settlements controlled by this faction
         const worldData = WorldMap.getWorldMap();
         
-        // IMPORTANT FIX: Look for both factionId and faction properties
-        // This fixes a critical issue where settlements might have faction but not factionId
         const factionSettlements = worldData.settlements.filter(s => 
-            s.factionId === factionId || // Primary check for factionId
-            (s.faction && factionId.includes(s.faction)) // Fallback check for faction type
+            s.factionId === factionId || 
+            (s.faction && factionId.includes(s.faction))
         );
         
         debugLog(`Found ${factionSettlements.length} settlements for faction ${factionId}`);
@@ -140,6 +138,14 @@ const FactionArmySystem = (function() {
                 break;
             default:
                 responseChance = 0.5;
+
+                        // Random check
+            const roll = Math.random();
+            const willRespond = roll < finalChance;
+            
+            debugLog(`${faction.name} response check for ${triggerType}: ${roll.toFixed(2)} vs ${finalChance.toFixed(2)} = ${willRespond ? 'WILL RESPOND' : 'WILL NOT RESPOND'}`);
+            
+            return willRespond;
         }
         
         // Modify based on faction type and available warriors
@@ -876,7 +882,6 @@ const FactionArmySystem = (function() {
     };
 })();
 
-// Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Wait for game engine to be ready
     const waitForGameEngine = setInterval(function() {

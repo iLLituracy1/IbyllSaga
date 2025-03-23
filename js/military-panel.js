@@ -1,7 +1,6 @@
 /**
  * Viking Legacy - Military Panel
  * UI for managing warriors, expeditions, raids and warfare
- * Enhanced with improved visual navigation and additional information
  */
 
 const MilitaryPanel = (function() {
@@ -87,7 +86,7 @@ const MilitaryPanel = (function() {
                             <span class="warrior-input-hint">Enter number of warriors (1-5000)</span>
                         </div>
                         <div class="form-row">
-                            <label for="expedition-target">Target Region:</label>
+                            <label for="expedition-target">Target:</label>
                             <select id="expedition-target">
                                 <option value="">Select target region...</option>
                             </select>
@@ -170,6 +169,8 @@ const MilitaryPanel = (function() {
         document.getElementById('btn-cancel-expedition').addEventListener('click', hideExpeditionCreation);
         document.getElementById('btn-launch-raid').addEventListener('click', launchRaid);
         document.getElementById('btn-cancel-raid').addEventListener('click', hideRaidPlanner);
+        
+        // No slider listeners needed anymore - using direct number inputs
     }
     
     /**
@@ -288,7 +289,7 @@ const MilitaryPanel = (function() {
         }
         document.getElementById('active-expeditions-count').textContent = expeditionsCount;
         
-        // Update recent events
+        // Update recent events (placeholder)
         updateMilitaryEventsList();
     }
     
@@ -299,35 +300,11 @@ const MilitaryPanel = (function() {
         const eventsList = document.getElementById('military-events-list');
         if (!eventsList) return;
         
-        // Get recent military-related log entries if available
-        let recentEvents = [];
+        // For now, just use placeholder content
+        // In a full implementation, this would fetch recent battles, raids, etc.
+        eventsList.innerHTML = `
         
-        // If we have access to the game log, filter for military events
-        if (window.Utils && Utils.getRecentLogs) {
-            recentEvents = Utils.getRecentLogs(5).filter(log => 
-                log.message.toLowerCase().includes('warrior') || 
-                log.message.toLowerCase().includes('expedition') ||
-                log.message.toLowerCase().includes('raid') ||
-                log.message.toLowerCase().includes('battle') ||
-                log.message.toLowerCase().includes('siege')
-            );
-        }
-        
-        // If we have military events, display them
-        if (recentEvents.length > 0) {
-            let eventsHTML = '';
-            recentEvents.forEach(event => {
-                eventsHTML += `
-                    <div class="event-item event-${event.type || 'normal'}">
-                        <div class="event-message">${event.message}</div>
-                    </div>
-                `;
-            });
-            eventsList.innerHTML = eventsHTML;
-        } else {
-            // Otherwise show empty message
-            eventsList.innerHTML = '<div class="empty-list">No recent military events.</div>';
-        }
+        `;
     }
     
     /**
@@ -340,7 +317,7 @@ const MilitaryPanel = (function() {
         // Show creation form
         document.getElementById('expedition-create').style.display = 'block';
         
-        // Populate target options with enhanced information
+        // Populate target options
         populateTargetRegions();
     }
     
@@ -355,116 +332,40 @@ const MilitaryPanel = (function() {
     }
     
     /**
-     * Populate the target regions dropdown with discovered regions and enhanced info
-     */
-    function populateTargetRegions() {
-        const targetSelect = document.getElementById('expedition-target');
-        
-        // Clear existing options
-        while (targetSelect.options.length > 1) {
-            targetSelect.remove(1);
-        }
-        
-        // Get player region
-        const playerRegion = WorldMap.getPlayerRegion();
-        if (!playerRegion) return;
-        
-        // Get player landmass
-        const playerLandmass = WorldMap.getLandmass(playerRegion.landmass);
-        const playerLandmassName = playerLandmass ? playerLandmass.name : 'Unknown Landmass';
-        
-        // Add player's own region with landmass info
-        const ownRegionOption = document.createElement('option');
-        ownRegionOption.value = playerRegion.id;
-        ownRegionOption.textContent = `${playerRegion.name} (Your Region - ${playerLandmassName})`;
-        ownRegionOption.className = 'option-player-region';
-        targetSelect.appendChild(ownRegionOption);
-        
-        // Get all discovered regions
-        const discoveredRegions = WorldMap.getDiscoveredRegions()
-            .filter(region => region.id !== playerRegion.id); // Exclude player's region
-        
-        console.log(`Found ${discoveredRegions.length} discovered regions to add to dropdown`);
-        
-        // Group regions by landmass for better organization
-        const regionsByLandmass = {};
-        
-        discoveredRegions.forEach(region => {
-            const landmass = WorldMap.getLandmass(region.landmass);
-            const landmassName = landmass ? landmass.name : 'Unknown Landmass';
-            const landmassType = landmass ? landmass.type : 'Unknown';
-            
-            if (!regionsByLandmass[landmassName]) {
-                regionsByLandmass[landmassName] = {
-                    name: landmassName,
-                    type: landmassType,
-                    regions: []
-                };
-            }
-            
-            regionsByLandmass[landmassName].regions.push(region);
-        });
-        
-        // Create optgroups for each landmass
-        for (const landmassName in regionsByLandmass) {
-            const landmassData = regionsByLandmass[landmassName];
-            const optgroup = document.createElement('optgroup');
-            optgroup.label = `${landmassName} (${formatLandmassType(landmassData.type)})`;
-            
-            // Add regions to this optgroup
-            landmassData.regions.forEach(region => {
-                const option = document.createElement('option');
-                option.value = region.id;
-                
-                // Determine region faction if possible
-                let factionInfo = '';
-                const settlementsInRegion = WorldMap.getSettlementsByRegion(region.id);
-                if (settlementsInRegion && settlementsInRegion.length > 0) {
-                    // Look for dominant faction
-                    const factionCounts = {};
-                    settlementsInRegion.forEach(settlement => {
-                        if (settlement.faction) {
-                            factionCounts[settlement.faction] = (factionCounts[settlement.faction] || 0) + 1;
-                        }
-                    });
-                    
-                    let dominantFaction = null;
-                    let maxCount = 0;
-                    for (const faction in factionCounts) {
-                        if (factionCounts[faction] > maxCount) {
-                            dominantFaction = faction;
-                            maxCount = factionCounts[faction];
-                        }
-                    }
-                    
-                    if (dominantFaction) {
-                        factionInfo = ` - ${dominantFaction}`;
-                    }
-                }
-                
-                // Add region info to option text
-                option.textContent = `${region.name} (${region.typeName}${factionInfo})`;
-                
-                // Add class based on region type for potential styling
-                option.className = `option-region-${region.type.toLowerCase()}`;
-                
-                optgroup.appendChild(option);
-            });
-            
-            targetSelect.appendChild(optgroup);
-        }
+ * Populate the target regions dropdown with discovered regions
+ */
+function populateTargetRegions() {
+    const targetSelect = document.getElementById('expedition-target');
+    
+    // Clear existing options
+    while (targetSelect.options.length > 1) {
+        targetSelect.remove(1);
     }
     
-    /**
-     * Format landmass type for display
-     * @param {string} type - Landmass type
-     * @returns {string} - Formatted landmass type
-     */
-    function formatLandmassType(type) {
-        if (type === 'Viking Homeland') return 'Norse Lands';
-        if (type === 'VIKING_HOMELAND') return 'Norse Lands';
-        return type.replace(/_/g, ' ');
-    }
+    // Get player region
+    const playerRegion = WorldMap.getPlayerRegion();
+    if (!playerRegion) return;
+    
+    // Add player's own region
+    const ownRegionOption = document.createElement('option');
+    ownRegionOption.value = playerRegion.id;
+    ownRegionOption.textContent = `${playerRegion.name} (Your Region)`;
+    targetSelect.appendChild(ownRegionOption);
+    
+    // Get all discovered regions
+    const discoveredRegions = WorldMap.getDiscoveredRegions()
+        .filter(region => region.id !== playerRegion.id); // Exclude player's region
+    
+    console.log(`Found ${discoveredRegions.length} discovered regions to add to dropdown`);
+    
+    // Add discovered regions to dropdown
+    discoveredRegions.forEach(region => {
+        const option = document.createElement('option');
+        option.value = region.id;
+        option.textContent = region.name;
+        targetSelect.appendChild(option);
+    });
+}
     
     /**
      * Launch a new expedition
@@ -531,7 +432,7 @@ const MilitaryPanel = (function() {
     }
     
     /**
-     * Update the list of expeditions with enhanced information
+     * Update the list of expeditions
      */
     function updateExpeditionsList() {
         const expeditionsList = document.getElementById('expeditions-list');
@@ -556,47 +457,11 @@ const MilitaryPanel = (function() {
             let expeditionsHTML = '';
             
             expeditions.forEach(expedition => {
-                // Get current region name and info
+                // Get current region name
                 let regionName = 'Unknown';
-                let landmassName = '';
-                let factionInfo = '';
-                
                 if (expedition.currentRegion) {
                     const region = WorldMap.getRegion(expedition.currentRegion);
-                    if (region) {
-                        regionName = region.name;
-                        
-                        // Add landmass info
-                        const landmass = WorldMap.getLandmass(region.landmass);
-                        if (landmass) {
-                            landmassName = ` (${landmass.name})`;
-                        }
-                        
-                        // Add faction info if available
-                        const settlementsInRegion = WorldMap.getSettlementsByRegion(region.id);
-                        if (settlementsInRegion && settlementsInRegion.length > 0) {
-                            // Look for dominant faction
-                            const factionCounts = {};
-                            settlementsInRegion.forEach(settlement => {
-                                if (settlement.faction) {
-                                    factionCounts[settlement.faction] = (factionCounts[settlement.faction] || 0) + 1;
-                                }
-                            });
-                            
-                            let dominantFaction = null;
-                            let maxCount = 0;
-                            for (const faction in factionCounts) {
-                                if (factionCounts[faction] > maxCount) {
-                                    dominantFaction = faction;
-                                    maxCount = factionCounts[faction];
-                                }
-                            }
-                            
-                            if (dominantFaction) {
-                                factionInfo = `<div class="faction-tag ${dominantFaction.toLowerCase()}">${dominantFaction}</div>`;
-                            }
-                        }
-                    }
+                    if (region) regionName = region.name;
                 }
                 
                 // Get status text
@@ -615,7 +480,7 @@ const MilitaryPanel = (function() {
                             </div>
                             <div class="detail-row">
                                 <div class="detail-label">Location:</div>
-                                <div class="detail-value">${regionName}${landmassName} ${factionInfo}</div>
+                                <div class="detail-value">${regionName}</div>
                             </div>
                             <div class="detail-row">
                                 <div class="detail-label">Days Active:</div>
@@ -667,7 +532,7 @@ const MilitaryPanel = (function() {
         // Show planner
         document.getElementById('raid-planner').style.display = 'block';
         
-        // Populate target options with enhanced information
+        // Populate target options
         populateTargetSettlements();
     }
     
@@ -682,7 +547,7 @@ const MilitaryPanel = (function() {
     }
     
     /**
-     * Populate the target settlements dropdown with enhanced faction information
+     * Populate the target settlements dropdown
      */
     function populateTargetSettlements() {
         const targetSelect = document.getElementById('raid-target');
@@ -707,141 +572,24 @@ const MilitaryPanel = (function() {
             }
         }
         
-        // Group settlements by landmass and faction for better organization
-        const settlementsByLandmass = {};
-        
+        // Add discovered settlements to dropdown
         raidableSettlements.forEach(settlement => {
-            // Get region and landmass info
-            let regionName = "Unknown Region";
-            let landmassName = "Unknown Landmass";
-            let landmassType = "";
+            const option = document.createElement('option');
+            option.value = settlement.id;
             
+            // Get region name if available
+            let regionName = "Unknown Region";
             if (settlement.region) {
                 const region = WorldMap.getRegion(settlement.region);
-                if (region) {
-                    regionName = region.name;
-                    
-                    // Get landmass info
-                    const landmass = WorldMap.getLandmass(region.landmass);
-                    if (landmass) {
-                        landmassName = landmass.name;
-                        landmassType = landmass.type;
-                    }
-                }
+                if (region) regionName = region.name;
             }
             
-            // Create landmass group if doesn't exist
-            if (!settlementsByLandmass[landmassName]) {
-                settlementsByLandmass[landmassName] = {
-                    name: landmassName,
-                    type: landmassType,
-                    factions: {}
-                };
-            }
-            
-            // Get faction info
-            const factionName = settlement.faction || "Unknown Faction";
-            
-            // Create faction group if doesn't exist
-            if (!settlementsByLandmass[landmassName].factions[factionName]) {
-                settlementsByLandmass[landmassName].factions[factionName] = [];
-            }
-            
-            // Add settlement to its faction group
-            settlementsByLandmass[landmassName].factions[factionName].push({
-                settlement: settlement,
-                regionName: regionName
-            });
+            option.textContent = `${settlement.name} (${settlement.type}) - ${regionName}`;
+            targetSelect.appendChild(option);
         });
-        
-        // Create optgroups for each landmass and nested options for factions
-        for (const landmassName in settlementsByLandmass) {
-            const landmassData = settlementsByLandmass[landmassName];
-            const landmassOptgroup = document.createElement('optgroup');
-            landmassOptgroup.label = `${landmassName} (${formatLandmassType(landmassData.type)})`;
-            
-            // For each faction in this landmass
-            for (const factionName in landmassData.factions) {
-                const factionSettlements = landmassData.factions[factionName];
-                
-                // If there are multiple settlements in this faction, create a faction subgroup
-                if (factionSettlements.length > 1) {
-                    const factionOptgroup = document.createElement('optgroup');
-                    factionOptgroup.label = `  ${factionName}`;
-                    factionOptgroup.className = 'faction-subgroup';
-                    
-                    // Add settlements to faction group
-                    factionSettlements.forEach(item => {
-                        const option = document.createElement('option');
-                        option.value = item.settlement.id;
-                        option.textContent = `${item.settlement.name} (${item.regionName})`;
-                        option.className = `option-faction-${factionName.toLowerCase().replace(/\s+/g, '-')}`;
-                        factionOptgroup.appendChild(option);
-                    });
-                    
-                    landmassOptgroup.appendChild(factionOptgroup);
-                } else if (factionSettlements.length === 1) {
-                    // Just one settlement, add directly to landmass group with faction info
-                    const item = factionSettlements[0];
-                    const option = document.createElement('option');
-                    option.value = item.settlement.id;
-                    option.textContent = `${item.settlement.name} (${factionName} - ${item.regionName})`;
-                    option.className = `option-faction-${factionName.toLowerCase().replace(/\s+/g, '-')}`;
-                    landmassOptgroup.appendChild(option);
-                }
-            }
-            
-            targetSelect.appendChild(landmassOptgroup);
-        }
-        
-        // Add some styling to improve the visual hierarchy
-        const style = document.createElement('style');
-        style.textContent = `
-            .faction-subgroup {
-                margin-left: 15px;
-                font-style: italic;
-            }
-            
-            .option-faction-viking {
-                color: #b71c1c; /* Viking red */
-            }
-            
-            .option-faction-anglo {
-                color: #1565c0; /* Anglo blue */
-            }
-            
-            .option-faction-frankish {
-                color: #6a1b9a; /* Frankish purple */
-            }
-            
-            .faction-tag {
-                display: inline-block;
-                padding: 2px 6px;
-                border-radius: 3px;
-                font-size: 0.8rem;
-                margin-left: 5px;
-                color: white;
-            }
-            
-            .faction-tag.viking {
-                background-color: #b71c1c;
-            }
-            
-            .faction-tag.anglo {
-                background-color: #1565c0;
-            }
-            
-            .faction-tag.frankish {
-                background-color: #6a1b9a;
-            }
-        `;
-        
-        // Only add the style once
-        if (!document.getElementById('military-panel-faction-styles')) {
-            style.id = 'military-panel-faction-styles';
-            document.head.appendChild(style);
-        }
     }
+
+    
     
     /**
      * Launch a new raid
@@ -918,7 +666,7 @@ const MilitaryPanel = (function() {
     }
     
     /**
-     * Update the list of raids with enhanced information
+     * Update the list of raids
      */
     function updateRaidsList() {
         const raidsList = document.getElementById('raids-list');
@@ -948,47 +696,21 @@ const MilitaryPanel = (function() {
                 return;
             }
             
-            // Create HTML for each raid with enhanced information
+            // Create HTML for each raid
             let raidsHTML = '';
             
             raids.forEach(raid => {
                 // Get status text
                 const statusText = raid.status === 'raiding' ? 'Raiding' : 'Sieging';
                 
-                // Get target info with enhanced details
+                // Get target info
                 let targetName = 'Unknown';
-                let factionInfo = '';
-                let regionInfo = '';
-                
                 if (raid.targetSettlement) {
                     const settlement = WorldMap.getSettlement(raid.targetSettlement);
-                    if (settlement) {
-                        targetName = settlement.name;
-                        
-                        // Add faction info
-                        if (settlement.faction) {
-                            factionInfo = `<div class="faction-tag ${settlement.faction.toLowerCase()}">${settlement.faction}</div>`;
-                        }
-                        
-                        // Add region info
-                        if (settlement.region) {
-                            const region = WorldMap.getRegion(settlement.region);
-                            if (region) {
-                                regionInfo = ` (${region.name})`;
-                            }
-                        }
-                    }
+                    if (settlement) targetName = settlement.name;
                 } else if (raid.currentRegion) {
                     const region = WorldMap.getRegion(raid.currentRegion);
-                    if (region) {
-                        targetName = region.name + ' Region';
-                        
-                        // Add landmass info
-                        const landmass = WorldMap.getLandmass(region.landmass);
-                        if (landmass) {
-                            regionInfo = ` (${landmass.name})`;
-                        }
-                    }
+                    if (region) targetName = region.name + ' Region';
                 }
                 
                 // Get progress
@@ -1011,7 +733,7 @@ const MilitaryPanel = (function() {
                         <div class="raid-details">
                             <div class="detail-row">
                                 <div class="detail-label">Target:</div>
-                                <div class="detail-value">${targetName}${regionInfo} ${factionInfo}</div>
+                                <div class="detail-value">${targetName}</div>
                             </div>
                             <div class="detail-row">
                                 <div class="detail-label">Warriors:</div>
@@ -1041,7 +763,7 @@ const MilitaryPanel = (function() {
     }
     
     /**
-     * Update the list of battles with enhanced information
+     * Update the list of battles
      */
     function updateBattlesList() {
         const battlesList = document.getElementById('battles-list');
@@ -1066,7 +788,7 @@ const MilitaryPanel = (function() {
             // Create HTML for battles and sieges
             let battlesHTML = '';
             
-            // Add battles with enhanced information
+            // Add battles
             battles.forEach(battle => {
                 // Get phase text
                 const phaseText = battle.phase.charAt(0).toUpperCase() + battle.phase.slice(1);
@@ -1083,44 +805,10 @@ const MilitaryPanel = (function() {
                     advantageClass = 'disadvantage';
                 }
                 
-                // Get region info
-                let regionInfo = '';
-                const region = WorldMap.getRegion(battle.regionId);
-                if (region) {
-                    // Add landmass info
-                    const landmass = WorldMap.getLandmass(region.landmass);
-                    if (landmass) {
-                        regionInfo = ` (${landmass.name})`;
-                    }
-                }
-                
-                // Get faction info if available
-                let factionInfo = '';
-                if (battle.defenders && battle.defenders.length > 0) {
-                    // Try to determine defender faction from the first defender
-                    const defenderExpId = battle.defenders[0];
-                    const defenderExp = window.ExpeditionSystem && 
-                                       ExpeditionSystem.getExpedition && 
-                                       ExpeditionSystem.getExpedition(defenderExpId);
-                    
-                    if (defenderExp) {
-                        // If this is an AI expedition with faction ID
-                        if (defenderExp.ownerType === 'ai' && defenderExp.factionId) {
-                            const faction = window.FactionIntegration && 
-                                          FactionIntegration.getFactionById && 
-                                          FactionIntegration.getFactionById(defenderExp.factionId);
-                            
-                            if (faction) {
-                                factionInfo = `<div class="faction-tag ${faction.type.toLowerCase()}">${faction.type.replace('_', ' ')}</div>`;
-                            }
-                        }
-                    }
-                }
-                
                 battlesHTML += `
                     <div class="battle-item phase-${battle.phase}">
                         <div class="battle-header">
-                            <div class="battle-name">Battle of ${battle.regionName || 'Unknown Region'}${regionInfo}</div>
+                            <div class="battle-name">Battle of ${battle.regionName || 'Unknown Region'}</div>
                             <div class="battle-phase">${phaseText}</div>
                         </div>
                         <div class="battle-details">
@@ -1130,7 +818,7 @@ const MilitaryPanel = (function() {
                             </div>
                             <div class="detail-row">
                                 <div class="detail-label">Enemy Forces:</div>
-                                <div class="detail-value">${battle.defenderStrength} ${factionInfo}</div>
+                                <div class="detail-value">${battle.defenderStrength}</div>
                             </div>
                             <div class="detail-row">
                                 <div class="detail-label">Status:</div>
@@ -1141,38 +829,15 @@ const MilitaryPanel = (function() {
                 `;
             });
             
-            // Add sieges with enhanced information
+            // Add sieges that aren't already represented in raids list
             sieges.forEach(siege => {
-                // Get region and settlement info
-                let regionInfo = '';
-                let factionInfo = '';
-                
-                const region = WorldMap.getRegion(siege.regionId);
-                if (region) {
-                    // Add landmass info
-                    const landmass = WorldMap.getLandmass(region.landmass);
-                    if (landmass) {
-                        regionInfo = ` (${landmass.name})`;
-                    }
-                }
-                
-                // Get settlement faction info if available
-                const settlement = WorldMap.getSettlement(siege.settlementId);
-                if (settlement && settlement.faction) {
-                    factionInfo = `<div class="faction-tag ${settlement.faction.toLowerCase()}">${settlement.faction}</div>`;
-                }
-                
                 battlesHTML += `
                     <div class="siege-item phase-${siege.phase}">
                         <div class="siege-header">
-                            <div class="siege-name">Siege of ${siege.settlementName || 'Unknown Settlement'}${regionInfo}</div>
+                            <div class="siege-name">Siege of ${siege.settlementName || 'Unknown Settlement'}</div>
                             <div class="siege-phase">${siege.phase.charAt(0).toUpperCase() + siege.phase.slice(1)}</div>
                         </div>
                         <div class="siege-details">
-                            <div class="detail-row">
-                                <div class="detail-label">Target:</div>
-                                <div class="detail-value">${siege.settlementName || 'Unknown Settlement'} ${factionInfo}</div>
-                            </div>
                             <div class="detail-row">
                                 <div class="detail-label">Progress:</div>
                                 <div class="detail-value">
@@ -1199,7 +864,7 @@ const MilitaryPanel = (function() {
     }
     
     /**
-     * Add CSS styles for the military panel with enhanced visuals
+     * Add CSS styles for the military panel
      */
     function addMilitaryPanelStyles() {
         const styleElement = document.createElement('style');
@@ -1332,21 +997,6 @@ const MilitaryPanel = (function() {
                 border-bottom: none;
             }
             
-            .event-item.event-danger {
-                border-left: 3px solid #c62828;
-                background-color: #ffebee;
-            }
-            
-            .event-item.event-success {
-                border-left: 3px solid #2e7d32;
-                background-color: #e8f5e9;
-            }
-            
-            .event-item.event-important {
-                border-left: 3px solid #f57c00;
-                background-color: #fff3e0;
-            }
-            
             .empty-list {
                 padding: 12px;
                 text-align: center;
@@ -1359,7 +1009,6 @@ const MilitaryPanel = (function() {
                 padding: 15px;
                 border-radius: 6px;
                 margin-top: 15px;
-                border: 1px solid #e6d8c3;
             }
             
             .form-row {
@@ -1379,7 +1028,6 @@ const MilitaryPanel = (function() {
                 padding: 8px;
                 border: 1px solid #c9ba9b;
                 border-radius: 4px;
-                background-color: #fff;
             }
             
             .warrior-input {
@@ -1389,7 +1037,6 @@ const MilitaryPanel = (function() {
                 border: 1px solid #c9ba9b;
                 border-radius: 4px;
                 font-size: 1rem;
-                background-color: #fff;
             }
             
             .warrior-input-hint {
@@ -1414,7 +1061,6 @@ const MilitaryPanel = (function() {
                 margin-bottom: 10px;
                 padding: 12px;
                 box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-                border-left: 4px solid #8b5d33;
             }
             
             .expedition-header,
@@ -1466,8 +1112,6 @@ const MilitaryPanel = (function() {
             
             .detail-value {
                 color: #8b5d33;
-                display: flex;
-                align-items: center;
             }
             
             .progress-bar {
@@ -1507,82 +1151,37 @@ const MilitaryPanel = (function() {
                 background-color: #c9ba9b;
             }
             
-            /* Enhanced status colors */
-            .status-mustering .expedition-status,
-            .status-mustering {
+            /* Status colors */
+            .status-mustering .expedition-status {
                 background-color: #e3f2fd;
                 color: #1565c0;
-                border-color: #1565c0;
             }
             
-            .status-marching .expedition-status,
-            .status-marching {
+            .status-marching .expedition-status {
                 background-color: #e8f5e9;
                 color: #2e7d32;
-                border-color: #2e7d32;
             }
             
             .status-raiding .expedition-status,
             .status-raiding {
                 background-color: #ffebee;
                 color: #c62828;
-                border-color: #c62828;
             }
             
             .status-sieging .expedition-status,
             .status-sieging {
                 background-color: #ede7f6;
                 color: #6a1b9a;
-                border-color: #6a1b9a;
             }
             
-            .status-battling .expedition-status,
-            .status-battling {
+            .status-battling .expedition-status {
                 background-color: #fff3e0;
                 color: #e65100;
-                border-color: #e65100;
             }
             
-            .status-returning .expedition-status,
-            .status-returning {
+            .status-returning .expedition-status {
                 background-color: #fff8e1;
                 color: #ff8f00;
-                border-color: #ff8f00;
-            }
-            
-            /* Battle phase-specific styling */
-            .phase-deployment {
-                border-left-color: #1565c0;
-            }
-            
-            .phase-skirmish {
-                border-left-color: #f57c00;
-            }
-            
-            .phase-melee {
-                border-left-color: #c62828;
-            }
-            
-            .phase-pursuit {
-                border-left-color: #6a1b9a;
-            }
-            
-            .phase-concluded {
-                border-left-color: #424242;
-                opacity: 0.8;
-            }
-            
-            /* Enhanced siege phase styling */
-            .phase-encirclement {
-                border-left-color: #1565c0;
-            }
-            
-            .phase-bombardment {
-                border-left-color: #f57c00;
-            }
-            
-            .phase-assault {
-                border-left-color: #c62828;
             }
             
             .advantage-advantage {
@@ -1599,7 +1198,7 @@ const MilitaryPanel = (function() {
                 color: #8b7355;
             }
             
-            /* Enhanced notification styling */
+            /* Notification for active siege */
             .notification {
                 padding: 15px;
                 border-radius: 6px;
@@ -1623,36 +1222,6 @@ const MilitaryPanel = (function() {
             /* Make sure all panel sections are interactive */
             .panel-section {
                 pointer-events: auto;
-            }
-            
-            /* Enhanced dropdown styling */
-            select#expedition-target,
-            select#raid-target {
-                max-width: 100%;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-            
-            .option-player-region {
-                font-weight: bold;
-                color: #5d4037;
-            }
-            
-            .option-region-forest {
-                color: #33691e;
-            }
-            
-            .option-region-plains {
-                color: #558b2f;
-            }
-            
-            .option-region-mountains {
-                color: #5d4037;
-            }
-            
-            .option-region-coastal,
-            .option-region-fjord {
-                color: #0277bd;
             }
         `;
         
@@ -1712,8 +1281,8 @@ const MilitaryPanel = (function() {
             isInitialized = true;
             console.log("Military Panel initialized successfully");
         },
-        
-        /**
+
+                /**
          * Debug function to check region discovery status
          */
         debugCheckDiscovery: function() {
@@ -1762,19 +1331,6 @@ const MilitaryPanel = (function() {
          */
         switchToView: function(view) {
             switchView(view);
-        },
-        
-        /**
-         * Show faction armies information (used by military-panel-update.js)
-         */
-        showFactionArmies: function() {
-            // This function is defined in the military-panel-update.js enhancement
-            // We're just providing a stub here for compatibility
-            if (typeof updateFactionArmiesInfo === 'function') {
-                updateFactionArmiesInfo();
-            } else {
-                console.log("Faction armies update function not available");
-            }
         }
     };
 })();

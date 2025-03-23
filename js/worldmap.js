@@ -881,6 +881,26 @@ function discoverSettlement(settlementId) {
     // Log discovery to the player
     Utils.log(`Your scouts have discovered ${settlement.name}!`, "success");
     
+    // Refresh the military panel if it's showing raids
+    if (window.MilitaryPanel) {
+        // Check if panel is visible and on raids tab
+        const panel = document.getElementById('military-panel');
+        if (panel && !panel.classList.contains('hidden-panel') && 
+            MilitaryPanel.getCurrentView() === 'raids') {
+            
+            // Now we need to update the dropdown
+            const raidPlanner = document.getElementById('raid-planner');
+            if (raidPlanner && raidPlanner.style.display !== 'none') {
+                // Refresh the settlement dropdown
+                const populateTargets = MilitaryPanel.populateTargetSettlements || 
+                                       window.populateTargetSettlements;
+                if (typeof populateTargets === 'function') {
+                    populateTargets();
+                }
+            }
+        }
+    }
+    
     return true;
 }
 
