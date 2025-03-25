@@ -334,38 +334,113 @@ const MilitaryPanel = (function() {
     /**
  * Populate the target regions dropdown with discovered regions
  */
-function populateTargetRegions() {
-    const targetSelect = document.getElementById('expedition-target');
-    
-    // Clear existing options
-    while (targetSelect.options.length > 1) {
-        targetSelect.remove(1);
+    function populateTargetRegions() {
+        const targetSelect = document.getElementById('expedition-target');
+        
+        // IMPORTANT: Completely clear the dropdown first
+        targetSelect.innerHTML = '';
+        
+        // Add default option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = "";
+        defaultOption.textContent = "Select target region...";
+        targetSelect.appendChild(defaultOption);
+        
+        // Get player region
+        const playerRegion = WorldMap.getPlayerRegion();
+        if (!playerRegion) return;
+        
+        // Get all discovered regions and ensure no duplicates
+        const discoveredRegions = WorldMap.getDiscoveredRegions();
+        const processedRegionIds = new Set(); // Track which regions we've already added
+        
+        // Create a single optgroup for player's home region to avoid duplication
+        const homeGroup = document.createElement('optgroup');
+        homeGroup.label = "Your Territory";
+        
+        // Add player's region with enhanced info
+        const playerOption = document.createElement('option');
+        playerOption.value = playerRegion.id;
+        playerOption.textContent = `${playerRegion.name} (Your Region) [${playerRegion.typeName || playerRegion.type}]`;
+        playerOption.style.backgroundColor = '#e8f5e9';
+        homeGroup.appendChild(playerOption);
+        targetSelect.appendChild(homeGroup);
+        
+        // Mark player region as processed
+        processedRegionIds.add(playerRegion.id);
+        
+        // Group other regions by landmass
+        const regionsByLandmass = {};
+        
+        discoveredRegions.forEach(region => {
+            // Skip regions we've already processed
+            if (processedRegionIds.has(region.id)) return;
+            
+            const landmass = WorldMap.getLandmass(region.landmass);
+            if (!landmass) return;
+            
+            const landmassId = landmass.id;
+            
+            if (!regionsByLandmass[landmassId]) {
+                regionsByLandmass[landmassId] = {
+                    name: landmass.name,
+                    type: landmass.type,
+                    regions: []
+                };
+            }
+            
+            regionsByLandmass[landmassId].regions.push(region);
+            processedRegionIds.add(region.id); // Mark as processed
+        });
+        
+        // Add each landmass group to the dropdown
+        Object.keys(regionsByLandmass).forEach(landmassId => {
+            const landmassInfo = regionsByLandmass[landmassId];
+            
+            // Skip if no regions to add
+            if (landmassInfo.regions.length === 0) return;
+            
+            // Create optgroup for this landmass
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = landmassInfo.name;
+            
+            // Set background color based on landmass type
+            if (landmassInfo.type === "Viking Homeland") {
+                optgroup.style.backgroundColor = '#ffebee';
+            } else if (landmassInfo.type === "Britannia") {
+                optgroup.style.backgroundColor = '#e3f2fd';
+            } else if (landmassInfo.type === "Frankia") {
+                optgroup.style.backgroundColor = '#f3e5f5';
+            }
+            
+            // Add regions for this landmass
+            landmassInfo.regions.forEach(region => {
+                const option = document.createElement('option');
+                option.value = region.id;
+                
+                // Get region type and format
+                const regionType = region.typeName || region.type;
+                const coastalIndicator = (region.type === 'COASTAL' || region.type === 'FJORD') ? " ⚓" : "";
+                
+                option.textContent = `${region.name} [${regionType}${coastalIndicator}]`;
+                
+                // Set background color based on region type
+                if (region.type === 'COASTAL' || region.type === 'FJORD') {
+                    option.style.backgroundColor = '#e1f5fe';
+                } else if (region.type === 'FOREST') {
+                    option.style.backgroundColor = '#e8f5e9';
+                } else if (region.type === 'MOUNTAINS') {
+                    option.style.backgroundColor = '#f5f5f5';
+                } else if (region.type === 'PLAINS') {
+                    option.style.backgroundColor = '#fffde7';
+                }
+                
+                optgroup.appendChild(option);
+            });
+            
+            targetSelect.appendChild(optgroup);
+        });
     }
-    
-    // Get player region
-    const playerRegion = WorldMap.getPlayerRegion();
-    if (!playerRegion) return;
-    
-    // Add player's own region
-    const ownRegionOption = document.createElement('option');
-    ownRegionOption.value = playerRegion.id;
-    ownRegionOption.textContent = `${playerRegion.name} (Your Region)`;
-    targetSelect.appendChild(ownRegionOption);
-    
-    // Get all discovered regions
-    const discoveredRegions = WorldMap.getDiscoveredRegions()
-        .filter(region => region.id !== playerRegion.id); // Exclude player's region
-    
-    console.log(`Found ${discoveredRegions.length} discovered regions to add to dropdown`);
-    
-    // Add discovered regions to dropdown
-    discoveredRegions.forEach(region => {
-        const option = document.createElement('option');
-        option.value = region.id;
-        option.textContent = region.name;
-        targetSelect.appendChild(option);
-    });
-}
     
     /**
      * Launch a new expedition
@@ -552,41 +627,184 @@ function populateTargetRegions() {
     function populateTargetSettlements() {
         const targetSelect = document.getElementById('raid-target');
         
-        // Clear existing options
-        while (targetSelect.options.length > 1) {
-            targetSelect.remove(1);
-        }
+        // IMPORTANT: Completely clear the dropdown 
+        targetSelect.innerHTML = '';
         
-        // Get all discovered settlements
-        let raidableSettlements = [];
+        // Add default option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = "";
+        defaultOption.textContent = "Select target settlement...";
+        targetSelect.appendChild(defaultOption);
         
-        if (WorldMap.getDiscoveredSettlements) {
-            raidableSettlements = WorldMap.getDiscoveredSettlements()
-                .filter(s => !s.isPlayer);
-        } else {
-            // Fallback to old behavior if function not available
-            const playerSettlement = WorldMap.getPlayerSettlement();
-            if (playerSettlement && WorldMap.getNearbySettlements) {
-                raidableSettlements = WorldMap.getNearbySettlements(playerSettlement.id)
-                    .filter(s => !s.isPlayer);
-            }
-        }
+        // Get all discovered settlements, ensuring no duplicates
+        const raidableSettlements = WorldMap.getDiscoveredSettlements ? 
+            WorldMap.getDiscoveredSettlements().filter(s => !s.isPlayer) :
+            (WorldMap.getPlayerSettlement() && WorldMap.getNearbySettlements ? 
+                WorldMap.getNearbySettlements(WorldMap.getPlayerSettlement().id).filter(s => !s.isPlayer) : 
+                []);
         
-        // Add discovered settlements to dropdown
+        const processedSettlementIds = new Set(); // Track processed settlements
+        
+        // Group settlements by landmass
+        const settlementsByLandmass = {};
+        
         raidableSettlements.forEach(settlement => {
-            const option = document.createElement('option');
-            option.value = settlement.id;
+            // Skip if already processed
+            if (processedSettlementIds.has(settlement.id)) return;
             
-            // Get region name if available
-            let regionName = "Unknown Region";
-            if (settlement.region) {
-                const region = WorldMap.getRegion(settlement.region);
-                if (region) regionName = region.name;
+            if (!settlement.region) return;
+            
+            const region = WorldMap.getRegion(settlement.region);
+            if (!region) return;
+            
+            const landmass = WorldMap.getLandmass(region.landmass);
+            if (!landmass) return;
+            
+            const landmassId = landmass.id;
+            
+            if (!settlementsByLandmass[landmassId]) {
+                settlementsByLandmass[landmassId] = {
+                    name: landmass.name,
+                    type: landmass.type,
+                    settlements: []
+                };
             }
             
-            option.textContent = `${settlement.name} (${settlement.type}) - ${regionName}`;
-            targetSelect.appendChild(option);
+            // Add region info to settlement for display
+            settlement.regionInfo = region;
+            settlementsByLandmass[landmassId].settlements.push(settlement);
+            processedSettlementIds.add(settlement.id); // Mark as processed
         });
+        
+        // Add each landmass group to the dropdown
+        Object.keys(settlementsByLandmass).forEach(landmassId => {
+            const landmassInfo = settlementsByLandmass[landmassId];
+            
+            // Skip if no settlements
+            if (landmassInfo.settlements.length === 0) return;
+            
+            // Create optgroup for this landmass
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = landmassInfo.name;
+            
+            // Set background color based on landmass type
+            if (landmassInfo.type === "Viking Homeland") {
+                optgroup.style.backgroundColor = '#ffebee';
+            } else if (landmassInfo.type === "Britannia") {
+                optgroup.style.backgroundColor = '#e3f2fd';
+            } else if (landmassInfo.type === "Frankia") {
+                optgroup.style.backgroundColor = '#f3e5f5';
+            }
+            
+            // Add settlements for this landmass
+            landmassInfo.settlements.forEach(settlement => {
+                const option = document.createElement('option');
+                option.value = settlement.id;
+                
+                // Try to get faction information if available
+                let factionInfo = settlement.type;
+                
+                option.textContent = `${settlement.name} (${settlement.type}) - ${settlement.regionInfo.name}`;
+                
+                // Set background color based on settlement type
+                if (settlement.type === 'Viking') {
+                    option.style.backgroundColor = '#ffebee';
+                } else if (settlement.type === 'Anglo') {
+                    option.style.backgroundColor = '#e3f2fd';
+                } else if (settlement.type === 'Frankish') {
+                    option.style.backgroundColor = '#f3e5f5';
+                } else {
+                    option.style.backgroundColor = '#f5f5f5'; // Neutral
+                }
+                
+                optgroup.appendChild(option);
+            });
+            
+            targetSelect.appendChild(optgroup);
+        });
+    }
+
+    function addDropdownStyles() {
+        // Check if styles are already added
+        if (document.getElementById('dropdown-style-enhancements')) return;
+        
+        const styleElement = document.createElement('style');
+        styleElement.id = 'dropdown-style-enhancements';
+        styleElement.textContent = `
+            /* Dropdown styling */
+            #expedition-target, #raid-target {
+                max-width: 100%;
+                font-family: sans-serif;
+            }
+            
+            /* Category styling */
+            optgroup {
+                font-weight: bold;
+                padding: 5px;
+            }
+            
+            /* Landmass colors */
+            optgroup.viking-lands {
+                background-color: #ffebee;
+                color: #b71c1c;
+            }
+            
+            optgroup.anglo-lands {
+                background-color: #e3f2fd;
+                color: #1565c0;
+            }
+            
+            optgroup.frankish-lands {
+                background-color: #f3e5f5;
+                color: #6a1b9a;
+            }
+            
+            /* Option styling */
+            option {
+                padding: 5px 3px;
+            }
+            
+            option.player-region {
+                font-weight: bold;
+                background-color: #e8f5e9;
+            }
+            
+            /* Region types */
+            option.region-coastal, option.region-fjord {
+                background-color: #e1f5fe;
+            }
+            
+            option.region-forest {
+                background-color: #e8f5e9;
+            }
+            
+            option.region-mountains {
+                background-color: #f5f5f5;
+            }
+            
+            option.region-plains {
+                background-color: #fffde7;
+            }
+            
+            /* Settlement types */
+            option.settlement-viking {
+                background-color: #ffebee;
+            }
+            
+            option.settlement-anglo {
+                background-color: #e3f2fd;
+            }
+            
+            option.settlement-frankish {
+                background-color: #f3e5f5;
+            }
+            
+            option.settlement-neutral {
+                background-color: #f5f5f5;
+            }
+        `;
+        
+        document.head.appendChild(styleElement);
     }
 
     
@@ -1353,3 +1571,4 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 500);
 });
+
